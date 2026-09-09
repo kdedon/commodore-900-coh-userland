@@ -1,0 +1,200 @@
+The MINIX 2.0.4 licence, and the provenance of the files in this directory.
+
+This file was previously a placeholder recording that nobody had traced where
+this code came from.  That has now been done.  What follows is (1) the
+provenance, established by comparison against the holding, and (2) the licence
+text as it appears IN that distribution, reproduced verbatim.
+
+This file reports what the distribution's own documents say.  It does not draw
+conclusions about what may be done with the code; read the terms yourself.
+
+
+1. Which release
+----------------
+
+MINIX 2.0.4.  Established from the donor holding at `c900oses/minix2/`, which
+is the unpacked MINIX 2.0.4 source distribution plus its three original
+`compress`ed tar archives (`SYS.TAZ`, `CMD.TAZ`, `FIX.TAZ`):
+
+  - `minix2/sys/include/minix/config.h` lines 5-6:
+
+        #define OS_RELEASE "2"
+        #define OS_VERSION "0.4"
+
+    The same two lines are present in the pristine `SYS.TAZ` archive at
+    `include/minix/config.h`, so this is the distribution's own statement and
+    not an artefact of unpacking.
+
+  - This project's own record of the port names the same source: the MINIX
+    2.0.4 userland inet server, `minix2/sys/src/inet/`.
+
+  - File dates in `SYS.TAZ` run to 2002-12-22; `FIX.TAZ` is a later fix set
+    dated 2003-11-30 (three kernel PCI/rtl8139 files), which does not touch
+    `src/inet/`.
+
+  - `minix2/sys/src/inet/version.c`, carried into this directory unchanged,
+    identifies the stack itself as `inet 0.35K`.
+
+
+2. The licence, as held
+-----------------------
+
+The distribution carries its licence at the TOP OF THE SOURCE TREE, in
+`/usr/src/LICENSE` -- one directory above `/usr/src/inet/`, the directory this
+one is a port of.  In the holding it is `minix2/sys/src/LICENSE`, and it is
+present byte-identically inside the original `SYS.TAZ` archive as `src/LICENSE`
+(dated 2001-01-02, md5 25d41a23c639100f13573c6532d3ca7e).
+
+The distribution documents that file as the licence.  `minix2/sys/man/man7/
+hier.7`, describing the MINIX filesystem layout, lists under `src/`:
+
+        LICENSE
+                Minix license to use
+
+And per-file headers point at it by path.  `minix/const.h` -- the header this
+port carries at `../include/minix/const.h`, and the file whose Prentice-Hall
+notice prompted this investigation -- opens:
+
+    /* Copyright (C) 2001 by Prentice-Hall, Inc.  See the copyright notice in
+     * the file /usr/src/LICENSE.
+     */
+
+The full text of `minix2/sys/src/LICENSE`, reproduced verbatim:
+
+        Copyright (c) 1987,1997,2001 Prentice Hall
+        All rights reserved.
+
+        Redistribution and use of the MINIX operating system in source and
+        binary forms, with or without modification, are permitted provided
+        that the following conditions are met:
+
+           * Redistributions of source code must retain the above copyright
+             notice, this list of conditions and the following disclaimer.
+
+           * Redistributions in binary form must reproduce the above
+             copyright notice, this list of conditions and the following
+             disclaimer in the documentation and/or other materials provided
+             with the distribution.
+
+           * Neither the name of Prentice Hall nor the names of the software
+             authors or contributors may be used to endorse or promote
+             products derived from this software without specific prior
+             written permission.
+
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS, AUTHORS, AND
+        CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+        INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+        MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+        IN NO EVENT SHALL PRENTICE HALL OR ANY AUTHORS OR CONTRIBUTORS BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+        BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+        WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+        OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+        EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+That is the whole file; it is 32 lines and there is nothing else in it.  Note
+what it does and does not say: it names Prentice Hall as the copyright holder
+and speaks of "the MINIX operating system" as a whole and of "the software
+authors or contributors" -- it does not enumerate files or authors.  It does
+not mention the Vrije Universiteit, and it is not the older
+educational/non-commercial MINIX 1.x-era licence that the previous version of
+this file assumed.  Earlier MINIX releases were distributed on other terms;
+this is the file that accompanies 2.0.4, and everything recorded here is about
+2.0.4 only.
+
+
+3. What Philip Homburg's 1995 notice is
+---------------------------------------
+
+Every file in `/usr/src/inet/` in the MINIX 2.0.4 distribution itself carries
+the same bare notice our copies do, e.g. `minix2/sys/src/inet/buf.c`:
+
+    /*
+    This file contains routines for buffer management.
+
+    Copyright 1995 Philip Homburg
+    */
+
+So the absence of terms in these headers is NOT something introduced by this
+port, and these are not a standalone drop of code from outside a distribution.
+It is how the files appear inside the MINIX 2.0.4 source tree, one level below
+the `LICENSE` quoted above, in a distribution that places its permission
+statement at the top of the tree, documents it there in `hier(7)`, and refers
+to it from per-file headers by path.  Homburg's line is an authorship/copyright
+notice of the kind the distribution uses throughout; the permission statement
+for the tree is the `LICENSE` file.
+
+Whether that top-level LICENSE reaches these particular files is a question
+about the document, and this file does not answer it.  It records only that the
+notice is a per-file authorship notice inside a distribution that carries a
+top-level licence, rather than a standalone file with no terms anywhere.
+
+
+4. Correspondence: our files against the holding
+------------------------------------------------
+
+Compared by content against `c900oses/minix2/sys/src/inet/`.  Of the 56 C,
+header and assembler files in this directory:
+
+  Byte-identical to MINIX 2.0.4 (35):
+    buf.c  const.h  mq.c  mq.h  version.c
+    generic/{arp.c arp.h buf.h clock.h eth.c eth.h eth_int.h event.c
+             icmp.h icmp_lib.h io.c io.h ip.c ip.h ip_eth.c ip_int.h
+             ip_ioctl.c ip_lib.c ip_ps.c ip_write.c psip.c psip.h sr.h
+             tcp.h tcp_int.h tcp_lib.c tcp_recv.c type.h udp.c udp.h}
+
+  MINIX 2.0.4 files, modified by this port (13):
+    inet.h  inet_config.c  inet_config.h  osdep_eth.h  stacktrace.c
+    generic/{assert.h event.h icmp.c ip_read.c ipr.c ipr.h tcp.c tcp_send.c}
+
+  From MINIX 2.0.4 but a different directory (1):
+    generic/oneC_sum.c  <- minix2/sys/src/lib/ip/oneC_sum.c, converted from
+                           ANSI prototypes to K&R for the MWC compiler.
+
+  Written for this port, not MINIX (7):
+    coh_clock.c  coh_eth.c  coh_fdc.c  coh_inet.c  coh_osdep.c  coh_sr.c
+    get_bp.s
+
+  Present in MINIX 2.0.4 and deliberately NOT carried over (5):
+    inet.c  clock.c  sr.c  mnx_eth.c  proto.h
+    -- the MINIX message-passing osdep layer, replaced by the `coh_*` files
+       above, which reach the drivers through COHERENT device calls instead of
+       MINIX messages.
+
+Nothing in this directory traces to any source other than MINIX 2.0.4 and this
+port's own work.  The lineage is what it was believed to be.
+
+The neighbouring `../include/` headers are the same lineage: 26 of 43 are
+byte-identical to `minix2/sys/include/`, 12 more are modified copies of MINIX
+2.0.4 headers, and 5 (`coh_fdc.h`, `inet_chan.h`, `inet_ipc.h`, `netdb.h`,
+`arpa/inet.h`) are this port's.
+
+Elsewhere under `net/`, material that is NOT under this licence and carries
+its own:
+
+  ../resolv/*.c, ../rcmd.c, ../ruserok.c
+        Regents of the University of California, 1983/1985/1989.  These came
+        via `minix2/sys/src/lib/ip/`, but each carries its own Berkeley notice
+        in its own header; those notices govern.
+
+  ../libsocket.c, ../netdb.c, ../inet_chan.c, ../sntp.c, ../coh_slip.c,
+  ../coh_ppp.c, ../coh_ifconfig.c, ../rawsys.s and the test clients
+        Written for this port.  Not MINIX.
+
+
+5. What is still open
+---------------------
+
+  - This is the licence as it appears in the holding, which is a source
+    distribution.  Nobody here has checked it against a MINIX 2.0.4 release
+    announcement or any other upstream statement.  The presence of `FIX.TAZ`
+    shows the holding is a distribution as shipped rather than a partial
+    extract, and `SYS.TAZ` carries the LICENSE, so the file is very unlikely
+    to be an accident -- but it has been read from one copy.
+
+  - The MINIX distribution also contains third-party trees under their own
+    separate terms (`cmd/src/commands/{bc,flex-2.3.7,ash/bltin}`,
+    `sys/src/lib/regex`, `i386/mtools-3.9.7` each ship their own
+    COPYING/LICENSE).  None of them is in this directory.
