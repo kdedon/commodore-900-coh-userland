@@ -186,16 +186,16 @@ EXTCMDOBJ = $(OBJ)/$(EXTCMDS)
 # ---------------------------------------------------------------------------
 # The release string
 # ---------------------------------------------------------------------------
-# VERSION is the one place this system states its version.  Everything
-# that prints a version is fed from here:
+# The version is the git tag, read through the same hostbuild/version.sh that
+# names a package, so a binary and the archive it travels in cannot disagree.
+# One program is compiled against it: zlogin, whose window title states the
+# release it was built from.
 #
-#   /etc/init banner -D RELEASE        -> ../base/cmd/init.c's sumsg()
-#   sh's $VERSION    -DVERSION         -> ../base/cmd/sh/var.c initvals[], which
-#                                         spells the NAME itself, so this one is
-#                                         the value alone
-#
-# No header may #define VERSION: it would collide with the -DVERSION above.
-VERSION := $(strip $(shell cat ../VERSION))
+# The shell's $VERSION is NOT this.  It is the release the RUNNING kernel
+# reports, asked at start-up in ../base/cmd/sh/var.c, because a version
+# compiled into a program names that program's build and not the system it
+# ends up on.
+VERSION := $(strip $(shell sh ../hostbuild/version.sh))
 
 # ---------------------------------------------------------------------------
 # Installed headers
