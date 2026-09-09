@@ -1,0 +1,1 @@
+void erase_win();

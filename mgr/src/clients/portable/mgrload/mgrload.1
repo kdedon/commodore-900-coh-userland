@@ -1,0 +1,59 @@
+.\"{{{}}}
+.\"{{{  Title
+.TH MGRLOAD 1 "October 24, 1992" "" "MGR Programmer's Manual"
+.\"}}}
+.\"{{{  Name
+.SH NAME
+mgrload -\ Graph of system load average
+.\"}}}
+.\"{{{  Synopsis
+.SH SYNOPSIS
+.B mgrload
+.\"}}}
+.\"{{{  Description
+.SH DESCRIPTION
+.B Mgrload
+displays the current CPU load: the average number of processes wanting the
+processor over the past 60 seconds, decayed towards each new sample.
+.B Mgrload
+represents this data as a scrolling bar graph, one bar per sample.  The
+vertical scale of the graph is dynamically adjusted to account for changing
+load average values.
+.PP
+On COHERENT the load is sampled every 5 seconds from the kernel's own process
+chain, read through
+.IR nlist (3)
+on the kernel image
+.B /coherent
+and the process chain in
+.BR /dev/kmem ,
+exactly as
+.IR ps (1)
+reads them.
+.B /coherent
+must be the kernel that is running.  If it is not, or if the chain read out of
+.B /dev/kmem
+does not lie in the kernel's allocation arena,
+.B mgrload
+draws a flat zero rather than a fabricated load.
+.PP
+.B /dev/kmem
+is mode 600, owned by root, so
+.B mgrload
+is installed set-uid root.  It opens the file as its first action, before it
+speaks to the window server at all, and gives the privilege up immediately
+afterwards; everything it does thereafter it does as the user who ran it.
+.PP
+The load is carried in hundredths of a process.  One graph partition is a
+whole process, so the graph cannot resolve a hundredth; no floating point
+arithmetic is involved.
+.\"}}}
+.\"{{{  Authors
+.SH AUTHOR
+Original written by Mark Dapoz <mdapoz%hybrid@cs.toronto.edu>.
+Almost completely rewritten by Michael Haardt.
+.\"}}}
+.\"{{{  See also
+.SH "SEE ALSO"
+mgr(1)
+.\"}}}
