@@ -1,0 +1,430 @@
+# Makefile.c900 -- cross-build MGR 0.69 for COHERENT 3.5 on the Commodore 900
+# (Z8001).  Upstream's own build is GNU make over an m4-generated Configfile
+# and a host compiler; this is the C900 entry point and replaces it.  Nothing
+# is written into the source tree: BUILD holds every object, every binary and
+# the three headers that upstream's make(1) generates.
+#
+#   make -f Makefile.c900 tools     host bitmaptoc/fonttoc (gcc)
+#   make -f Makefile.c900 gen       version.h icon_server.[ch] default_font.h
+#   make -f Makefile.c900 objs      all Z8001 objects
+#   make -f Makefile.c900 mgr       the server + mgrlogin, stripped
+#   make -f Makefile.c900 clients   the src/clients programs (CLIENTS below)
+#   make -f Makefile.c900 hrlight   the first-light test card (draws for real)
+#   make -f Makefile.c900 sizes     section sizes of whatever is linked
+#   make -f Makefile.c900 sweep     the bare-`0' pointer-argument sweep
+
+OS	= ..
+include $(OS)/hostbuild/toolchain.mk
+include $(OS)/hostbuild/gotools.mk
+CCZ	= $(TC)/ccz
+BUILD	= build
+OBJ	= $(BUILD)/obj
+GEN	= $(BUILD)/gen
+BIN	= $(BUILD)/bin
+HOSTBIN	= $(BUILD)/host
+
+# Screen geometry and the paths baked into the server.
+SCREEN_DEV	= 1024x800
+MGRHOME		= /usr/mgr
+FONTDIR		= $(MGRHOME)/font
+HFONTDIR	= $(MGRHOME)/hfont
+ICONDIR		= $(MGRHOME)/icon
+BINDIR		= $(MGRHOME)/bin
+VERSION		= 0.69
+
+# The server banner icon set.  `smallserver' is upstream's own reduced set and
+# is 28 KB of static data cheaper than `server'.
+SERVERICONDIR	= icon/smallserver
+DEFAULT_FONT	= font/cmr-9x16
+
+# include/c900 must come first: it shadows <sys/signal.h> (whose SysV numbers
+# are wrong for this kernel) and <sys/time.h> (unguarded, clashes with
+# <sys/select.h>).  ccz appends -Ios/include and -Ios/include/sys itself.
+INCS	= -Iinclude/c900 -Iinclude -Iinclude/mgr -Isrc/libbitblit/hr -I$(GEN)
+
+# ---- header prerequisites ------------------------------------------------
+# ccz is not a dependency generator -- it has no -M -- so the prerequisites
+# are the include PATH rather than the include GRAPH: every object depends on
+# every header its compilation could have read.  That recompiles more than a
+# graph would, and it is the only form that cannot recompile LESS: a Makefile
+# with no header prerequisites at all relinks an unchanged object over an
+# edited header and ships a binary that looks new and is not.
+#
+# Grouped the way INCS is, because the groups are what the -I list makes
+# reachable: HDR is on every compilation, and the three below it are the
+# directories a single -I adds for one group of sources.  $(GEN) headers are
+# named as files, not through the `gen' phony, so that an object is out of
+# date when a generated header CHANGES rather than every time make runs.
+GENHDR	= $(GEN)/version.h $(GEN)/icon_server.h $(GEN)/default_font.h
+# There is no $(OS)/include here any more: every header that directory held
+# duplicated -- and shadowed -- one owned by the toolchain or by the kernel,
+# and both are reached through ccz's own default path or $(KINC) instead.
+HDR	= $(wildcard include/mgr/*.h) $(wildcard include/c900/*.h) \
+	  $(wildcard include/c900/sys/*.h) $(wildcard src/libbitblit/hr/*.h) \
+	  $(GENHDR)
+HDRSRV	= $(wildcard src/mgr/*.h)
+HDRLIB	= $(wildcard src/libmgr/*.h)
+HDRBM	= $(wildcard src/libbitblit/bitmap/*.h) \
+	  $(wildcard src/libbitblit/seqbitmap/*.h)
+
+# The pointing device.  MOUSE selects the protocol src/mgr/mouse.c speaks and
+# MOUSE_DEV the node it reads: 7 (P_C900) is the native interface, whole
+# `struct msevent' records from /dev/mouse, and 1 (P_SUN) is Mouse Systems
+# 3-byte packets from the kernel's compatibility minor /dev/mousems.  They must
+# agree -- the native minor delivers no packet headers to frame on, and the
+# packet minor delivers no events -- so both come from this one switch.
+#
+#	make -f Makefile.c900 MOUSE_NATIVE= mgr	   the packet path
+MOUSE_NATIVE	= 1
+ifeq ($(MOUSE_NATIVE),1)
+MOUSE_PROTO	= 7
+MOUSE_DEV	= /dev/mouse
+else
+MOUSE_PROTO	= 1
+MOUSE_DEV	= /dev/mousems
+endif
+
+# -DC900 turns on include/c900/c900.h from <mgr/bitblit.h> and the
+# non-/dev/ptmx pty search in getshell.c.  Feature knobs match the Linux
+# Configfile minus WHO (no usable /etc/utmp layout) and minus MOVIE.
+DEFS	= -DCOHERENT -DC900 -DMOUSE=$(MOUSE_PROTO) \
+	  -DVI -DKILL -DCUT -DBUCKEY -DMGR_ALIGN \
+	  '-DFONTDIR="$(FONTDIR)"' '-DHFONTDIR="$(HFONTDIR)"' \
+	  '-DICONDIR="$(ICONDIR)"' '-DMOUSE_DEV="$(MOUSE_DEV)"' \
+	  '-DSCREEN_DEV="$(SCREEN_DEV)"' '-DTERMNAME="mgr"' \
+	  '-DMGR_BINARY="$(BINDIR)/mgr"'
+
+# -i separated I/D with shared text, -L large model: the server's text is
+# ~149 KB, i.e. three 64 KB segments.
+CFLAGS	= -c -i -L $(INCS) $(DEFS)
+
+SRVSRC	= Write.c border.c colormap.c copyright.c cut.c data.c debug_flags.c \
+	  destroy.c do_buckey.c do_button.c do_event.c do_menu.c down_load.c \
+	  erase_win.c font_subs.c get_font.c get_info.c get_menus.c get_rect.c \
+	  get_text.c getshell.c graph_subs.c icon_server.c intersect.c kbd.c \
+	  mgr.c mouse.c mouse_get.c move.c move_box.c new_window.c popen.c \
+	  print.c put_window.c scroll.c set_mode.c shape.c sigdata.c startup.c \
+	  subs.c update.c utmp.c win_make.c win_stack.c win_subs.c write_ok.c
+SRVOBJ	= $(SRVSRC:%.c=$(OBJ)/srv-%.o)
+
+# libc900: the COHERENT 3.2/Z8001 half of what upstream's src/libcoh is for
+# COHERENT 4.0.  libcoh's select.c is deliberately NOT here -- linking it would
+# shadow the select() in libc-z8001.a (os/libc/gen/select.c), which is the one
+# select() this build ships.
+C900SRC	= cfsetispeed.c fchmod.c fchown.c getdtablesize.c gethostname.c \
+	  gettimeofday.c getutmp.c initgroups.c killpg.c putenv.c random.c \
+	  setreuid.c setsid.c strpbrk.c strspn.c uname.c uname_str.c vfork.c \
+	  waitnohang.c
+C900OBJ	= $(C900SRC:%.c=$(OBJ)/c900-%.o)
+
+# External-bitmap and external-font readers, shared by server and clients.
+BMSRC	= bit_alloc.c bit_create.c bit_open.c bitmaphead.c \
+	  bit_load.c bit_save.c bitmapread.c bitmapwrite.c
+BMOBJ	= $(BMSRC:%.c=$(OBJ)/bm-%.o)
+
+# libbitblit/hr: the HR board output device -- the blitter and its siblings.
+HRSRC	= hrrow.c hraddr.c bit_blit.c bit_point.c bit_on.c bit_line.c \
+	  bit_size.c bit_destroy.c hrscreen.c
+HROBJ	= $(HRSRC:%.c=$(OBJ)/hr-%.o)
+
+LIBSRC	= ckmgrterm.c hfont.c is_mgr_term.c m_bitc_send.c m_bitfile.c \
+	  m_getborder.c m_getdepth.c m_getevent.c m_getfontid.c m_getfontn.c \
+	  m_getfonts.c m_gethost.c m_getpalette.c m_getscreen.c m_getwindowp.c \
+	  m_getwindows.c m_localsrv.c m_parse.c m_setup.c m_tty.c oldinfo.c \
+	  term.c usleep.c
+LIBOBJ	= $(LIBSRC:%.c=$(OBJ)/mgr-%.o)
+
+# ---- clients -----------------------------------------------------------
+# A client is an ordinary program: it draws by writing escape sequences down
+# its stdout and reads events from stdin, so it needs libmgr and nothing of
+# the server.  The four that manipulate the frame buffer directly (screendump,
+# snap, mgrmag, zoom) additionally reach libbitblit.  One archive carries all
+# of it; ld-z8001 scans an archive linearly with no __.SYMDEF, so the link
+# lists it twice to give a member that references an earlier one its pass.
+CLLIB	= $(BUILD)/lib/libmgrcl.a
+CLARLIB	= $(TC)/arz
+
+# Grouped the way the source tree groups them, because the skip decisions are
+# per group: `tests' proves the window protocol, `examples' is the eye-candy,
+# and the rest are the utilities that make the server usable.
+CLTEST	= event half many spot test_menu test_rop trans
+CLDEMO	= bounce cycle grav grid hilbert walk mgreyes oclose stringart
+CLMISC	= show rotate fontinfo set_console
+CLSIMPL	= clock mclock mgrsclock browse close cut mgrmode mgrshowfont mgrview \
+	  resetwin set_termcap startup window_print ismgrterm mnew mless mvi \
+	  mgrbiff iconmsgs
+CLBLIT	= screendump snap mgrmag
+CLICON	= zoom
+# ify(1) is close(1)'s replacement: it shrinks a window to an icon WITHOUT
+# killing the program in it, by stopping output on the window's slave tty
+# (tcflow/TCXONC) with the escape codes that restore the window already
+# queued behind the stop.  setname(1) writes the NOTIFY string ify stamps on
+# the icon and ships with it.  Their own source directory, hence its own rule.
+CLIFY	= ify setname
+# mgrload(1) graphs the load average.  Its own source directory, because
+# upstream splits it into a portable front end and one backend per system:
+# getload.c selects coherent.c on -DCOHERENT, and that backend reads the
+# process chain out of /dev/kmem the way ps(1) does.  Hence its own rule too
+# -- it is the only client built from two sources in one directory.
+CLLOAD	= mgrload
+# maze(6) is the one client that is also a network program: it draws through
+# the window protocol and finds its other players over UDP, so it links
+# os/net/libsocket.a as well as the client library and is the only client
+# compiled -DMGR_REAL_NETDB (include/c900/netdb.h).  Its own rule below.
+CLNET	= maze
+# ico(6) draws a rotating wire-frame polyhedron and mgrsketch(1) is the mouse
+# drawing pad; both carry their geometry in `double' and so link libm as well
+# as the client library.  Each has its own source directory, hence its own
+# rule below.
+CLMATH	= ico mgrsketch
+# xbd(6) is Boulder Dash: four sources over one shared header, and the only
+# client that reads data files of its own -- 37 levels and a default, staged
+# by the `xbddata' target below into a directory of their own because a `t'
+# entry in a dist list copies every file in the directory it names.
+CLGAME	= xbd
+CLIENTS	= $(CLTEST) $(CLDEMO) $(CLMISC) $(CLSIMPL) $(CLBLIT) $(CLICON) \
+	  $(CLIFY) $(CLLOAD) $(CLNET) $(CLMATH) $(CLGAME)
+CLBIN	= $(CLIENTS:%=$(BIN)/cl/%)
+
+.PHONY: all tools gen objs mgr clients xbddata echo-clients sizes sweep clean dirs
+
+all:	mgr clients
+
+dirs:
+	mkdir -p $(OBJ) $(GEN) $(BIN) $(HOSTBIN)
+
+# ---- host tools ---------------------------------------------------------
+# bitmaptoc/fonttoc turn external bitmap and font files into C.  They must be
+# built against src/libbitblit/hr/screen.h, not a foreign board's: screen.h
+# fixes LOGBITS, and therefore the row padding baked into every icon.
+tools:	dirs $(HOSTBIN)/bitmaptoc $(HOSTBIN)/fonttoc
+
+$(HOSTBIN)/bitmaptoc:
+	mkdir -p $(HOSTBIN)
+	echo 'void display_close(void){}' > $(HOSTBIN)/hoststub.c
+	cc -O -w -Iinclude -Iinclude/mgr -Isrc/libbitblit/hr -o $@ \
+	   src/tools/bitmaptoc.c src/libbitblit/bitmap/bitmaphead.c \
+	   src/libbitblit/bitmap/bit_alloc.c \
+	   src/libbitblit/seqbitmap/bitmapread.c \
+	   src/libbitblit/hr/bit_size.c src/libbitblit/hr/bit_destroy.c \
+	   $(HOSTBIN)/hoststub.c
+
+$(HOSTBIN)/fonttoc:
+	mkdir -p $(HOSTBIN)
+	cc -O -w -Iinclude -Iinclude/mgr -Isrc/libbitblit/hr -o $@ \
+	   src/tools/fonttoc.c
+
+# ---- generated headers --------------------------------------------------
+gen:	dirs $(GEN)/version.h $(GEN)/icon_server.h $(GEN)/icon_server.c \
+	$(GEN)/default_font.h
+
+$(GEN)/version.h:
+	mkdir -p $(GEN)
+	printf 'char version[]="MGR version %s COHERENT 3.5 Z8001 (Commodore 900)\\n";\n' '$(VERSION)' > $@
+
+$(GEN)/icon_server.h:
+	mkdir -p $(GEN)
+	echo '/* bitmaps used by the mgr server; created by make(1) */' > $@
+	for i in $(SERVERICONDIR)/*; do \
+		echo "extern BITMAP `basename $$i`;" >> $@; done
+
+$(GEN)/icon_server.c: $(HOSTBIN)/bitmaptoc
+	echo '/* bitmaps used by the mgr server; created by make(1) */' > $@
+	echo '#include <mgr/bitblit.h>' >> $@
+	$(HOSTBIN)/bitmaptoc $(SERVERICONDIR)/* >> $@
+
+$(GEN)/default_font.h: $(HOSTBIN)/fonttoc
+	$(HOSTBIN)/fonttoc default_font < $(DEFAULT_FONT) > $@
+
+# ---- Z8001 objects -----------------------------------------------------
+objs:	gen $(SRVOBJ) $(C900OBJ) $(BMOBJ) $(HROBJ) $(LIBOBJ)
+
+$(OBJ)/srv-icon_server.o: $(GEN)/icon_server.c $(HDR) $(HDRSRV)
+	$(CCZ) $(CFLAGS) -o $@ $(GEN)/icon_server.c
+
+$(OBJ)/srv-%.o: src/mgr/%.c $(HDR) $(HDRSRV)
+	$(CCZ) $(CFLAGS) -Isrc/mgr -o $@ $<
+
+# mouse.c is the one server source that reads a KERNEL interface: under -DC900
+# it takes the fixed-width /dev/mouse event from <sys/mouse.h>, which exists in
+# neither this tree nor the toolchain.  $(KINC) is the kernel repository's
+# include directory (toolchain.mk); empty means no kernel resolved, and the
+# rule refuses by name rather than compiling the driver-less arm by accident.
+$(OBJ)/srv-mouse.o: src/mgr/mouse.c $(HDR) $(HDRSRV) $(wildcard $(KINC)/sys/mouse.h)
+	@test -n "$(KINC)" || { \
+	  echo "mgr: mouse.c needs the kernel's headers; sh mk/deps.sh -n kernel" >&2; \
+	  exit 1; }
+	$(CCZ) $(CFLAGS) -Isrc/mgr -I$(KINC) -I$(KINC)/sys -o $@ $<
+
+$(OBJ)/c900-%.o: src/libc900/%.c $(HDR)
+	$(CCZ) $(CFLAGS) -o $@ $<
+
+$(OBJ)/bm-%.o: src/libbitblit/bitmap/%.c $(HDR) $(HDRBM)
+	$(CCZ) $(CFLAGS) -o $@ $<
+
+$(OBJ)/bm-%.o: src/libbitblit/seqbitmap/%.c $(HDR) $(HDRBM)
+	$(CCZ) $(CFLAGS) -o $@ $<
+
+$(OBJ)/hr-%.o: src/libbitblit/hr/%.c $(HDR)
+	$(CCZ) $(CFLAGS) -o $@ $<
+
+# libmgr is the CLIENT library; the server must not be linked against it
+# (libmgr/term.c and oldinfo.c define get_info and get_font too).
+$(OBJ)/mgr-%.o: src/libmgr/%.c $(HDR) $(HDRLIB)
+	$(CCZ) $(CFLAGS) -Isrc/libmgr -o $@ $<
+
+$(OBJ)/mgrlogin.o: src/mgr/mgrlogin.c $(HDR) $(HDRSRV)
+	$(CCZ) $(CFLAGS) -Isrc/mgr -o $@ $<
+
+$(OBJ)/mgrlogin_fnt.o: src/mgr/font_subs.c $(HDR) $(HDRSRV)
+	$(CCZ) $(CFLAGS) -Isrc/mgr -DMGRLOGIN -o $@ $<
+
+# ---- link --------------------------------------------------------------
+# Keep the -o path SHORT: ld-z8001 fails to create an output file whose path
+# is longer than ~96 characters.
+# -s strips the symbol table and the trailing relocation section, as every other
+# deliverable in the image is built (hostbuild/build-userland.sh).
+mgr:	objs $(OBJ)/mgrlogin.o $(OBJ)/mgrlogin_fnt.o
+	$(CCZ) -s -i -L -o $(BIN)/mgr $(SRVOBJ) $(C900OBJ) $(BMOBJ) $(HROBJ)
+	$(CCZ) -s -i -L -o $(BIN)/mgrlogin $(OBJ)/mgrlogin.o \
+		$(OBJ)/mgrlogin_fnt.o $(OBJ)/srv-set_mode.o $(C900OBJ) \
+		$(BMOBJ) $(HROBJ)
+
+clients: $(CLBIN) xbddata
+
+$(CLLIB): objs
+	mkdir -p $(BUILD)/lib
+	$(CLARLIB) r $@ $(LIBOBJ) $(BMOBJ) $(C900OBJ) $(HROBJ)
+
+# One rule per source directory.  make(1) takes the first whose prerequisite
+# exists, so a name is looked for in each group in turn.
+CLCC	= mkdir -p $(BIN)/cl; $(CCZ) -s -i -L $(INCS) $(DEFS) -o $@ $< $(CLLIB) $(CLLIB)
+
+$(BIN)/cl/stringart: src/clients/examples/stringart.c \
+		src/clients/examples/art_data.c $(HDR) $(CLLIB)
+	mkdir -p $(BIN)/cl
+	$(CCZ) -s -i -L $(INCS) $(DEFS) -o $@ src/clients/examples/stringart.c \
+		src/clients/examples/art_data.c $(CLLIB) $(CLLIB)
+
+# maze: an explicit rule, which make prefers to the pattern rule that would
+# otherwise match it.  libsocket.a comes FIRST in the link so that netdb.o
+# supplies gethostname() -- libc900's gethostname.o defines it too, and an
+# archive member is pulled only for a name still undefined when the linker
+# reaches it, so whichever archive is scanned first is the one that answers.
+# It has no rule here: it is built by os/net's own make (hostbuild/build-net.sh,
+# the `net' target of hostbuild/Makefile), so a missing one is an ordering
+# error to report rather than to paper over.
+SOCKLIB	= $(OS)/net/libsocket.a
+
+$(BIN)/cl/maze: src/clients/portable/simple/maze.c $(HDR) $(CLLIB) $(SOCKLIB)
+	mkdir -p $(BIN)/cl
+	$(CCZ) -s -i -L $(INCS) $(DEFS) -DMGR_REAL_NETDB -o $@ \
+		src/clients/portable/simple/maze.c $(SOCKLIB) $(CLLIB) $(CLLIB)
+
+# mgrload: two sources, so an explicit rule rather than the pattern.  getload.c
+# is a switch that #includes the backend for the system it is compiled for, so
+# only mgrload.o and getload.o exist and coherent.c is never compiled alone.
+MGRLOADDIR = src/clients/portable/mgrload
+
+$(BIN)/cl/mgrload: $(MGRLOADDIR)/mgrload.c $(MGRLOADDIR)/getload.c \
+		$(MGRLOADDIR)/coherent.c $(MGRLOADDIR)/getload.h $(HDR) $(CLLIB)
+	mkdir -p $(BIN)/cl
+	$(CCZ) -s -i -L $(INCS) $(DEFS) -I$(MGRLOADDIR) -o $@ \
+		$(MGRLOADDIR)/mgrload.c $(MGRLOADDIR)/getload.c \
+		$(CLLIB) $(CLLIB)
+
+# libm-z8001 is built by the toolchain's host/build-libm-z8001.sh, and it
+# answers cos/sin/sqrt for the two clients below.  It has no rule here: a
+# missing one is an ordering error to report rather than to paper over.
+MATHLIB	= $(TCB)/libm-z8001/libm-z8001.a
+
+$(BIN)/cl/ico: src/clients/portable/ico/ico.c \
+		$(wildcard src/clients/portable/ico/*.h) $(HDR) $(CLLIB) $(MATHLIB)
+	mkdir -p $(BIN)/cl
+	$(CCZ) -s -i -L $(INCS) -Isrc/clients/portable/ico $(DEFS) -o $@ \
+		src/clients/portable/ico/ico.c $(CLLIB) $(CLLIB) $(MATHLIB)
+
+$(BIN)/cl/mgrsketch: src/clients/portable/mgrsketch/mgrsketch.c $(HDR) \
+		$(CLLIB) $(MATHLIB)
+	mkdir -p $(BIN)/cl
+	$(CCZ) -s -i -L $(INCS) $(DEFS) -o $@ \
+		src/clients/portable/mgrsketch/mgrsketch.c $(CLLIB) $(CLLIB) \
+		$(MATHLIB)
+
+# xbd: -DMGR picks the window-protocol half of sources that carry an X11 half
+# beside it, and -DLIB names the directory holding the levels and the
+# high-score file.  $XBDLIB overrides it at run time.
+XBDDIR	= src/clients/portable/xbd
+XBDLIB	= $(MGRHOME)/lib/xbd
+XBDSRC	= $(XBDDIR)/xbd.c $(XBDDIR)/field.c $(XBDDIR)/shared.c \
+	  $(XBDDIR)/scores.c
+
+$(BIN)/cl/xbd: $(XBDSRC) $(XBDDIR)/xbd.h $(HDR) $(CLLIB)
+	mkdir -p $(BIN)/cl
+	$(CCZ) -s -i -L $(INCS) -I$(XBDDIR) $(DEFS) -DMGR '-DLIB="$(XBDLIB)"' \
+		-o $@ $(XBDSRC) $(CLLIB) $(CLLIB)
+
+# The level files, in a directory holding nothing else.
+xbddata:
+	mkdir -p $(BUILD)/lib/xbd
+	cp $(XBDDIR)/default $(XBDDIR)/xbdlev[0-9][0-9][0-9] $(BUILD)/lib/xbd
+
+$(BIN)/cl/%: src/clients/tests/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+$(BIN)/cl/%: src/clients/examples/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+$(BIN)/cl/%: src/clients/misc/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+$(BIN)/cl/%: src/clients/portable/simple/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+$(BIN)/cl/%: src/clients/bitblit/simple/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+$(BIN)/cl/%: src/clients/icon/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+$(BIN)/cl/%: src/clients/portable/ify/%.c $(HDR) $(CLLIB)
+	$(CLCC)
+
+hrlight: dirs $(OBJ)/hr-hrlight.o $(OBJ)/hr-hrrow.o
+	$(CCZ) -i -s -o $(BIN)/hrlight $(OBJ)/hr-hrlight.o $(OBJ)/hr-hrrow.o
+
+sizes: $(LOUTDIS)
+	$(LOUTDIS) -hdr $(abspath $(BIN))/mgr
+	$(LOUTDIS) -hdr $(abspath $(BIN))/mgrlogin
+
+# A bare `0' where a 32-bit pointer is read pushes two bytes where four are
+# fetched and shifts every argument behind it.  This must report 0 hits; run
+# it over any directory before compiling it.
+SWEEPDIRS = src/mgr src/libmgr src/libc900 src/libbitblit/bitmap \
+	    src/libbitblit/seqbitmap src/libbitblit/hr include/mgr include/c900 \
+	    src/clients/tests src/clients/examples src/clients/misc \
+	    src/clients/icon src/clients/bitblit/simple
+
+# src/clients/portable/simple holds 33 sources of which 18 are built here, and
+# the sweep is named per file rather than per directory because the other 15
+# are still in ANSI form: bare0.py types a parameter from its declaration, so
+# an unconverted `void convert(int in)' and a by-value `struct icon name;'
+# both read to it as pointers and report as hits that are not there.
+SWEEPFILES = $(CLSIMPL:%=src/clients/portable/simple/%.c) \
+	     $(CLNET:%=src/clients/portable/simple/%.c) \
+	     $(CLIFY:%=src/clients/portable/ify/%.c) \
+	     $(MGRLOADDIR)/mgrload.c $(MGRLOADDIR)/coherent.c \
+	     src/clients/portable/ico/ico.c \
+	     src/clients/portable/mgrsketch/mgrsketch.c $(XBDSRC)
+
+sweep:
+	python3 bare0.py `for d in $(SWEEPDIRS); do echo $$d/*.c $$d/*.h; done \
+		2>/dev/null | tr ' ' '\n' | grep -v '\*'` $(SWEEPFILES)
+
+clean:
+	rm -rf $(BUILD)
+
+# The client name list, for hostbuild/Makefile: the names live here, not in two
+# places.
+echo-clients:
+	@echo $(CLIENTS)
