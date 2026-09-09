@@ -1,0 +1,1189 @@
+/*
+ * veldlgm.c - Vellum's DIALOGS: every modal dialog of the editor, run
+ * IN THE EDITOR through the ordinary hrdlg kit (the dialog itself is a
+ * server overlay, so nothing here draws on the editor's content).
+ *
+ * This was a separate binary, /usr/vellum/lib/veldlg, spawned per
+ * dialog: the editor forked, execed it on its own window (hr_attach)
+ * and blocked on a pipe reading one result line.  That bought the
+ * editor 10 076 bytes of text and 5 070 of data it did not have to
+ * carry -- back when `ld' put a hard 64 K wall in front of its text
+ * segment.  `ld -L' dissolved the wall (the editor links `-n -L' at
+ * half of two segments), so what was left was a fork+exec of a 13 K
+ * binary per dialog on a 6 MHz machine, a second hand-copied set of
+ * the editor's field sizes, and vellum being the ONE GUI app that did
+ * not just call hr_dlgrun() in place -- zedit, zfile, zmail, zprint,
+ * zview and symedit all always have.  So it is a module.
+ *
+ * The SHAPE of the split is kept, because it is a good one: nothing
+ * here touches the model.  A dialog is handed strings and answers with
+ * a string, veldlg.c owns every APPLY half, and the entry point
+ *	char *veldlg(kind, av)
+ * takes the argv the exec used to take (av[0..] = the old argv[3..],
+ * NULL-terminated) and returns the one result line the pipe used to
+ * carry, so both halves of the old protocol are unchanged:
+ *	""   (no output)  cancelled / refused
+ *	q                 E_QUIT arrived: the window is gone, the editor
+ *	                  must clean up and exit
+ *	=... the payload  (fields separated by blanks; a free-text tail
+ *	                  rides after a TAB so it may contain blanks)
+ *
+ * KINDs and their argv / result payloads:
+ *	confirm MSG                     -> y
+ *	text    INIT                    -> =STR
+ *	file    SAVE INIT MSG           -> =NAME       (SAVE 0 open, 1 save;
+ *	                                   MSG "" or an error to show)
+ *	prop    NAME VAL                -> =NAME<TAB>VAL   (NAME "-" = empty)
+ *	lib     MSG                     -> =PATH
+ *	set     GRID SHW UNUM UNAME VVVV PPP
+ *	                                -> =GRID SHW UNUM UNAME VVVV PPP F
+ *	                                   (F 1 = the Frame button)
+ *	style   FLAGS LAYER SIZE TEXT   -> =FLAGS LAYER SIZE<TAB>TEXT
+ *	search  STR PRE N SUF CASE      -> =f DIR CASE<TAB>STR  (DIR 1/-1)
+ *	                                or =s N   (the Sheets button)
+ */
+#include <stdio.h>
+#include <types.h>
+#include <dir.h>
+#include "wire.h"
+#include "shmem.h"
+#include "clgfx.h"
+#include "hrapp.h"
+#include "hrdlg.h"
+#include "hrsbar.h"
+#include "vellum.h"
+#include <setjmp.h>
+
+/* NAMEL/VALL/TVMAX/FNLEN/UNAMEL/USERLIB come from vellum.h now: they were
+ * hand-copied while this was a separate binary.  Nothing else of the model
+ * may be touched here -- see the header. */
+
+/* One result line.  A dialog says its answer from wherever it happens to
+ * be -- the old say() ended the PROCESS, so the unwind is a longjmp back
+ * to veldlg() rather than a return path threaded through every caller.
+ * Every say() below is reached with the dialog already closed. */
+static jmp_buf	dlback;
+static char	dlline[128];
+
+static
+say(s)
+char *s;
+{
+	strncpy(dlline, s, sizeof(dlline) - 1);
+	dlline[sizeof(dlline) - 1] = 0;
+	longjmp(dlback, 1);
+}
+
+static
+sayquit()
+{
+	say("q");
+}
+
+static
+saycancel()
+{
+	say("");
+}
+
+/* ------------------------------------------------------------------ */
+/* confirm                                                            */
+/* ------------------------------------------------------------------ */
+
+static char	cfmsg[40];
+
+static HRWIDGET cwg[] = {
+    { DW_LABEL,   12,  16,   0,  0, cfmsg },
+    { DW_BUTTON,  40,  56,  90, DLG_BTNH, "Discard", 0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 170,  56,  80, DLG_BTNH, "Cancel",  0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NCWG	(sizeof(cwg) / sizeof(cwg[0]))
+
+static
+d_confirm(msg)
+char *msg;
+{
+	int w, h, r;
+
+	strncpy(cfmsg, msg, sizeof(cfmsg) - 1);
+	cfmsg[sizeof(cfmsg) - 1] = 0;
+	w = 300;
+	h = 100;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(cwg, NCWG);
+	r = hr_dlgrun(cwg, NCWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	say(r == 1 ? "y" : "");
+}
+
+/* ------------------------------------------------------------------ */
+/* one text line                                                      */
+/* ------------------------------------------------------------------ */
+
+static char	dlvbuf[TVMAX];
+
+static HRWIDGET twg[] = {
+    { DW_LABEL,   12,  16,   0,  0, "Text:" },
+    { DW_TEXT,    70,  12, 260, 22, (char *)0, 0, 0, dlvbuf, sizeof(dlvbuf) },
+    { DW_BUTTON,  60,  46,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 170,  46,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NTWG	(sizeof(twg) / sizeof(twg[0]))
+#define	TW_OK	2
+
+static
+d_text(init)
+char *init;
+{
+	char out[TVMAX + 2];
+	int w, h, r;
+
+	strncpy(dlvbuf, init, TVMAX - 1);
+	dlvbuf[TVMAX - 1] = 0;
+	w = 344;
+	h = 90;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(twg, NTWG);
+	r = hr_dlgrun(twg, NTWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != TW_OK || dlvbuf[0] == 0 )
+		saycancel();
+	sprintf(out, "=%s", dlvbuf);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* file name (Open / Save)                                            */
+/* ------------------------------------------------------------------ */
+
+static char	fnbuf[FNLEN];
+static char	dmsg[36];
+
+static HRWIDGET fwg[] = {
+    { DW_LABEL,   12,  12,   0,  0, "File name:" },
+    { DW_TEXT,    12,  32, 256, 22, (char *)0, 0, 0, fnbuf, sizeof(fnbuf) },
+    { DW_LABEL,   12,  62,   0,  0, dmsg },
+    { DW_BUTTON,  60,  88,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 170,  88,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NFWG	(sizeof(fwg) / sizeof(fwg[0]))
+#define	FW_MSG	2
+#define	FW_OK	3
+
+/* The editor validates the actual open/save (it owns the model); a failed
+ * attempt respawns this dialog with the error text in MSG.  The only
+ * in-dialog retry left is the empty name. */
+static
+d_file(init, msg)
+char *init, *msg;
+{
+	char out[FNLEN + 2];
+	int w, h, r;
+
+	strncpy(fnbuf, init, FNLEN - 1);
+	fnbuf[FNLEN - 1] = 0;
+	strncpy(dmsg, msg, sizeof(dmsg) - 1);
+	dmsg[sizeof(dmsg) - 1] = 0;
+	w = 280;
+	h = 132;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	for (;;)
+	{
+		cl_fillrect(fwg[FW_MSG].dw_x, fwg[FW_MSG].dw_y, w,
+			    fwg[FW_MSG].dw_y + hr_font(SHM_FUI)->cellh, 1);
+		hr_dlgdraw(fwg, NFWG);
+		r = hr_dlgrun(fwg, NFWG);
+		if ( r == -1 )
+		{
+			hr_dlgclose();
+			sayquit();
+		}
+		if ( r != FW_OK )
+		{
+			hr_dlgclose();
+			saycancel();
+		}
+		if ( fnbuf[0] )
+			break;
+		strcpy(dmsg, "Enter a file name");
+	}
+	hr_dlgclose();
+	sprintf(out, "=%s", fnbuf);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* symbol name / value                                                */
+/* ------------------------------------------------------------------ */
+
+static char	dlnbuf[NAMEL];
+
+static HRWIDGET nwg[] = {
+    { DW_LABEL,   12,  16,   0,  0, "Name:" },
+    { DW_TEXT,    78,  12,  90, 22, (char *)0, 0, 0, dlnbuf, sizeof(dlnbuf) },
+    { DW_LABEL,   12,  46,   0,  0, "Value:" },
+    { DW_TEXT,    78,  42, 160, 22, (char *)0, 0, 0, dlvbuf, sizeof(dlvbuf) },
+    { DW_BUTTON,  60,  76,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 170,  76,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NNWG	(sizeof(nwg) / sizeof(nwg[0]))
+#define	NW_OK	4
+
+static
+d_prop(name, val)
+char *name, *val;
+{
+	char out[NAMEL + TVMAX + 4];
+	int w, h, r;
+
+	if ( strcmp(name, "-") != 0 )
+	{
+		strncpy(dlnbuf, name, NAMEL - 1);
+		dlnbuf[NAMEL - 1] = 0;
+	}
+	if ( strcmp(val, "-") != 0 )
+	{
+		strncpy(dlvbuf, val, VALL - 1);
+		dlvbuf[VALL - 1] = 0;
+	}
+	w = 264;
+	h = 120;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(nwg, NNWG);
+	r = hr_dlgrun(nwg, NNWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != NW_OK )
+		saycancel();
+	sprintf(out, "=%s\t%s", dlnbuf, dlvbuf);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* the scrollable library chooser                                     */
+/* ------------------------------------------------------------------ */
+
+#define	LIBDIR	"/usr/vellum/sym"
+#define	NDLGL	16		/* list capacity                          */
+#define	LVIS	6		/* rows visible at once                   */
+#define	LROWH	16
+#define	LLX	30		/* rows: right of the scrollbar           */
+#define	LLX2	268
+#define	LLY	28
+#define	LMSGY	(LLY + LVIS * LROWH + 8)
+#define	LBTNY	(LMSGY + 22)
+
+static char	lbmsg[36];
+static char	dlname[NDLGL][16];	/* list labels: the file names            */
+static char	dlpath[NDLGL][44];	/* their full paths                       */
+static int	nls, lsel;
+HRSBAR	lsb;
+
+static
+lrow(i)
+{
+	int y;
+
+	if ( i < lsb.sb_pos || i >= lsb.sb_pos + LVIS || i >= nls )
+		return 0;
+	y = LLY + (i - lsb.sb_pos) * LROWH;
+	cl_fillrect(LLX, y, LLX2, y + LROWH, 1);
+	cl_ptext(SHM_FUI, LLX + 4, y, dlname[i]);
+	if ( i == lsel )
+		cl_fillrect(LLX, y, LLX2, y + LROWH, 2);
+	return 0;
+}
+
+static
+lrows()
+{
+	register int i;
+	int y;
+
+	for ( i = lsb.sb_pos; i < lsb.sb_pos + LVIS; i++ )
+		if ( i < nls )
+			lrow(i);
+		else
+		{
+			y = LLY + (i - lsb.sb_pos) * LROWH;
+			cl_fillrect(LLX, y, LLX2, y + LROWH, 1);
+		}
+	return 0;
+}
+
+static
+lmsg()
+{
+	cl_fillrect(12, LMSGY, LLX2, LMSGY + 16, 1);
+	cl_ptext(SHM_FUI, 12, LMSGY, lbmsg);
+	return 0;
+}
+
+/* A dialog-kit-look button (border + mini drop shadow + centred label). */
+static
+lbtn(x, w, label)
+char *label;
+{
+	cl_fillrect(x, LBTNY, x + w, LBTNY + DLG_BTNH, 1);
+	cl_line(x, LBTNY, x + w - 1, LBTNY, 0);
+	cl_line(x + w - 1, LBTNY, x + w - 1, LBTNY + DLG_BTNH - 1, 0);
+	cl_line(x + w - 1, LBTNY + DLG_BTNH - 1, x, LBTNY + DLG_BTNH - 1, 0);
+	cl_line(x, LBTNY + DLG_BTNH - 1, x, LBTNY, 0);
+	cl_fillrect(x + DLG_BSHAD, LBTNY + DLG_BTNH,
+		    x + w + DLG_BSHAD, LBTNY + DLG_BTNH + DLG_BSHAD, 0);
+	cl_fillrect(x + w, LBTNY + DLG_BSHAD,
+		    x + w + DLG_BSHAD, LBTNY + DLG_BTNH + DLG_BSHAD, 0);
+	cl_ptext(SHM_FUI, x + (w - strlen(label) * 9) / 2 + 1,
+		 LBTNY + (DLG_BTNH - 16) / 2 + 1, label);
+	return 0;
+}
+
+/* Scroll the selection into view; 1 if the view moved. */
+static
+lshow()
+{
+	if ( lsel < lsb.sb_pos )
+	{
+		lsb.sb_pos = lsel;
+		return 1;
+	}
+	if ( lsel >= lsb.sb_pos + LVIS )
+	{
+		lsb.sb_pos = lsel - LVIS + 1;
+		return 1;
+	}
+	return 0;
+}
+
+/* The GENERIC scrollable list dialog: title + the dlname[0..nls-1] rows +
+ * OK / Cancel.  Runs its own event loop on the open dialog; returns the
+ * picked index (double click / OK / Return), or -1 on Cancel/ESC; exits
+ * by sayquit on E_QUIT.  Serves the library chooser AND the Find dialog's
+ * sheet list (VELLUM.md sec. 27). */
+static
+d_listrun(title)
+char *title;
+{
+	WMSG e;
+	int r, i, x, y;
+
+	lsb.sb_x = 10;
+	lsb.sb_y = LLY;
+	lsb.sb_h = LVIS * LROWH;
+	lsb.sb_total = nls;
+	lsb.sb_page = LVIS;
+	lsb.sb_pos = 0;
+	lsb.sb_drag = 0;
+	lshow();
+
+	cl_ptext(SHM_FUI, 12, 6, title);
+	cl_line(8, LLY - 2, LLX2 + 2, LLY - 2, 0);	/* the list frame */
+	cl_line(LLX2 + 2, LLY - 2, LLX2 + 2, LLY + LVIS * LROWH + 1, 0);
+	cl_line(LLX2 + 2, LLY + LVIS * LROWH + 1, 8, LLY + LVIS * LROWH + 1, 0);
+	cl_line(8, LLY + LVIS * LROWH + 1, 8, LLY - 2, 0);
+	lrows();
+	lmsg();
+	hr_sbdraw(&lsb, 1);
+	lbtn(60, 70, "OK");
+	lbtn(160, 80, "Cancel");
+
+	for (;;)
+	{
+		hr_evwait(hr_wid());
+		while ( hr_evget(hr_wid(), (short *)&e) )
+		{
+			switch ( e.wm_type )
+			{
+			case E_DBUTTON:
+				x = e.wm_arg[0];
+				y = e.wm_arg[1];
+				if ( !(e.wm_arg[2] & EB_LEFT) )
+				{
+					if ( lsb.sb_drag )
+						hr_sbrelease(&lsb);
+					break;
+				}
+				if ( hr_sbhit(&lsb, x, y) )
+				{
+					if ( hr_sbpress(&lsb, y) )
+					{
+						lrows();
+						hr_sbdraw(&lsb, 0);
+					}
+				}
+				else if ( x >= LLX && x < LLX2 && y >= LLY &&
+					  y < LLY + LVIS * LROWH )
+				{
+					i = lsb.sb_pos + (y - LLY) / LROWH;
+					if ( i < nls && i != lsel )
+					{
+						r = lsel;
+						lsel = i;
+						lrow(r);
+						lrow(i);
+					}
+					else if ( i == lsel )
+						return lsel;	/* 2nd click */
+				}
+				else if ( y >= LBTNY &&
+					  y < LBTNY + DLG_BTNH )
+				{
+					if ( x >= 60 && x < 130 )
+						return lsel;
+					else if ( x >= 160 && x < 240 )
+						return -1;
+				}
+				break;
+
+			case E_DMOTION:
+				if ( lsb.sb_drag &&
+				     hr_sbmotion(&lsb, e.wm_arg[1]) )
+				{
+					lrows();
+					hr_sbdraw(&lsb, 0);
+				}
+				break;
+
+			case E_DKEY:
+				i = e.wm_arg[0] & 0xff;
+				if ( i == 0x0e && lsel < nls - 1 )
+					lsel++;
+				else if ( i == 0x10 && lsel > 0 )
+					lsel--;
+				else if ( i == '\r' || i == '\n' )
+					return lsel;
+				else if ( i == 0x1b )
+					return -1;
+				else
+					break;
+				if ( lshow() )
+				{
+					lrows();
+					hr_sbdraw(&lsb, 0);
+				}
+				else
+				{
+					lrow(lsel == 0 ? 1 : lsel - 1);
+					lrow(lsel + 1);
+					lrow(lsel);
+				}
+				break;
+
+			case E_QUIT:
+				sayquit();
+			}
+		}
+	}
+}
+
+static
+d_lib(msg)
+char *msg;
+{
+	register FILE *dirfile;
+	register FILE *fp;
+	struct direct dent;
+	char nm[DIRSIZ + 1];
+	char out[48];
+	int w, h, r, i;
+
+	nls = 0;
+	if ( (dirfile = fopen(LIBDIR, "r")) != (FILE *)0 )
+	{
+		while ( nls < NDLGL - 1 &&
+			fread((char *)&dent, sizeof(dent), 1, dirfile) == 1 )
+		{
+			if ( dent.d_ino == 0 )
+				continue;
+			for ( i = 0; i < DIRSIZ; i++ )
+				nm[i] = dent.d_name[i];
+			nm[DIRSIZ] = 0;
+			if ( nm[0] == '.' || strlen(nm) > 14 )
+				continue;
+			strcpy(dlname[nls], nm);
+			sprintf(dlpath[nls], "%s/%s", LIBDIR, nm);
+			nls++;
+		}
+		fclose(dirfile);
+	}
+	strcpy(dlname[nls], "symbols (user)");
+	strcpy(dlpath[nls], USERLIB);
+	nls++;
+	lsel = 0;
+	strncpy(lbmsg, msg, sizeof(lbmsg) - 1);
+	lbmsg[sizeof(lbmsg) - 1] = 0;
+
+	w = 280;
+	h = LBTNY + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	for (;;)
+	{
+		r = d_listrun("Load library:");
+		if ( r < 0 )
+		{
+			hr_dlgclose();
+			saycancel();
+		}
+		/* accept the entry if the file at least OPENS (the editor
+		 * does the real loadlib and respawns if that still fails) */
+		if ( (fp = fopen(dlpath[lsel], "r")) != (FILE *)0 )
+			break;
+		strcpy(lbmsg, "Cannot load that library");
+		lmsg();
+	}
+	fclose(fp);
+	hr_dlgclose();
+	sprintf(out, "=%s", dlpath[lsel]);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings: grid pitch, sheet preset, units, layer vis/print         */
+/* ------------------------------------------------------------------ */
+
+static char	unbuf[6];
+static char	unmbuf[UNAMEL];
+
+static HRWIDGET swg[] = {
+    { DW_LABEL,   12,  10,   0,  0, "Grid:" },
+    { DW_RADIO,   90,  10,   0,  0, "1",       0, 1 },
+    { DW_RADIO,  150,  10,   0,  0, "2",       0, 1 },
+    { DW_LABEL,   12,  36,   0,  0, "Sheet:" },
+    { DW_RADIO,   90,  36,   0,  0, "160x120", 0, 2 },
+    { DW_RADIO,  210,  36,   0,  0, "A4",      0, 2 },
+    { DW_RADIO,  270,  36,   0,  0, "A3",      0, 2 },
+    { DW_RADIO,  330,  36,   0,  0, "A2",      0, 2 },
+    { DW_LABEL,   12,  62,   0,  0, "Units:" },
+    { DW_TEXT,    90,  58,  60, 22, (char *)0, 0, 0, unbuf, sizeof(unbuf) },
+    { DW_TEXT,   170,  58,  90, 22, (char *)0, 0, 0, unmbuf,
+      sizeof(unmbuf) },
+    { DW_LABEL,  130,  88,   0,  0, "Vis Prn" },
+    { DW_LABEL,   12, 110,   0,  0, "drawing" },
+    { DW_CHECK,  130, 110,   0,  0, "",        0, 0 },
+    { DW_CHECK,  180, 110,   0,  0, "",        0, 0 },
+    { DW_LABEL,   12, 132,   0,  0, "annotation" },
+    { DW_CHECK,  130, 132,   0,  0, "",        0, 0 },
+    { DW_CHECK,  180, 132,   0,  0, "",        0, 0 },
+    { DW_LABEL,   12, 154,   0,  0, "frame" },
+    { DW_CHECK,  130, 154,   0,  0, "",        0, 0 },
+    { DW_CHECK,  180, 154,   0,  0, "",        0, 0 },
+    { DW_LABEL,   12, 176,   0,  0, "construction" },
+    { DW_CHECK,  130, 176,   0,  0, "",        0, 0 },
+    { DW_BUTTON,  12, 208, 100, DLG_BTNH, "Frame",  0, 0, (char *)0, 0,
+      DWF_END },
+    { DW_BUTTON, 130, 208,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 220, 208,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NSWG		(sizeof(swg) / sizeof(swg[0]))
+#define	SW_G1		1
+#define	SW_G2		2
+#define	SW_S160		4
+#define	SW_SA4		5
+#define	SW_SA3		6
+#define	SW_SA2		7
+#define	SW_UN		9
+#define	SW_UNM		10
+#define	SW_V0		13
+#define	SW_P0		14
+#define	SW_V1		16
+#define	SW_P1		17
+#define	SW_V2		19
+#define	SW_P2		20
+#define	SW_V3		22
+#define	SW_FRAME	23
+#define	SW_OK		24
+
+/* argv: GRID SHW UNUM UNAME VVVV PPP -- UNAME "-" = none, VVVV/PPP are
+ * '0'/'1' digit strings for the four vis / three prn checkboxes. */
+static
+d_set(av)
+char **av;
+{
+	char out[64];
+	int w, h, r, i;
+	char *vv, *pp;
+
+	swg[SW_G1].dw_val = atoi(av[0]) == 1;
+	swg[SW_G2].dw_val = atoi(av[0]) == 2;
+	i = atoi(av[1]);
+	swg[SW_S160].dw_val = i == 160;
+	swg[SW_SA4].dw_val = i == 120;
+	swg[SW_SA3].dw_val = i == 168;
+	swg[SW_SA2].dw_val = i == 240;
+	if ( !swg[SW_SA4].dw_val && !swg[SW_SA3].dw_val &&
+	     !swg[SW_SA2].dw_val )
+		swg[SW_S160].dw_val = 1;
+	strncpy(unbuf, av[2], sizeof(unbuf) - 1);
+	unbuf[sizeof(unbuf) - 1] = 0;
+	if ( strcmp(av[3], "-") != 0 )
+	{
+		strncpy(unmbuf, av[3], UNAMEL - 1);
+		unmbuf[UNAMEL - 1] = 0;
+	}
+	vv = av[4];
+	pp = av[5];
+	swg[SW_V0].dw_val = vv[0] == '1';
+	swg[SW_V1].dw_val = vv[1] == '1';
+	swg[SW_V2].dw_val = vv[2] == '1';
+	swg[SW_V3].dw_val = vv[3] == '1';
+	swg[SW_P0].dw_val = pp[0] == '1';
+	swg[SW_P1].dw_val = pp[1] == '1';
+	swg[SW_P2].dw_val = pp[2] == '1';
+	w = 390;
+	h = 208 + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(swg, NSWG);
+	r = hr_dlgrun(swg, NSWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != SW_OK && r != SW_FRAME )
+		saycancel();
+	i = atoi(unbuf);
+	if ( i < 1 )
+		i = 1;
+	sprintf(out, "=%d %d %d %s %c%c%c%c %c%c%c %d",
+		swg[SW_G2].dw_val ? 2 : 1,
+		swg[SW_SA4].dw_val ? 120 : swg[SW_SA3].dw_val ? 168 :
+		swg[SW_SA2].dw_val ? 240 : 160,
+		i, unmbuf[0] ? unmbuf : "-",
+		'0' + swg[SW_V0].dw_val, '0' + swg[SW_V1].dw_val,
+		'0' + swg[SW_V2].dw_val, '0' + swg[SW_V3].dw_val,
+		'0' + swg[SW_P0].dw_val, '0' + swg[SW_P1].dw_val,
+		'0' + swg[SW_P2].dw_val,
+		r == SW_FRAME);
+	/* Two more fields the frame stamp substitutes, computed HERE so
+	 * the editor carries neither calendar code nor the probe loop:
+	 * the $D date and the $S "Sheet n/m" (av[6..8] = PRE N SUF of the
+	 * numbered set; m = the highest sheet found on disk).  Both are
+	 * underscore-joined so the editor's blank tokenizer carries each
+	 * as ONE field (it swaps ' ' back in). */
+	{
+		long t;
+		extern long time();
+		extern char *ctime();
+
+		time(&t);
+		sprintf(out + strlen(out), " %.3s_%d_%.4s",
+			ctime(&t) + 4, atoi(ctime(&t) + 8), ctime(&t) + 20);
+	}
+	if ( strcmp(av[6], "-") != 0 )
+	{
+		register FILE *fp;
+		char nn[60];
+		int cur, m;
+
+		cur = atoi(av[7]);
+		m = cur;
+		for ( i = 1; i <= 40; i++ )
+		{
+			sprintf(nn, "%s%d%s", av[6], i,
+				strcmp(av[8], "-") ? av[8] : "");
+			if ( (fp = fopen(nn, "r")) != (FILE *)0 )
+			{
+				fclose(fp);
+				if ( i > m )
+					m = i;
+			}
+			else if ( i > cur )
+				break;
+		}
+		sprintf(out + strlen(out), " Sheet_%d/%d", cur, m);
+	}
+	else
+		strcat(out, " -");
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Style: line style / fill / bold / hatch / layer / text / size /    */
+/* vertical                                                           */
+/* ------------------------------------------------------------------ */
+
+static char	stbuf[TVMAX];
+
+static HRWIDGET ywg[] = {
+    { DW_LABEL,   12,  10,   0,  0, "Style:" },
+    { DW_RADIO,   90,  10,   0,  0, "Solid",  0, 1 },
+    { DW_RADIO,  180,  10,   0,  0, "Dash",   0, 1 },
+    { DW_RADIO,  264,  10,   0,  0, "Dot",    0, 1 },
+    { DW_LABEL,   12,  36,   0,  0, "Fill:" },
+    { DW_RADIO,   90,  36,   0,  0, "None",   0, 2 },
+    { DW_RADIO,  180,  36,   0,  0, "White",  0, 2 },
+    { DW_RADIO,  264,  36,   0,  0, "Gray",   0, 2 },
+    { DW_RADIO,  336,  36,   0,  0, "Black",  0, 2 },
+    { DW_CHECK,   12,  62,   0,  0, "Bold" },
+    { DW_CHECK,  100,  62,   0,  0, "Hatch" },
+    { DW_LABEL,  200,  62,   0,  0, "Layer:" },
+    { DW_RADIO,  270,  62,   0,  0, "0",      0, 3 },
+    { DW_RADIO,  310,  62,   0,  0, "1",      0, 3 },
+    { DW_RADIO,  350,  62,   0,  0, "2",      0, 3 },
+    { DW_RADIO,  390,  62,   0,  0, "3",      0, 3 },
+    { DW_LABEL,   12,  90,   0,  0, "Text:" },
+    { DW_TEXT,    90,  86, 300, 22, (char *)0, 0, 0, stbuf, sizeof(stbuf) },
+    { DW_LABEL,   12, 118,   0,  0, "Size:" },
+    { DW_RADIO,   90, 118,   0,  0, "S",      0, 4 },
+    { DW_RADIO,  140, 118,   0,  0, "M",      0, 4 },
+    { DW_RADIO,  190, 118,   0,  0, "L",      0, 4 },
+    { DW_CHECK,  250, 118,   0,  0, "Vert" },
+    { DW_CHECK,  330, 118,   0,  0, "Smooth" },
+    { DW_BUTTON,  90, 148,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 200, 148,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NYWG	(sizeof(ywg) / sizeof(ywg[0]))
+#define	YW_SOL	1
+#define	YW_DSH	2
+#define	YW_DOT	3
+#define	YW_FN	5
+#define	YW_FW	6
+#define	YW_FG	7
+#define	YW_FB	8
+#define	YW_BOLD	9
+#define	YW_HAT	10
+#define	YW_L0	12
+#define	YW_TXT	17
+#define	YW_SZS	19
+#define	YW_SZM	20
+#define	YW_SZL	21
+#define	YW_VERT	22
+#define	YW_SMOO	23
+#define	YW_OK	24
+
+/* o_flags bits (vellum.h; kept in step by hand -- the helper carries no
+ * model header on purpose) */
+#define	F_STYLE	0x03
+#define	F_DASH	0x01
+#define	F_DOT	0x02
+#define	F_FILL	0x0c
+#define	F_FILLW	0x04
+#define	F_FILLG	0x08
+#define	F_FILLB	0x0c
+#define	F_BOLD	0x10
+#define	F_HATCH	0x20
+#define	F_SMOOTH 0x40
+#define	F_VERT	0x80
+
+/* argv: FLAGS LAYER SIZE TEXT ("-" = the object has no text) */
+static
+d_style(av)
+char **av;
+{
+	char out[TVMAX + 24];
+	int w, h, r, f, hastext;
+
+	f = atoi(av[0]);
+	ywg[YW_SOL].dw_val = (f & F_STYLE) == 0;
+	ywg[YW_DSH].dw_val = (f & F_STYLE) == F_DASH;
+	ywg[YW_DOT].dw_val = (f & F_STYLE) == F_DOT;
+	ywg[YW_FN].dw_val = (f & F_FILL) == 0;
+	ywg[YW_FW].dw_val = (f & F_FILL) == F_FILLW;
+	ywg[YW_FG].dw_val = (f & F_FILL) == F_FILLG;
+	ywg[YW_FB].dw_val = (f & F_FILL) == F_FILLB;
+	ywg[YW_BOLD].dw_val = (f & F_BOLD) != 0;
+	ywg[YW_HAT].dw_val = (f & F_HATCH) != 0;
+	ywg[YW_VERT].dw_val = (f & F_VERT) != 0;
+	ywg[YW_SMOO].dw_val = (f & F_SMOOTH) != 0;
+	for ( r = 0; r < 4; r++ )
+		ywg[YW_L0 + r].dw_val = atoi(av[1]) == r;
+	ywg[YW_SZS].dw_val = atoi(av[2]) == 0;
+	ywg[YW_SZM].dw_val = atoi(av[2]) == 1;
+	ywg[YW_SZL].dw_val = atoi(av[2]) >= 2;
+	hastext = strcmp(av[3], "-") != 0;
+	if ( hastext )
+	{
+		strncpy(stbuf, av[3], TVMAX - 1);
+		stbuf[TVMAX - 1] = 0;
+	}
+	w = 430;
+	h = 148 + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(ywg, NYWG);
+	r = hr_dlgrun(ywg, NYWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != YW_OK )
+		saycancel();
+	f = 0;
+	if ( ywg[YW_DSH].dw_val )	f |= F_DASH;
+	if ( ywg[YW_DOT].dw_val )	f |= F_DOT;
+	if ( ywg[YW_FW].dw_val )	f |= F_FILLW;
+	if ( ywg[YW_FG].dw_val )	f |= F_FILLG;
+	if ( ywg[YW_FB].dw_val )	f |= F_FILLB;
+	if ( ywg[YW_BOLD].dw_val )	f |= F_BOLD;
+	if ( ywg[YW_HAT].dw_val )	f |= F_HATCH;
+	if ( ywg[YW_VERT].dw_val )	f |= F_VERT;
+	if ( ywg[YW_SMOO].dw_val )	f |= F_SMOOTH;
+	sprintf(out, "=%d %d %d\t%s", f,
+		ywg[YW_L0+1].dw_val ? 1 : ywg[YW_L0+2].dw_val ? 2 :
+		ywg[YW_L0+3].dw_val ? 3 : 0,
+		ywg[YW_SZS].dw_val ? 0 : ywg[YW_SZM].dw_val ? 1 : 2,
+		stbuf);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Search: substring, either direction, + the Sheets... jump (sec. 27)*/
+/* ------------------------------------------------------------------ */
+
+static char	fndbuf[VALL];
+static short	shnum[NDLGL];		/* sheet numbers behind the list rows     */
+
+static HRWIDGET gwg[] = {
+    { DW_LABEL,   12,  16,   0,  0, "Search:" },
+    { DW_TEXT,    82,  12, 180, 22, (char *)0, 0, 0, fndbuf, sizeof(fndbuf) },
+    { DW_CHECK,   12,  44,   0,  0, "Match case" },
+    { DW_BUTTON,  12,  74,  70, DLG_BTNH, "Next",    0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON,  98,  74,  70, DLG_BTNH, "Prev",    0, 0, (char *)0, 0,
+      DWF_END },
+    { DW_BUTTON, 184,  74,  80, DLG_BTNH, "Sheets",  0, 0, (char *)0, 0,
+      DWF_END },
+    { DW_BUTTON, 280,  74,  80, DLG_BTNH, "Cancel",  0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NGWG	(sizeof(gwg) / sizeof(gwg[0]))
+#define	GW_CASE	2
+#define	GW_NEXT	3
+#define	GW_PREV	4
+#define	GW_SHTS	5
+
+/* argv: FSTR PRE N SUF CASE ("-" = empty / not a numbered set)
+ * result: =f DIR CASE<TAB>STR (search) or =s N (jump to sheet N) */
+static
+d_search(av)
+char **av;
+{
+	register FILE *fp;
+	char out[VALL + 12], nn[60];
+	int w, h, r, i, cur;
+
+	if ( strcmp(av[0], "-") != 0 )
+	{
+		strncpy(fndbuf, av[0], VALL - 1);
+		fndbuf[VALL - 1] = 0;
+	}
+	gwg[GW_CASE].dw_val = av[4][0] == '1';
+	w = 372;
+	h = 74 + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(gwg, NGWG);
+	r = hr_dlgrun(gwg, NGWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r == GW_NEXT || r == GW_PREV )
+	{
+		if ( fndbuf[0] == 0 )
+			saycancel();
+		sprintf(out, "=f %d %d	%s", r == GW_PREV ? -1 : 1,
+			gwg[GW_CASE].dw_val ? 1 : 0, fndbuf);
+		say(out);
+	}
+	if ( r != GW_SHTS || strcmp(av[1], "-") == 0 )
+		saycancel();
+	/* the numbered set, probed from disk into the generic list */
+	cur = atoi(av[2]);
+	nls = 0;
+	lsel = 0;
+	for ( i = 1; i <= 40 && nls < NDLGL; i++ )
+	{
+		sprintf(nn, "%s%d%s", av[1], i,
+			strcmp(av[3], "-") ? av[3] : "");
+		if ( (fp = fopen(nn, "r")) == (FILE *)0 )
+		{
+			if ( i > cur )
+				break;
+			continue;
+		}
+		fclose(fp);
+		sprintf(dlname[nls], i == cur ? "sheet %d  <" : "sheet %d", i);
+		shnum[nls] = i;
+		if ( i == cur )
+			lsel = nls;
+		nls++;
+	}
+	if ( nls == 0 )
+		saycancel();
+	lbmsg[0] = 0;
+	w = 280;
+	h = LBTNY + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	r = d_listrun("Go to sheet:");
+	hr_dlgclose();
+	if ( r < 0 )
+		saycancel();
+	sprintf(out, "=s %d", shnum[r]);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Array duplicate: nx x ny at a pitch (sec. 30)                      */
+/* ------------------------------------------------------------------ */
+
+static char	axbuf[5], aybuf[5], apbuf[5];
+
+static HRWIDGET awg[] = {
+    { DW_LABEL,   12,  16,   0,  0, "Across:" },
+    { DW_TEXT,    98,  12,  50, 22, (char *)0, 0, 0, axbuf, sizeof(axbuf) },
+    { DW_LABEL,  170,  16,   0,  0, "Down:" },
+    { DW_TEXT,   240,  12,  50, 22, (char *)0, 0, 0, aybuf, sizeof(aybuf) },
+    { DW_LABEL,   12,  46,   0,  0, "Pitch:" },
+    { DW_TEXT,    98,  42,  50, 22, (char *)0, 0, 0, apbuf, sizeof(apbuf) },
+    { DW_LABEL,  170,  46,   0,  0, "grid units" },
+    { DW_BUTTON,  80,  78,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 180,  78,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NAWG	(sizeof(awg) / sizeof(awg[0]))
+#define	AW_OK	7
+
+static
+d_array()
+{
+	char out[20];
+	int w, h, r, nx, ny, pt;
+
+	strcpy(axbuf, "2");
+	strcpy(aybuf, "1");
+	strcpy(apbuf, "4");
+	w = 310;
+	h = 78 + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(awg, NAWG);
+	r = hr_dlgrun(awg, NAWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != AW_OK )
+		saycancel();
+	nx = atoi(axbuf);
+	ny = atoi(aybuf);
+	pt = atoi(apbuf);
+	if ( nx < 1 ) nx = 1;
+	if ( nx > 40 ) nx = 40;
+	if ( ny < 1 ) ny = 1;
+	if ( ny > 40 ) ny = 40;
+	if ( pt < 1 ) pt = 1;
+	sprintf(out, "=%d %d %d", nx, ny, pt);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Print: scale, wide, and the three verbs (VELLUM.md sec. 25)        */
+/* ------------------------------------------------------------------ */
+
+static char	prsc[6];
+
+static HRWIDGET pwg[] = {
+    { DW_LABEL,   12,  16,   0,  0, "Scale:" },
+    { DW_TEXT,    90,  12,  60, 22, (char *)0, 0, 0, prsc, sizeof(prsc) },
+    { DW_LABEL,  170,  16,   0,  0, "dots/unit" },
+    { DW_CHECK,   12,  46,   0,  0, "Wide (landscape)" },
+    { DW_BUTTON,  12,  78,  90, DLG_BTNH, "Preview", 0, 0, (char *)0, 0,
+      DWF_END },
+    { DW_BUTTON, 120,  78,  70, DLG_BTNH, "Print",   0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 210,  78,  80, DLG_BTNH, "Cancel",  0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NPWG	(sizeof(pwg) / sizeof(pwg[0]))
+#define	PW_WIDE	3
+#define	PW_PREV	4
+#define	PW_PRNT	5
+
+/* argv: SCALE WIDE -> =SCALE WIDE ACT (1 = Print, 2 = Preview) */
+static
+d_print(av)
+char **av;
+{
+	char out[24];
+	int w, h, r, i;
+
+	strncpy(prsc, av[0], sizeof(prsc) - 1);
+	prsc[sizeof(prsc) - 1] = 0;
+	pwg[PW_WIDE].dw_val = atoi(av[1]) != 0;
+	w = 310;
+	h = 78 + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(pwg, NPWG);
+	r = hr_dlgrun(pwg, NPWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != PW_PRNT && r != PW_PREV )
+		saycancel();
+	i = atoi(prsc);
+	if ( i < 2 || i > 32 )
+		i = 8;
+	sprintf(out, "=%d %d %d", i, pwg[PW_WIDE].dw_val,
+		r == PW_PRNT ? 1 : 2);
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* Make Symbol: the GUI face of velsym (v6.7, sec. 60)                 */
+/* ------------------------------------------------------------------ */
+
+static char	mscode[8], mspfx[4], mslib[44], msscl[4];
+static char	msmsg[40];
+
+static HRWIDGET mswg[] = {
+    { DW_LABEL,   12,  16,   0,  0, "Code:" },
+    { DW_TEXT,   110,  12,  90, 22, (char *)0, 0, 0, mscode, sizeof(mscode) },
+    { DW_LABEL,  220,  16,   0,  0, "Prefix:" },
+    { DW_TEXT,   300,  12,  60, 22, (char *)0, 0, 0, mspfx, sizeof(mspfx) },
+    { DW_LABEL,   12,  46,   0,  0, "Library:" },
+    { DW_TEXT,   110,  42, 250, 22, (char *)0, 0, 0, mslib, sizeof(mslib) },
+    { DW_LABEL,   12,  76,   0,  0, "Scale:" },
+    { DW_TEXT,   110,  72,  40, 22, (char *)0, 0, 0, msscl, sizeof(msscl) },
+    { DW_LABEL,   12, 102,   0,  0, msmsg },
+    { DW_BUTTON,  80, 126,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_END },
+    { DW_BUTTON, 200, 126,  80, DLG_BTNH, "Cancel", 0, 0, (char *)0, 0,
+      DWF_CANCEL | DWF_END },
+};
+#define	NMSWG	(sizeof(mswg) / sizeof(mswg[0]))
+#define	MSW_OK	9
+
+/* argv: CODE PFX LIB SCALE MSG -> =CODE PFX LIB SCALE */
+static
+d_mksym(av)
+char **av;
+{
+	char out[80];
+	int w, h, r;
+
+	strcpy(mscode, strcmp(av[0], "-") == 0 ? "" : av[0]);
+	strcpy(mspfx, strcmp(av[1], "-") == 0 ? "" : av[1]);
+	strncpy(mslib, av[2], sizeof(mslib) - 1);
+	mslib[sizeof(mslib) - 1] = 0;
+	strcpy(msscl, av[3]);
+	strncpy(msmsg, strcmp(av[4], "-") == 0 ? "" : av[4],
+		sizeof(msmsg) - 1);
+	msmsg[sizeof(msmsg) - 1] = 0;
+	w = 410;
+	h = 126 + DLG_BTNH + DLG_BSHAD + 10;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		sayquit();
+	if ( r < 0 )
+		saycancel();
+	hr_dlgdraw(mswg, NMSWG);
+	r = hr_dlgrun(mswg, NMSWG);
+	hr_dlgclose();
+	if ( r == -1 )
+		sayquit();
+	if ( r != MSW_OK || mscode[0] == 0 || mslib[0] == 0 )
+		saycancel();
+	sprintf(out, "=%s %s %s %s", mscode, mspfx[0] ? mspfx : "-", mslib,
+		msscl[0] ? msscl : "1");
+	say(out);
+}
+
+/* ------------------------------------------------------------------ */
+/* entry                                                              */
+/* ------------------------------------------------------------------ */
+
+/* Run dialog KIND with the arguments the exec used to take, and hand back
+ * its one result line ("" = cancelled).  The window is the editor's own
+ * and already open, so there is no hr_attach and no handshake; a dialog
+ * that never says anything (an unknown kind, a bad argument count) falls
+ * out of the setjmp as a cancel, which is what a failed exec used to be. */
+char *
+veldlg(kind, av)
+char *kind, **av;
+{
+	register int n;
+
+	dlline[0] = 0;
+	for ( n = 0; n < 9 && av[n] != (char *)0; n++ )
+		;
+	if ( setjmp(dlback) != 0 )
+		return dlline;
+	if ( strcmp(kind, "confirm") == 0 && n >= 1 )
+		d_confirm(av[0]);
+	else if ( strcmp(kind, "text") == 0 && n >= 1 )
+		d_text(av[0]);
+	else if ( strcmp(kind, "file") == 0 && n >= 3 )
+		d_file(av[1], av[2]);
+	else if ( strcmp(kind, "prop") == 0 && n >= 2 )
+		d_prop(av[0], av[1]);
+	else if ( strcmp(kind, "lib") == 0 && n >= 1 )
+		d_lib(av[0]);
+	else if ( strcmp(kind, "set") == 0 && n >= 9 )
+		d_set(av);
+	else if ( strcmp(kind, "style") == 0 && n >= 4 )
+		d_style(av);
+	else if ( strcmp(kind, "print") == 0 && n >= 2 )
+		d_print(av);
+	else if ( strcmp(kind, "search") == 0 && n >= 5 )
+		d_search(av);
+	else if ( strcmp(kind, "mksym") == 0 && n >= 5 )
+		d_mksym(av);
+	else if ( strcmp(kind, "array") == 0 )
+		d_array();
+	return dlline;			/* said nothing: a cancel */
+}

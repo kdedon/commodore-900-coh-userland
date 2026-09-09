@@ -1,0 +1,573 @@
+.TH vellum "" "Command"
+.SH NAME
+vellum \- GUI technical drawing and schematic editor
+.SH SYNOPSIS
+\fBvellum [\fIoptions\fB] [\fIfile\fB]\fR
+.br
+\fBvellum [\fIoptions\fB] +\fIx,y \fB[\fIfile\fB]\fR
+.SH DESCRIPTION
+.HS
+vellum -- GUI technical drawing and schematic editor
+Usage:	vellum [ options ] [ file ]
+	vellum [ options ] +x,y [ file ]
+Keys:	r rotate, m mirror, d duplicate, n properties, x/Del delete,
+	u undo, v zoom-to-fit, f to front, j/J group/ungroup,
+	y make symbol from the selection,
+	* / scale selection x2 / half,
+	1-6 align L/R/T/B + distribute, g grid, < > sheets, Esc select,
+	F2 save, F3 open, F4 new, F5-F7 cut/copy/paste, F8 settings
+The rest of the suite is separate commands:
+	velplot	a drawing onto a page (lp, PostScript, HPGL)
+	velpic	a drawing as troff pic source
+	veldxf	the DXF border, both directions
+	velnet	the netlist, parts list, SPICE deck, renumber
+	velcheck	prove the set, or the stencil libraries
+	veldiff	what changed between two revisions
+	velinfo	takeoff, set-wide Find, library card, contents
+	velsym	a drawing becomes a stencil
+	velgraph	x/y data becomes a drawing
+	symedit	the stencil-library editor
+.HE
+.B vellum
+is the drawing board of this workstation: electronic schematics,
+block diagrams, flowcharts, network maps, software structure charts
+and figures for manuals, with clean printed output and full
+membership in the Unix pipeline.
+It must be run under the
+.B zview
+desktop and accepts the standard window
+.I options
+of GUI applications; see
+.BR zview .
+The optional
+.I file
+argument names a drawing to open.
+.PP
+The file name sits in its own bar at the top, with a `*' while the
+drawing has unsaved changes; at the bar's right edge the
+.B <
+and
+.B >
+cells walk a numbered sheet set \- they sit on the file line because
+the sheet is a property of the FILE (the same actions as the
+.B <
+and
+.B >
+keys; see SHEET SETS).
+The TOOLBAR row of cells sits under it, and the palette down the
+left edge holds the symbol bank.
+Symbols come from LIBRARY FILES named in /usr/vellum/etc/libs:
+.B discrete
+(resistor through opamp),
+.B logic
+(gates and flip-flops),
+.B flow
+(flowchart stencils),
+.B net
+(network-map stencils),
+.B arch
+(software structure stencils),
+.B pid
+(process / P&ID stencils),
+.B power
+(one-line electrical) and
+.B plan
+(floor-plan stencils), plus the user scratch library
+/usr/vellum/etc/symbols when it holds anything.
+Every loaded symbol stays resolvable at once \- a drawing may mix
+libraries \- but the palette shows ONE group at a time: the header
+cell above the bank names it and clicking the header switches to the
+next.
+After the last library comes the
+.B shapes
+pseudo-group: the nine STRETCHABLE shapes (box, rounded box,
+diamond, oval, parallelogram, drum, document, circle, ellipse), the
+four CONNECTOR styles (hv, line, arrow, harrow), the Arc tool, the
+Net name marker and the Dim (dimension) tool.
+The toolbar's
+.B Lib
+cell lists the libraries on file in a scrollable dialog, and
+.B Edit
+opens the current library in the
+.B symedit
+symbol editor.
+.PP
+The tools:
+.DS
+.ta 8n 16n
+	\fBSel\fR	click selects (a grouped object selects its whole
+		group), drag moves; a drag on EMPTY canvas selects
+		everything inside the rectangle.  A selected SHAPE
+		shows corner handles \- dragging one resizes it \-
+		and a selected line, wire, connector or dimension
+		shows ENDPOINT grips (a polyline its vertices):
+		dragging one re-routes and re-snaps the end
+	\fBWire\fR	drag or click each end; wires route H-then-V, snap
+		to pins and re-anchor so a run chains corner by
+		corner \- \fBEsc\fR or a click back on the anchor
+		ends the run
+	\fBLine\fR	like Wire but straight \- and a chained run folds
+		into ONE polyline object
+	\fBBox\fR	drag draws a rectangle
+	\fBCirc\fR	drag from the centre draws a circle
+	\fBText\fR	click asks for a label and places it
+	\fBDel\fR	click deletes what it hits
+.DE
+Between the tool groups the
+.B Grid
+cell toggles the grid dots; then the ACTION cells
+.B Rot ,
+.B Mir ,
+.B Name
+and
+.B Dup
+arm click-to-apply versions of the keys;
+.B In
+and
+.B Out
+zoom (also
+.B +
+and
+.B \- ,
+and
+.B v
+zooms to fit the whole drawing);
+.B Fr
+and
+.B Bk
+move the selection to the front or back of the stacking order; and
+the
+.B L\fIn\fR
+cell cycles the ACTIVE layer new objects land on.
+.PP
+A SHAPE is placed by dragging its rectangle, then typing the label
+(drawn centred, clipped to the shape); shapes expose ATTACHMENT
+POINTS at their edge midpoints and corners.
+A CONNECTOR is drawn with the wire gestures but snaps to attachment
+points and symbol pins, and STAYS ATTACHED: moving or resizing the
+target re-routes the connector.
+The
+.B arrow
+and
+.B harrow
+styles carry an arrowhead at the far end.
+The Arc cell draws a circular arc in two stages: drag from the
+centre to the start point, then click where the arc ends.
+The Net cell places a named net marker for the netlist export.
+.PP
+The
+.B Dim
+cell draws a DIMENSION point to point with the wire gestures; both
+ends snap to attachment points, so dimensioning a shape's edge is
+two clicks.
+It lands on the annotation layer, with extension ticks, arrowheads
+both ends and a centred label.
+An EMPTY label is automatic: the measured distance times the sheet
+unit, integer formatted (``85 mm''); any text set through the style
+dialog overrides it, and emptying the text goes back to automatic.
+The sheet unit (``one grid unit is 5 mm'') is set in Settings and
+saved in the drawing; coordinates stay grid units \- only labels
+multiply.
+A LEADER needs no tool of its own: an
+.B arrow
+connector plus a text label already is one.
+.PP
+The
+.B n
+key (or the Name tool) edits a symbol's designator and value; on any
+other object it opens the STYLE dialog: solid/dashed/dotted line
+style, white/gray/black fill (fills stack in z-order), bold (width
+2),
+.B Hatch
+(a gray fill renders as 45-degree hatching \- cross-section shading),
+the object's layer, its text and \- for a text label \- one of
+three sizes and
+.B Vert ,
+which turns the label 90 degrees (axis labels, vertical dimensions).
+A text label may hold several lines separated by `|'.
+A polyline checked
+.B Smooth
+renders as a spline through its points, and
+.B velpic
+exports it as one.
+A FILLED polyline is a closed even-odd fill over its points \- the
+arbitrary solid shape mechanical sketches want \- on screen, in
+every export and in the preview.
+.SH LAYERS
+Four fixed layers: 0
+.B drawing
+(the default), 1
+.B annotation ,
+2
+.B frame
+(title block, sheet border) and 3
+.B construction ,
+which never prints.
+The Settings dialog (window menu) checks which layers are VISIBLE
+and which PRINT, picks the snap pitch (1 or 2 units) and the sheet
+preset (160x120, or A4/A3/A2 at 8 dots per unit \- now that pages
+can leave on a laser or a plotter, the screenful is not the natural
+page for every drawing), and its
+.B Frame
+button stamps the TEMPLATE /usr/vellum/etc/frame.d \- ordinary
+drawing lines fed through the parser onto the frame layer, with
+.BR $F " " $D " " $S " " $R
+substituted in text values (file name, date, ``Sheet n/m'', revision)
+\- so a company title block is an edit to that file, not a rebuild.
+The sheet edge shows as a dotted construction guide.
+.SH EDITING
+.DS
+.ta 6n 22n
+	\fBr\fR	rotate a quarter turn (ANY selection turns about
+		its centre; a lone symbol turns in place)
+	\fBm\fR	mirror (likewise: any selection)
+	\fBd\fR	duplicate, two units down-right
+	\fBn\fR	properties (name/value or style dialog)
+	\fBx\fR, \fBDel\fR	delete the selection
+	\fBu\fR	UNDO the last commit (once more redoes)
+	\fBa\fR	search again: the next hit for the pattern and
+		direction the Search dialog last used
+	\fBv\fR	zoom to fit the drawing
+	\fBf\fR	selection to the front (stacking)
+	\fBj\fR, \fBJ\fR	group / ungroup the selection
+	\fB*\fR, \fB/\fR	scale the selection: double / halve about
+		its corner (halving rounds odd coordinates
+		and the status line says so)
+	\fB1 2 3 4\fR	align left / right / top / bottom
+	\fB5 6\fR	distribute evenly, horizontally / vertically
+	\fBs w l b c t e\fR	arm Sel/Wire/Line/Box/Circ/Text/Del
+	\fBg\fR	toggle the grid dots (also the Grid cell)
+	\fB+\fR, \fB\-\fR	zoom in / out
+	\fB<\fR, \fB>\fR	previous / next sheet of a numbered set
+	\fBEsc\fR	cancel the armed tool, placement or run;
+		a second \fBEsc\fR drops the selection
+	\fBF2 F3 F4\fR	Save / Open / New (as in \fBzedit\fR)
+	\fBF5 F6 F7\fR	Cut / Copy / Paste
+	\fBF8\fR	the Settings dialog
+	\fBF9\fR	the Search dialog
+	\fBF11\fR	Help: this page, opened in \fBzman\fR
+		(also the window menu's Help entry)
+	arrows	pan; \fBClear/Home\fR pans to the origin
+.DE
+The window menu's
+.B Print
+entry opens the print dialog: scale, wide, and the three verbs \-
+.B Print
+spools the drawing through
+.B velplot
+into
+.BR lpr ,
+.B Preview
+opens a window (velprev) drawing the printable extent through the
+SAME renderer that feeds the printer, so what it shows is what the
+paper gets.
+The
+.B Search
+entry searches designators, values, text and net names for a
+substring, selects the hit and pans it to centre.
+.B Next
+and
+.B Prev
+walk the object list either way round from the current selection,
+wrapping; with nothing selected they open at the first and the last
+object respectively.
+Matching ignores case unless
+.B "Match case"
+is ticked.
+The pattern, the direction and the box are remembered, so
+.B a
+on the canvas (or a second
+.BR Search )
+steps to the next hit without the dialog.
+Its
+.B Sheets
+button lists the numbered set and jumps by number.
+The
+.B Dup
+toolbar cell with a live selection opens the ARRAY dialog (columns,
+rows, pitch) \- pin headers and terminal strips in one commit; the
+armed Dup tool still copies single objects click by click.
+While a wire, line, connector or dimension drag is up, the status
+line's coordinate cell shows the run's LENGTH times the sheet unit \-
+measuring without committing a dimension.
+Zoom reaches down to 2 px per unit \- the whole A4 sheet in one
+window \- where the grid thins to every fourth unit.
+A text, shape label or dimension override may run to 39 characters;
+the value of a symbol stays 15.
+Cut, Copy and Paste (window menu) go through the system clipboard AS
+TEXT in the drawing format \- paste a fragment into another Vellum,
+or into
+.B zedit
+as text.
+A middle CLICK pastes at the pointer (the selection, else the
+clipboard); a middle DRAG pans the sheet.
+Persistent groups select, move, copy and delete as one until
+ungrouped.
+When the drawing is modified, an autosave writes
+.IB file .bak
+every five minutes.
+.PP
+.BI vellum " +x,y file.d"
+opens with the view CENTRED on that grid point and the object there
+selected.
+Every asking mode prints its hits as
+.IR "file: ... at x,y" ,
+so this hands a report straight back to the board:
+.B "velinfo -where TODO *.d"
+stops being a report and becomes a work list.
+.PP
+The
+.B y
+key turns the SELECTION into a library stencil \- the editor's face of
+.BR velsym .
+It asks for the stencil's code, its designator prefix, the library file
+to append to, and the scale, then writes the selection out as an
+ordinary drawing and runs that command on it, so a stencil made here
+and one made from make(1) are the same bytes.
+The
+.B N
+net-name markers in the selection become the PINS, in z-order; pin
+types are set afterwards in
+.BR symedit ,
+because a type is a property of the library and a guessed one builds a
+wrong ERC.
+A running
+.B vellum
+reads its libraries only at start-up, so the new stencil appears in the
+palette next time.
+
+.SH "SHEET SETS"
+A sheet is a file; a drawing that spans sheets is a SET of numbered
+files
+.RI ( amp1.d ,
+.IR amp2.d ,
+\&...).
+The
+.B >
+key saves the current sheet and loads the next \- past the last one
+it offers to create it, which is how a set grows \- and
+.B <
+walks back.
+The Frame stamp adds ``Sheet n/m'' when the file name carries a
+number.
+Shell globs are the set syntax for the whole suite:
+.B "velnet amp?.d"
+computes nets per sheet and MERGES them BY NAME \- a net named (by an
+N marker or GND/VCC) VBUS on sheet 1 is the same conductor as VBUS on
+sheet 3; unnamed nets stay sheet-local and print qualified
+(NET\-2.3 = sheet 2, net 3).
+.B velplot
+emits the form feed between sheets, and
+.B "velnet -bom"
+yields ONE parts list for the whole set.
+An off-page reference is the OFFP stencil with its value reading
+``\(->3'' and an N net name on its pin \- the netlist merge makes it
+electrically true.
+.PP
+A BUS is an idiom, not an object: draw the trunk as a BOLD wire \-
+graphics, not electricity \- and tap it with short wires carrying
+.B "N D0"
+\&...
+.BR "N D7" ;
+same-named taps merge across the whole sheet set, which is what a
+bus MEANS.
+.B velcheck
+flags a net name appearing on fewer than two pins in the set \- the
+typo'd bit (D3 on one end, D8 on the other) that eyes cannot see.
+.SH "THE SUITE"
+.B vellum
+DRAWS, and does nothing else.
+Everything the shop does WITH a drawing is a command of its own, over
+the same model and the same plain-text format:
+.DS
+.ta 4n 16n
+	\fBvelplot\fR	a drawing onto a page \- Epson raster,
+		PostScript or HPGL, \fB-fit\fR to the page or
+		\fB-tile\fRd across as many as it takes
+	\fBvelpic\fR	a drawing as troff \fBpic\fR source, for figures
+	\fBveldxf\fR	the border with the office CAD, both ways
+	\fBvelnet\fR	what it is CONNECTED as: the netlist, the
+		parts list, a SPICE deck, canonical designators
+	\fBvelcheck\fR	prove it \- one finding per line, the exit
+		status the finding count, so make(1) gates on
+		it like cc -Werror.  \fB-sym\fR judges the stencil
+		LIBRARIES the same way
+	\fBveldiff\fR	what changed between two revisions, as a list
+		or as a marked-up DRAWING
+	\fBvelinfo\fR	the takeoff, the set-wide Find, a library's
+		reference card, the set's contents page
+	\fBvelsym\fR	a drawing becomes a stencil
+	\fBvelgraph\fR	x/y data becomes a drawing
+.DE
+Not one of them is a graphics client, so the whole pipeline runs from
+.BR make (1),
+from a script, or down a serial line on a machine with no bitmap card.
+That is the reason for the split: the editor needs a screen, and
+nothing else here does.
+.PP
+They compose with each other, because the file name
+.B \-
+is standard input everywhere:
+.DS
+.ta 8n
+	velinfo -symsheet pid.sym | velplot -T ps -fit -
+	veldiff -mark amp.d.A amp.d | velpic -
+.DE
+A lowercase option given to
+.B vellum
+itself is an error naming these commands, not a mode: the editor will
+not quietly do another program's job.
+.PP
+The board reaches two of them directly \- Print runs
+.B velplot
+on a snapshot of the live drawing, and Make Symbol runs
+.B velsym
+on the selection \- so a page or a stencil made on the board is
+byte-identical to one made from a Makefile.
+.SH FRAGMENTS
+A FRAGMENT is a drawing, and it costs no code at all.
+A shop-standard detail \- a filter section, a title-block legend, a
+north arrow, a revision cloud \- is a
+.B .d
+file in a fragments directory; its index is
+.BR ls .
+.B "hrclip < /usr/vellum/frag/legend.d"
+from any shell puts it on the PRIMARY selection, and a MIDDLE CLICK in
+the editor pastes it at the pointer, because Paste has parsed
+.B .d
+text out of the selection since the beginning.
+/usr/vellum/frag ships with a starter set; copy it, add your own,
+delete ours.
+.PP
+A REVISION is a file too, and the record is the directory: see
+.BR veldiff ,
+which compares two of them and whose exit status is what a Makefile
+gates a release print on.
+.SH "FILE FORMAT"
+Drawings are plain text, one object per line, in grid units; unknown
+lines are skipped, so old readers accept new files:
+.DS
+.ta 8n
+	vellum1
+	U 5 mm
+	Y NPN 20 30 0 0 Q1 -
+	W 10 10 20 10
+	L 5 5 9 9 /1.0
+	T 12 4 s1 Power supply
+	S box 60 10 75 20 Fetch
+	K harrow 67 20 67 24 @67,20 -
+	P 3 5 50 10 55 5 60
+	A 30 50 4 0 180
+	N 17 10 OUT
+	D 10 40 24 40
+	G 2
+.DE
+.B Y
+symbol,
+.B W
+wire,
+.B L
+line,
+.B B
+box,
+.B C
+circle,
+.B T
+text (with an
+.BI s n
+size),
+.B S
+a stretchable shape,
+.B K
+a connector whose ends are `\-' (free) or
+.BI @ x,y
+(the attachment's grid point, re-resolved on load),
+.B P
+a polyline,
+.B A
+an arc (centre, radius, angles),
+.B N
+a net name,
+.B D
+a dimension (empty text = the automatic label),
+.B U
+the sheet-units header and
+.B G
+a group header covering the following n objects.
+An optional
+.BI / flags . layer
+token carries line style, fill, bold, hatch, smooth, vertical text
+and the layer.
+.SH FILES
+.DS
+.ta 4n 30n
+	/usr/vellum/bin/*	the SUITE: the editor, symedit, and the
+		headless commands (velplot velpic veldxf
+		velnet velcheck veldiff velinfo velsym
+		velgraph)
+	/usr/vellum/sym/*.sym	the symbol libraries
+	/usr/vellum/lib/libvellum.a	the model, the format, the device
+		walker and the connectivity \- what every
+		command in the suite is built on, and what
+		a command of your own would link
+	/usr/vellum/lib/*	the helper BINARIES the editor execs: the
+		dialogs (veldlg) and the print preview
+		(velprev).  Stencil libraries live in sym/,
+		not here \- they are not the same kind of
+		thing
+	/usr/vellum/etc/libs	which of them load at start-up
+	/usr/vellum/etc/symbols	the user scratch library
+	/usr/vellum/etc/frame.d	the Frame stamp's template
+	/usr/vellum/etc/project.mk	the sheet-set Makefile skeleton:
+		cp it next to the sheets and set SHEETS \-
+		check: and drift: gate print:, ps: and
+		bom:, and rev:/review: run the revision
+		workflow
+	/usr/vellum/etc/library.mk	the stencil-LIBRARY Makefile
+		skeleton: a library is a build product, its
+		sources are ordinary drawings, and
+		velcheck -sym gates it the way velcheck
+		gates a print
+	/usr/vellum/frag/*.d	the FRAGMENT starter set: a revision
+		legend, a north arrow, a revision cloud,
+		a graphic scale bar, a tolerance note.  A
+		fragment is a drawing and the library is
+		a directory: hrclip one onto the
+		selection and middle-click it into place
+	/usr/vellum/eg/*.d	SAMPLE drawings, one per domain:
+		amp logic (schematics), flow lan struct
+		(diagrams), bracket (mechanical, with
+		dimensions), feed oneline office (P&ID,
+		one-line, floor plan), psu1 psu2 (a two-
+		sheet set for net merging), curve
+		(a velgraph plot, annotated), plate
+		(imported from plate.dxf, kept beside
+		it), panel (a sheet-metal plate with
+		cut-outs, for the takeoff).  amp.d.A is
+		amp.d's approved REVISION, kept beside
+		it: try veldiff amp.d.A amp.d.
+		Open one, or feed them to the commands,
+		to see every feature working.
+	/usr/vellum/eg/sk/*.d	the STENCIL SKETCHES: the nine ordinary
+		drawings that build /usr/vellum/sym/pid.sym
+		through velsym, driven by library.mk.  They
+		rebuild that library byte for byte, which is
+		how the converter proves itself
+.DE
+.SH "SEE ALSO"
+.B velplot ,
+.B velpic ,
+.B veldxf ,
+.B velnet ,
+.B velcheck ,
+.B veldiff ,
+.B velinfo ,
+.B velsym ,
+.B velgraph ,
+.B symedit ,
+.B zview ,
+.B zman
+.SH NOTES
+Wires connect only through junction dots; connectors never dot.
+One level of undo only; the printed page and the pic figure are the
+first-class outputs.

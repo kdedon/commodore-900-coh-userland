@@ -1,0 +1,970 @@
+/*
+ * clgfx.c - hrgui client-side direct-render draw library (GUI.md Model A).
+ *
+ * The client blits its own content straight to VRAM (segments 0x3A/0x3B) through
+ * the salvaged engine bitblt -- the SAME asm blitter the server uses, so a whole
+ * glyph row is shifted into place in one masked word op (never per-pixel).  It
+ * clips to the visible-region list the server publishes in the shared VRAM tail
+ * (shmem.h), read under a seqlock.  Fonts live in the tail too, so nothing is
+ * relinked and no pixel or glyph ever crosses IPC.
+ *
+ * Only bitblt + its asm inner loops + rmath (R_point_in) + masks (texture[]) +
+ * globals (BLT_* state) are pulled from libhrgfx here -- NOT the server-only
+ * layer/clip/daemon code.  Blits go to a client-local `display' BITMAP based at
+ * SEG0 (offset 0), the path proven safe in the server (a mid-VRAM destination
+ * base faults in this toolchain; a SEG0-based dest spans the 512-line split
+ * fine, since the emulator's VRAM is contiguous across it).
+ */
+#include "smgr.h"		/* BITMAP/BLTSTRUCT/RECT/POINT, texture[], L_*, CIOMSE* */
+#include "shmem.h"
+
+extern int	bitblt();
+extern int	*texture[];
+
+#define XMAXP	1024
+#define YMAXP	800
+
+static BITMAP	cldisp;			/* the whole framebuffer, base SEG0     */
+static HRSURF	S;			/* cached clip descriptor for my window */
+static int	mywid;
+static int	hrfd = -1;		/* /dev/hr fd for cursor on/off         */
+static int	curhid;			/* 1 while we have the cursor hidden    */
+static int	lastseq = -1;		/* seqlock value of the last sync'd S   */
+static int	indlg;			/* 1 = primitives target the DIALOG     */
+					/* surface (hr_dlgsurf), not the window */
+
+/* Widget sub-surface mode (cl_subinit): this process draws inside a CELL of
+ * ANOTHER window (the dock bar).  cl_sync then reads the HOST's descriptor and
+ * intersects its visible rects with the cell, so every primitive clips as if
+ * the cell were this client's whole content -- with NO new server state.  The
+ * cell rect is kept in HOST-CONTENT coords and mapped through the host's
+ * current ox/oy on every sync (never cached in fb coords). */
+static int	subon;			/* 1 = sub-surface (widget) mode        */
+static int	subx0, suby0, subx1, suby1;	/* cell rect, host-content coords */
+
+/* Snapshot of the visible-region list at the client's last full repaint
+ * (cl_snapclip), against which cl_uncovered() decides whether a later clip
+ * change actually UNCOVERED anything.  A raise that only covers us MORE (or a
+ * restack that merely re-tiles the same visible area into different rects)
+ * must not cost a repaint -- only area that is visible now and was not
+ * visible then. */
+static HRRECT	snapvis[SHM_MAXVIS];
+static int	snapn;
+static int	snapvalid;
+
+/* Set when a primitive was SKIPPED because the window was frozen (server
+ * overlay up) or unmapped: whatever the caller was drawing never reached the
+ * screen, so one full repaint is owed when drawing is possible again.  This is
+ * the precise replacement for the apps' old "was frozen at any point -> assume
+ * the worst and repaint everything" flag, which made every timer-driven or
+ * busy client repaint in full after every menu/dialog even though the
+ * save-under had restored their pixels untouched. */
+static int	cldropped;
+
+/* Cursor sprite box (framebuffer coords), captured once per primitive in
+ * cl_pbegin; a blit hides the driver's cursor only when it overlaps this. */
+static int	curbx0, curby0, curbx1, curby1;
+static int	cureligible;		/* 1 = we may hide the driver cursor    */
+
+/* The box must cover the driver's SAVE-UNDER footprint, not just the sprite:
+ * hrshow (drv/hr2.c) saves and restores THREE BYTES per row starting at the
+ * byte boundary (x & ~7) -- a 24x16 cell.  A blit that repaints any pixel of
+ * that cell without hiding the cursor gets it stomped back to the pre-blit
+ * pixels on the next cursor move (the restore is byte-blind) -- the "part of
+ * the border goes missing after moving the mouse" bug.  Pad by 8px around the
+ * cell: the published position can lag/lead the drawn sprite by a tick or two
+ * (the server publishes the input position, the driver the drawn one). */
+static
+cl_curbox()
+{
+	register HRGLOB *g;
+	register int x0;
+
+	g = hr_glob();
+	x0 = g->curx & ~0x7;
+	curbx0 = x0 - 8;         curby0 = g->cury - 8;
+	curbx1 = x0 + 24 + 8;    curby1 = g->cury + 16 + 8;
+}
+
+/* VRAM word address of pixel (x,y), spanning the 512-line SEG0/SEG1 split --
+ * a local copy of the engine's screen_addr so clgfx needs no layer.o. */
+static int *
+cl_scraddr(x, y)
+{
+	long addr;
+
+	addr = ((long)y) << 7;			/* y * 128 bytes */
+	addr += ((long)(x >> 4)) << 1;		/* + (x/16) words */
+	if ( addr & 0xffff0000L )
+	{
+		addr &= 0x0000ffffL;
+		addr |= (long)0x3b000000L;	/* SEG1 (lines 512..) */
+	}
+	else
+		addr |= (long)0x3a000000L;	/* SEG0 (lines 0..511) */
+	return (int *)addr;
+}
+
+static int
+cl_words(l, r)
+{
+	if ( r <= l )
+		return 0;
+	l &= 0xfff0;
+	if ( r & 0x000f )
+		r = (r & 0xfff0) + 0x0010;
+	return (r - l) >> 4;
+}
+
+cl_init(wid)
+{
+	mywid = wid;
+	hr_setdraw(wid, 0);			/* clear any stale fast-path drain flag */
+	cldisp.base = (int *)0x3a000000L;	/* SEG0, offset 0 */
+	cldisp.rect.origin.x = 0;  cldisp.rect.origin.y = 0;
+	cldisp.rect.corner.x = XMAXP;  cldisp.rect.corner.y = YMAXP;
+	cldisp.width = XMAXP;
+	hrfd = open("/dev/dmgr", 2);		/* for cursor on/off (any node) */
+}
+
+/* Refresh the cached clip descriptor with a seqlock read: retry while the
+ * server is mid-write (seq odd) or seq changed under us.  Cheap fast-path: if
+ * seq is even and unchanged since our last sync, S already holds that snapshot,
+ * so callers can re-sync before EVERY primitive (not just once per batch) to
+ * pick up a z-order/geometry change the instant the server publishes it -- which
+ * is what stops a busy client painting into a window newly stacked on top. */
+static
+cl_sync()
+{
+	HRSURF *sp;
+	int s1, s2, i;
+
+	sp = indlg ? hr_dlgsurf() : hr_surf(mywid);
+	s1 = sp->seq;
+	if ( !(s1 & 1) && s1 == lastseq )
+		return;
+	do {
+		s1 = sp->seq;
+		S.mapped = sp->mapped;
+		S.ox = sp->ox;  S.oy = sp->oy;  S.cw = sp->cw;  S.ch = sp->ch;
+		S.nvis = sp->nvis;
+		if ( S.nvis > SHM_MAXVIS )
+			S.nvis = SHM_MAXVIS;
+		for ( i = 0; i < S.nvis; i++ )
+			S.vis[i] = sp->vis[i];
+		s2 = sp->seq;
+	} while ( (s1 & 1) || s1 != s2 );
+	if ( subon )
+	{
+		/* Widget mode: S holds the HOST's descriptor -- clamp every
+		 * visible rect to the cell (fb coords derived from the host's
+		 * CURRENT origin, so a host move re-derives them), then present
+		 * the cell itself as the content rect.  Runs once per fresh
+		 * copy; the even-seq fast path above returns this transformed
+		 * snapshot unchanged. */
+		HRRECT r;
+		int fx0, fy0, fx1, fy1, n;
+
+		fx0 = S.ox + subx0;  fy0 = S.oy + suby0;
+		fx1 = S.ox + subx1;  fy1 = S.oy + suby1;
+		n = 0;
+		for ( i = 0; i < S.nvis; i++ )
+		{
+			r = S.vis[i];
+			if ( r.x0 < fx0 ) r.x0 = fx0;
+			if ( r.y0 < fy0 ) r.y0 = fy0;
+			if ( r.x1 > fx1 ) r.x1 = fx1;
+			if ( r.y1 > fy1 ) r.y1 = fy1;
+			if ( r.x1 > r.x0 && r.y1 > r.y0 )
+				S.vis[n++] = r;
+		}
+		S.nvis = n;
+		S.ox = fx0;  S.oy = fy0;
+		S.cw = subx1 - subx0;  S.ch = suby1 - suby0;
+	}
+	lastseq = s1;
+}
+
+/* One-time setup for a WIDGET: a windowless process that draws inside the
+ * host-content cell (x0,y0)-(x1,y1) of window hostwid (the dock bar).  Like
+ * cl_init but WITHOUT hr_setdraw: the SHM_INDRAW byte is the HOST's (single
+ * writer per byte, shmem.h) -- and cl_pbegin never takes the lock-free fast
+ * path in sub mode for the same reason, so the flag is never needed.  The
+ * primitives then see local coords with (0,0) = the cell corner.
+ * cl_dopen/cl_dclose are undefined in sub mode (widgets have no dialogs). */
+cl_subinit(hostwid, x0, y0, x1, y1)
+{
+	mywid = hostwid;
+	subon = 1;
+	subx0 = x0;  suby0 = y0;
+	subx1 = x1;  suby1 = y1;
+	lastseq = -1;
+	cldisp.base = (int *)0x3a000000L;	/* SEG0, offset 0 */
+	cldisp.rect.origin.x = 0;  cldisp.rect.origin.y = 0;
+	cldisp.rect.corner.x = XMAXP;  cldisp.rect.corner.y = YMAXP;
+	cldisp.width = XMAXP;
+	hrfd = open("/dev/dmgr", 2);		/* for cursor on/off (any node) */
+	cl_sync();
+}
+
+cl_mapped()	{ return S.mapped; }
+cl_cw()		{ return S.cw; }
+cl_ch()		{ return S.ch; }
+
+/* Re-read the clip descriptor (a public wrapper over the seqlock read) and report
+ * its generation, so a client can cheaply tell that the server has hidden / shown
+ * / raised / resized its window SINCE the client's last full repaint -- and force
+ * one full repaint instead of patching incrementally over a stale or blank surface
+ * (the "flood draws scattered characters onto a just-unhidden window" bug).  Cheap
+ * when nothing changed (cl_sync fast-paths on an unchanged, even seqlock). */
+cl_refresh()	{ cl_sync(); }
+cl_gen()	{ return lastseq; }
+
+/* Record the current visible-region list as "what my last full repaint
+ * covered".  Call right after completing a full repaint. */
+cl_snapclip()
+{
+	int i;
+
+	cl_sync();
+	snapn = S.mapped ? S.nvis : 0;
+	for ( i = 0; i < snapn; i++ )
+		snapvis[i] = S.vis[i];
+	snapvalid = 1;
+}
+
+/* Report (and clear) "a primitive was dropped": the caller tried to draw
+ * while frozen/unmapped, so the screen is missing content and one full
+ * repaint is owed once drawing is possible again. */
+cl_dropped()
+{
+	int was;
+
+	was = cldropped;
+	cldropped = 0;
+	return was;
+}
+
+#define FRAGMAX	32	/* worklist bound; overflow = conservative "uncovered" */
+
+/* Is rect r fully covered by the union of rects o[0..n-1]?  Subtract each o
+ * from a worklist of disjoint fragments of r; covered iff nothing survives.
+ * Exact, so a restack that re-tiles the same visible area into different
+ * rects (the layer engine's split order depends on the z-order) compares as
+ * covered.  Overflow of the fragment list returns 0 ("not covered"), which
+ * errs toward repainting. */
+static int
+cl_rcovered(r, o, n)
+HRRECT r;
+HRRECT *o;
+int n;
+{
+	HRRECT wk[FRAGMAX], nw[FRAGMAX], f, c;
+	int top, t2, i, j;
+
+	wk[0] = r;
+	top = 1;
+	for ( i = 0; i < n && top > 0; i++ )
+	{
+		c = o[i];
+		if ( c.x1 <= c.x0 || c.y1 <= c.y0 )
+			continue;
+		t2 = 0;
+		for ( j = 0; j < top; j++ )
+		{
+			f = wk[j];
+			if ( f.x0 >= c.x1 || f.x1 <= c.x0 ||
+			     f.y0 >= c.y1 || f.y1 <= c.y0 )
+			{			/* disjoint: fragment survives */
+				if ( t2 >= FRAGMAX ) return 0;
+				nw[t2++] = f;
+				continue;
+			}
+			/* peel the parts of f outside c; the overlap is covered */
+			if ( f.y0 < c.y0 )
+			{
+				if ( t2 >= FRAGMAX ) return 0;
+				nw[t2] = f;  nw[t2].y1 = c.y0;  t2++;
+				f.y0 = c.y0;
+			}
+			if ( f.y1 > c.y1 )
+			{
+				if ( t2 >= FRAGMAX ) return 0;
+				nw[t2] = f;  nw[t2].y0 = c.y1;  t2++;
+				f.y1 = c.y1;
+			}
+			if ( f.x0 < c.x0 )
+			{
+				if ( t2 >= FRAGMAX ) return 0;
+				nw[t2] = f;  nw[t2].x1 = c.x0;  t2++;
+			}
+			if ( f.x1 > c.x1 )
+			{
+				if ( t2 >= FRAGMAX ) return 0;
+				nw[t2] = f;  nw[t2].x0 = c.x1;  t2++;
+			}
+		}
+		for ( j = 0; j < t2; j++ )
+			wk[j] = nw[j];
+		top = t2;
+	}
+	return top == 0;
+}
+
+/* 1 if the CURRENT clip makes visible any area that the snapshot taken by
+ * cl_snapclip did not cover -- i.e. the window was genuinely UNCOVERED since
+ * the last full repaint.  Being covered MORE (a raise elsewhere) returns 0:
+ * that never needs a repaint, only tighter clipping. */
+cl_uncovered()
+{
+	int i;
+
+	cl_sync();
+	if ( !snapvalid )
+		return 1;
+	if ( !S.mapped )
+		return 0;		/* nothing visible = nothing uncovered */
+	for ( i = 0; i < S.nvis; i++ )
+	{
+		if ( S.vis[i].x1 <= S.vis[i].x0 || S.vis[i].y1 <= S.vis[i].y0 )
+			continue;
+		if ( !cl_rcovered(S.vis[i], snapvis, snapn) )
+			return 1;
+	}
+	return 0;
+}
+
+/* 1 while a transient overlay (pop-up menu / dialog) is on screen: clients must
+ * skip drawing so they do not paint over it (it is not a layer, so the clip
+ * descriptor cannot exclude it).  The ONE exception: a client whose own dialog
+ * is up (overlay == OV_DLG|wid) may draw while targeting the dialog surface --
+ * its main window stays frozen like everyone else's (the box may cover it). */
+cl_frozen()
+{
+	register int ov;
+
+	if ( (ov = hr_glob()->overlay) == 0 )
+		return 0;
+	if ( indlg && ov == (OV_DLG | mywid) )
+		return 0;
+	return 1;
+}
+
+/* Switch the primitives between the window surface and the dialog surface
+ * (shmem.h SHM_DLGSURF).  Called by the widget library (hrdlg.c) around the
+ * dialog's lifetime; invalidating lastseq forces a full seqlock re-read of
+ * whichever descriptor is now current. */
+cl_dopen()	{ indlg = 1;  lastseq = -1;  cl_sync(); }
+cl_dclose()	{ indlg = 0;  lastseq = -1;  cl_sync(); }
+
+cl_fullyvis()
+{
+	return S.mapped && S.nvis == 1 &&
+	       S.vis[0].x0 == S.ox && S.vis[0].y0 == S.oy &&
+	       S.vis[0].x1 == S.ox + S.cw && S.vis[0].y1 == S.oy + S.ch;
+}
+
+/* cl_begin/cl_end used to hide the cursor and sync the clip once for a whole
+ * repaint batch.  That is now done PER PRIMITIVE (cl_pbegin/cl_pend below) under
+ * the global drawing lock, so these are just batch markers kept for the client
+ * API (zterm/zclock bracket their repaints with them). */
+cl_begin()	{ }
+cl_end()	{ }
+
+/* Enter a drawing primitive whose bounding box is the content-relative rect
+ * (cx0,cy0)-(cx1,cy1).  Returns 1 if it took the global lock (SLOW path) or 0 if
+ * it is drawing lock-free (FAST path); pass that value to cl_pend.
+ *
+ * FAST path (no lock, no cursor ioctls): the window is fully visible -- so its
+ * pixels are disjoint from every other window and the desktop, and a lock-free
+ * blit can neither corrupt nor be corrupted by a concurrent draw -- AND no server
+ * overlay (menu/ghost) or layer op is in flight (hr_glob overlay/stacking) AND
+ * this primitive does not touch the driver's XOR cursor sprite (the one shared
+ * thing that roams over a topmost window).  This is the steady state of the
+ * focused, fully-visible terminal, and it skips the lock entirely -- so a flood
+ * of text no longer contends with the clock's per-line locking, the driver
+ * cursor, or the (idle) server.
+ *
+ * SLOW path (take the lock + re-sync under it, exactly as the original): anything
+ * else -- partly covered, a server op in flight, or the primitive overlaps the
+ * cursor box -- serialises under the global lock and coordinates the cursor.
+ *
+ * The one race the fast path cannot exclude -- a raise/cover that de-topmosts us
+ * partway through a single primitive -- is bounded to that one primitive (the
+ * server sets hr_glob()->stacking around every layer op, so the NEXT primitive
+ * already falls back to the lock), and it self-heals: any such change also fires
+ * an E_EXPOSE, so we repaint the region clean immediately after. */
+static int
+cl_pbegin(cx0, cy0, cx1, cy1)
+{
+	HRGLOB *g;
+	int bx0, by0, bx1, by1;
+
+	cl_sync();			/* seqlock read -- valid without the lock */
+	g = hr_glob();
+	/* Dead session (the server's watchdog cleared the magic): the screen
+	 * belongs to the restored text console now.  Painting on it is the one
+	 * thing we must not do, and there is nobody left to draw FOR -- exit.
+	 * Catches the clients whose idle point is not hr_evwait (zterm's main
+	 * draws off its pty mux); hrlock.c hr_evwait catches the rest. */
+	if ( g->magic != HR_MAGIC )
+		exit(1);
+	cl_curbox();			/* save-under footprint box, padded */
+	bx0 = S.ox + cx0;  by0 = S.oy + cy0;
+	bx1 = S.ox + cx1;  by1 = S.oy + cy1;
+	/* Candidate for the lock-free fast path: fully visible, no menu overlay, and
+	 * clear of the cursor sprite.  Never in sub-surface (widget) mode: the
+	 * SHM_INDRAW byte it would raise belongs to the HOST window's client
+	 * (single writer per byte) -- widgets always take the real lock. */
+	if ( !subon && S.mapped && !g->overlay && cl_fullyvis() &&
+	     !(bx0 < curbx1 && bx1 > curbx0 && by0 < curby1 && by1 > curby0) )
+	{
+		/* Dekker handshake with the server's srvlock (which sets `stacking'
+		 * then drains SHM_INDRAW): announce we are drawing lock-free BEFORE we
+		 * test `stacking'.  If a restack is starting, either we see stacking and
+		 * step aside, or the server sees our flag and waits -- never both draw.
+		 * With the flag held the server cannot restack (it drains on us), so the
+		 * clip we re-sync here is pinned for the whole primitive; it clears in
+		 * cl_pend.  (hr_setdraw is an extern call: it orders the store before the
+		 * stacking read.)  The driver also defers cursor redraws while the flag
+		 * is up (hr2.c hrmouse), so re-checking the cursor box AFTER raising it
+		 * pins the sprite clear of this primitive for its whole duration. */
+		hr_setdraw(mywid, 1);
+		if ( !g->stacking )
+		{
+			cl_sync();		/* clip now pinned -- server will drain on us */
+			cl_curbox();		/* sprite may have moved since the first test */
+			if ( S.mapped && cl_fullyvis() &&
+			     !(bx0 < curbx1 && bx1 > curbx0 && by0 < curby1 && by1 > curby0) )
+			{
+				curhid = 0;
+				cureligible = 0;	/* fast path never touches the cursor */
+				return 0;		/* flag stays set until cl_pend */
+			}
+		}
+		hr_setdraw(mywid, 0);		/* did not qualify / a restack is in flight */
+	}
+	hr_lock(hr_lockw());
+	cl_sync();			/* clip now guaranteed stable for this primitive */
+	cl_curbox();			/* re-capture UNDER the lock: the sprite may have
+					 * moved while we blocked acquiring it, and the
+					 * driver defers cursor redraws while it is held */
+	curhid = 0;
+	cureligible = ( hrfd >= 0 );
+	return 1;
+}
+
+/* Hide the driver's XOR cursor if this framebuffer-coord blit rect overlaps the
+ * cursor sprite -- lazily and at most once per primitive; cl_pend restores it. */
+static
+cl_hidecur(x0, y0, x1, y1)
+{
+	if ( !cureligible || curhid )
+		return;
+	if ( x0 < curbx1 && x1 > curbx0 && y0 < curby1 && y1 > curby0 )
+	{
+		ioctl(hrfd, CIOMSEOFF, (char *)0);
+		curhid = 1;
+	}
+}
+
+/* Leave a drawing primitive: restore the cursor if we hid it, then drop the lock
+ * if this primitive took it (`locked' is cl_pbegin's return). */
+static
+cl_pend(locked)
+{
+	if ( curhid )
+	{
+		ioctl(hrfd, CIOMSEON, (char *)0);
+		curhid = 0;
+	}
+	/* The hide privilege ends WITH the primitive.  Left set, a bare
+	 * cl_point between primitives (a grid of dots, a hand-rolled circle)
+	 * that overlaps the sprite would CIOMSEOFF with no cl_pend to ever
+	 * CIOMSEON -- and the next cl_pbegin resets curhid, orphaning the
+	 * bracket for good.  A leaked hide is not cosmetic: the driver's
+	 * hrmouse poll STOPS while the sprite is erased (hr2.c) and only the
+	 * balancing show re-arms it, so one leak kills all mouse input. */
+	cureligible = 0;
+	if ( locked )
+		hr_unlock(hr_lockw());
+	else
+		hr_setdraw(mywid, 0);	/* fast path: release the drain flag */
+}
+
+/* Blit one glyph of font `fslot' with cell top-left at framebuffer (gx,gy),
+ * painting only the part inside the already-clipped rect (x0,y0)-(x1,y1).  One
+ * bitblt shifts each glyph row; op L_NSRC paints black ink on a white cell
+ * (the .hf fonts store ink=1), L_NAND paints the ink only and leaves the rest
+ * of the cell alone (transparent -- what cl_ptextt uses to double-strike). */
+static
+clglyph1(fslot, gx, gy, c, x0, y0, x1, y1, op)
+{
+	HRFONT *f;
+	BLTSTRUCT blt;
+	BITMAP src;
+	int gi;
+
+	if ( x1 <= x0 || y1 <= y0 )
+		return;
+	f = hr_font(fslot);
+	if ( c < f->first || c >= f->first + f->nch )
+		return;
+	gi = c - f->first;
+	src.base = (int *)&f->bits[gi * f->cellh];
+	src.width = 16;				/* one word per glyph row */
+	src.rect.origin.x = 0;   src.rect.origin.y = 0;
+	src.rect.corner.x = f->cellw;  src.rect.corner.y = f->cellh;
+	blt.src = &src;
+	blt.dst = &cldisp;
+	blt.op = op;
+	blt.pat = texture[0];
+	blt.dr.origin.x = x0;  blt.dr.origin.y = y0;
+	blt.dr.corner.x = x1;  blt.dr.corner.y = y1;
+	blt.sp.x = x0 - gx;  blt.sp.y = y0 - gy;
+	cl_hidecur(x0, y0, x1, y1);
+	bitblt(&blt, 1, 0);
+}
+
+/* Draw string s at content cell (col,row) using font `fslot'; the cell advance
+ * is cellw/cellh (== the caller's grid metrics), clipped to each visible rect. */
+cl_text(fslot, col, row, s, cellw, cellh)
+char *s;
+{
+	HRFONT *f;
+	int px, py, fw, fh, c, i, cx0, cy0, cx1, cy1, slen, locked;
+
+	f = hr_font(fslot);
+	fw = f->cellw;  fh = f->cellh;
+	for ( slen = 0; s[slen]; slen++ )	/* string span -> fast-path bbox */
+		;
+	/* lock only if not a fully-visible, cursor-clear repaint (see cl_pbegin) */
+	locked = cl_pbegin(col * cellw, row * cellh,
+			   (col + slen) * cellw, row * cellh + fh);
+	if ( !S.mapped || cl_frozen() )	/* window unmapped / a server overlay is up */
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	px = S.ox + col * cellw;
+	py = S.oy + row * cellh;
+	for ( ; (c = *s & 0xff) != 0; s++, px += cellw )
+	{
+		if ( c < 0x20 || c > 0x7e )
+			continue;
+		for ( i = 0; i < S.nvis; i++ )
+		{
+			cx0 = px;       cy0 = py;
+			cx1 = px + fw;  cy1 = py + fh;
+			if ( cx0 < S.vis[i].x0 ) cx0 = S.vis[i].x0;
+			if ( cy0 < S.vis[i].y0 ) cy0 = S.vis[i].y0;
+			if ( cx1 > S.vis[i].x1 ) cx1 = S.vis[i].x1;
+			if ( cy1 > S.vis[i].y1 ) cy1 = S.vis[i].y1;
+			clglyph1(fslot, px, py, c, cx0, cy0, cx1, cy1, L_NSRC);
+		}
+	}
+	cl_pend(locked);
+}
+
+/* The shared body of cl_ptext/cl_ptextt: string s with its cell top-left at
+ * content PIXEL (cx,cy), each glyph blitted with logical op `op'. */
+static
+clptext1(fslot, cx, cy, s, op)
+char *s;
+{
+	HRFONT *f;
+	int px, py, fw, fh, c, i, cx0, cy0, cx1, cy1, slen, locked;
+
+	f = hr_font(fslot);
+	fw = f->cellw;  fh = f->cellh;
+	for ( slen = 0; s[slen]; slen++ )
+		;
+	locked = cl_pbegin(cx, cy, cx + slen * fw, cy + fh);
+	if ( !S.mapped || cl_frozen() )
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	px = S.ox + cx;
+	py = S.oy + cy;
+	for ( ; (c = *s & 0xff) != 0; s++, px += fw )
+	{
+		if ( c < 0x20 || c > 0x7e )
+			continue;
+		for ( i = 0; i < S.nvis; i++ )
+		{
+			cx0 = px;       cy0 = py;
+			cx1 = px + fw;  cy1 = py + fh;
+			if ( cx0 < S.vis[i].x0 ) cx0 = S.vis[i].x0;
+			if ( cy0 < S.vis[i].y0 ) cy0 = S.vis[i].y0;
+			if ( cx1 > S.vis[i].x1 ) cx1 = S.vis[i].x1;
+			if ( cy1 > S.vis[i].y1 ) cy1 = S.vis[i].y1;
+			clglyph1(fslot, px, py, c, cx0, cy0, cx1, cy1, op);
+		}
+	}
+	cl_pend(locked);
+}
+
+/* Draw string s with its cell top-left at content PIXEL (cx,cy) -- the widget
+ * variant of cl_text, which is cell-grid-locked (a button label sits at an
+ * arbitrary y no grid passes through).  Advance is the font's own cellw. */
+cl_ptext(fslot, cx, cy, s)
+char *s;
+{
+	clptext1(fslot, cx, cy, s, L_NSRC);
+}
+
+/* Like cl_ptext but TRANSPARENT: only the ink is painted, the rest of each
+ * cell is left alone.  What a caller lays over already-drawn text -- zman
+ * double-strikes a run one pixel over for the lineprinter's own bold. */
+cl_ptextt(fslot, cx, cy, s)
+char *s;
+{
+	clptext1(fslot, cx, cy, s, L_NAND);
+}
+
+/* Fill framebuffer rect (already in fb coords) clipped to rect r with val
+ * (1=white, 0=black), via a pattern bitblt (op L_TRUE/L_FALSE reads no source).
+ * val 3 = 50% gray: L_TRUE through the HALF_TONE stipple, whose dest is
+ * result & pattern, so one blit lays the checker.  The pattern is indexed by
+ * DESTINATION x word / y line (bitblt BLT_pat_index), so the dither is anchored
+ * to the screen: adjacent fills and partial repaints always mesh. */
+static
+clfill_fb(x0, y0, x1, y1, r, val)
+HRRECT r;
+{
+	BLTSTRUCT blt;
+	BITMAP src;
+
+	if ( x0 < r.x0 ) x0 = r.x0;
+	if ( y0 < r.y0 ) y0 = r.y0;
+	if ( x1 > r.x1 ) x1 = r.x1;
+	if ( y1 > r.y1 ) y1 = r.y1;
+	if ( x1 <= x0 || y1 <= y0 )
+		return;
+	cl_hidecur(x0, y0, x1, y1);
+	src.rect.origin.x = x0;  src.rect.origin.y = y0;
+	src.rect.corner.x = x1;  src.rect.corner.y = y1;
+	src.width = 16 * cl_words(x0, x1);
+	src.base = cl_scraddr(x0, y0);
+	blt.src = &src;
+	blt.sp.x = x0;  blt.sp.y = y0;
+	blt.dst = &cldisp;
+	blt.dr = src.rect;
+	blt.op = (val == 2) ? L_NDST : (val == 0 ? L_FALSE : L_TRUE);
+	blt.pat = (val == 3) ? texture[4] : texture[0];	/* 4 = HALF_TONE */
+	bitblt(&blt, 1, 0);
+}
+
+/* Fill a content-relative pixel rect with val (0=black, 1=white, 2=invert,
+ * 3=50% gray), clipped to the visible regions. */
+cl_fillrect(cx0, cy0, cx1, cy1, val)
+{
+	int i, locked;
+
+	locked = cl_pbegin(cx0, cy0, cx1, cy1);
+	if ( !S.mapped || cl_frozen() )
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	for ( i = 0; i < S.nvis; i++ )
+		clfill_fb(S.ox + cx0, S.oy + cy0, S.ox + cx1, S.oy + cy1,
+			  S.vis[i], val);
+	cl_pend(locked);
+}
+
+/* Erase a block of content cells to white. */
+cl_erase(col, row, ncol, nrow, cellw, cellh)
+{
+	cl_fillrect(col * cellw, row * cellh,
+		    (col + ncol) * cellw, (row + nrow) * cellh, 1);
+}
+
+extern cl_ldrow();	/* clrow.s: one word-ldir row copy */
+
+/* Blit a client-rendered 1bpp image into the content rect (cx0,cy0)-
+ * (cx1,cy1): src is int-aligned, swpr words per row, and its first word
+ * maps to (cx0,cy0).  Clipped to the visible regions like every other
+ * primitive.  Two paths per visible rect:
+ *
+ *  - the clipped rect spans the full image width, the screen destination
+ *    is word-aligned and the image is a whole number of words wide: one
+ *    ldir per row (cl_ldrow).  A key-driven client (zmaze) normally
+ *    redraws while frontmost and fully visible, so this unclipped copy is
+ *    its steady state -- and the per-row destination addresses are
+ *    recomputed from the CURRENT S.ox/S.oy every call, so a window move
+ *    just changes where the rows land (including across the 512-line
+ *    SEG0/SEG1 split, which cl_scraddr resolves per row).
+ *
+ *  - anything else (partial cover, unaligned x after a move): the engine
+ *    bitblt, which shifts and masks per visible rect.
+ */
+cl_blit(cx0, cy0, cx1, cy1, src, swpr)
+int *src;
+{
+	BLTSTRUCT blt;
+	BITMAP sb;
+	int i, locked, bx0, by0, bx1, by1;
+	int x0, y0, x1, y1, nw;
+	register int y;
+	register int *sp;
+
+	locked = cl_pbegin(cx0, cy0, cx1, cy1);
+	if ( !S.mapped || cl_frozen() )
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	bx0 = S.ox + cx0;  by0 = S.oy + cy0;
+	bx1 = S.ox + cx1;  by1 = S.oy + cy1;
+	for ( i = 0; i < S.nvis; i++ )
+	{
+		x0 = bx0;  y0 = by0;  x1 = bx1;  y1 = by1;
+		if ( x0 < S.vis[i].x0 ) x0 = S.vis[i].x0;
+		if ( y0 < S.vis[i].y0 ) y0 = S.vis[i].y0;
+		if ( x1 > S.vis[i].x1 ) x1 = S.vis[i].x1;
+		if ( y1 > S.vis[i].y1 ) y1 = S.vis[i].y1;
+		if ( x1 <= x0 || y1 <= y0 )
+			continue;
+		cl_hidecur(x0, y0, x1, y1);
+		if ( x0 == bx0 && x1 == bx1 &&
+		     !(bx0 & 15) && !((bx1 - bx0) & 15) )
+		{
+			nw = (bx1 - bx0) >> 4;
+			sp = src + (y0 - by0) * swpr;
+			for ( y = y0; y < y1; y++, sp += swpr )
+				cl_ldrow(cl_scraddr(bx0, y), sp, nw);
+			continue;
+		}
+		sb.base = src;
+		sb.width = swpr << 4;
+		sb.rect.origin.x = 0;  sb.rect.origin.y = 0;
+		sb.rect.corner.x = cx1 - cx0;  sb.rect.corner.y = cy1 - cy0;
+		blt.src = &sb;
+		blt.dst = &cldisp;
+		blt.op = L_SRC;
+		blt.pat = texture[0];
+		blt.dr.origin.x = x0;  blt.dr.origin.y = y0;
+		blt.dr.corner.x = x1;  blt.dr.corner.y = y1;
+		blt.sp.x = x0 - bx0;  blt.sp.y = y0 - by0;
+		bitblt(&blt, 1, 0);
+	}
+	cl_pend(locked);
+}
+
+/* NB: there is deliberately no VRAM block-copy scroll here.  The terminal
+ * scrolls by shifting its character grid and redrawing the changed cells from
+ * the font (GUI.md sec 4) -- that stays correct across the 512-line SEG0/SEG1
+ * split and always clips to the visible regions, which a block copy did not. */
+
+/* Plot a content-relative pixel if it falls inside a visible region.
+ * mode: 0 = black (clear bit), 1 = white (set bit), 2 = invert (XOR). */
+cl_point(cx, cy, mode)
+{
+	int fx, fy, i, *p, m;
+
+	if ( !S.mapped )
+		return;
+	fx = S.ox + cx;  fy = S.oy + cy;
+	for ( i = 0; i < S.nvis; i++ )
+		if ( fx >= S.vis[i].x0 && fx < S.vis[i].x1 &&
+		     fy >= S.vis[i].y0 && fy < S.vis[i].y1 )
+		{
+			cl_hidecur(fx, fy, fx + 1, fy + 1);
+			p = cl_scraddr(fx, fy);
+			m = 0x8000 >> (fx & 15);
+			if ( mode == 2 )      *p ^= m;	/* invert (XOR hands) */
+			else if ( mode )      *p |= m;	/* white */
+			else                  *p &= ~m;	/* black */
+			return;
+		}
+}
+
+/* A ROW OF BLACK DOTS: n single pixels from content (cx,cy), step px apart.
+ * The primitive a snap-grid canvas needs: n is hundreds per row and rows
+ * repaint constantly, so per-dot cl_point (a vis-rect scan, a cursor test
+ * and a screen-address computation EACH) is both too slow and, called bare,
+ * invisible to the cursor sprite.  Here the whole row is one bracket: clip
+ * once per visible rect, hide the sprite once, resolve the row's screen
+ * address once and step along it (one row never crosses the SEG0/SEG1
+ * 512-line split, so plain word arithmetic is safe). */
+cl_dotrow(cx, cy, n, step)
+{
+	int locked, fy, fx0, fxs, i, k0, k1;
+	register int *p0;
+	register int k, w0;
+
+	if ( n <= 0 || step <= 0 )
+		return;
+	locked = cl_pbegin(cx, cy, cx + (n - 1) * step + 1, cy + 1);
+	if ( !S.mapped || cl_frozen() )	/* window unmapped / a server overlay is up */
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	fy = S.oy + cy;
+	fx0 = S.ox + cx;
+	for ( i = 0; i < S.nvis; i++ )
+	{
+		if ( fy < S.vis[i].y0 || fy >= S.vis[i].y1 )
+			continue;
+		k0 = 0;
+		if ( fx0 < S.vis[i].x0 )
+			k0 = (S.vis[i].x0 - fx0 + step - 1) / step;
+		k1 = n - 1;
+		if ( fx0 + k1 * step >= S.vis[i].x1 )
+			k1 = (S.vis[i].x1 - 1 - fx0) / step;
+		if ( k0 > k1 )
+			continue;
+		fxs = fx0 + k0 * step;
+		cl_hidecur(fxs, fy, fx0 + k1 * step + 1, fy + 1);
+		p0 = cl_scraddr(fxs, fy);
+		w0 = fxs >> 4;
+		for ( k = k0; k <= k1; k++ )
+		{
+			fxs = fx0 + k * step;
+			p0[(fxs >> 4) - w0] &= ~(0x8000 >> (fxs & 15));
+		}
+	}
+	cl_pend(locked);
+}
+
+/* Line style pattern: a 16-bit run-length mask consumed one bit per plotted
+ * pixel along the Bresenham walk (0x8000 first).  0xffff (the default) is a
+ * solid line; 0xf0f0 dashes, 0xaaaa dots.  cl_lpat() sets it AND resets the
+ * phase, so a caller styling an object calls it once per line and gets a
+ * dash pattern that starts fresh at each line's first pixel.  The pattern
+ * PERSISTS until changed -- style-drawing code ends with cl_lpat(0xffff). */
+static int	cllpat = 0xffff;	/* current pattern (never 0)      */
+static int	cllrun;			/* rotating copy: bit 0x8000 next */
+
+cl_lpat(pat)
+{
+	cllpat = (pat & 0xffff) ? (pat & 0xffff) : 0xffff;
+	cllrun = cllpat;
+}
+
+/* Bresenham line in content coords (used for graphics clients like the clock;
+ * low-rate, so per-pixel plotting is fine here -- unlike text).  mode as cl_point. */
+cl_line(x0, y0, x1, y1, mode)
+{
+	int dx, dy, sx, sy, err, e2, locked, bx0, by0, bx1, by1;
+
+	bx0 = x0 < x1 ? x0 : x1;   bx1 = (x0 > x1 ? x0 : x1) + 1;
+	by0 = y0 < y1 ? y0 : y1;   by1 = (y0 > y1 ? y0 : y1) + 1;
+	locked = cl_pbegin(bx0, by0, bx1, by1);	/* cl_point runs inside this */
+	if ( !S.mapped || cl_frozen() )	/* window unmapped / a server overlay is up */
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	dx = x1 - x0;  if ( dx < 0 ) dx = -dx;
+	dy = y1 - y0;  if ( dy < 0 ) dy = -dy;
+	sx = x0 < x1 ? 1 : -1;
+	sy = y0 < y1 ? 1 : -1;
+	err = dx - dy;
+	if ( cllpat == 0xffff )		/* solid: the plain fast walk */
+	{
+		for (;;)
+		{
+			cl_point(x0, y0, mode);
+			if ( x0 == x1 && y0 == y1 )
+				break;
+			e2 = err + err;
+			if ( e2 > -dy ) { err -= dy;  x0 += sx; }
+			if ( e2 <  dx ) { err += dx;  y0 += sy; }
+		}
+		cl_pend(locked);
+		return;
+	}
+	cllrun = cllpat;		/* each line starts the pattern fresh */
+	for (;;)
+	{
+		if ( cllrun & 0x8000 )
+			cl_point(x0, y0, mode);
+		cllrun = ((cllrun << 1) | ((cllrun >> 15) & 1)) & 0xffff;
+		if ( x0 == x1 && y0 == y1 )
+			break;
+		e2 = err + err;
+		if ( e2 > -dy ) { err -= dy;  x0 += sx; }
+		if ( e2 <  dx ) { err += dx;  y0 += sy; }
+	}
+	cl_pend(locked);
+}
+
+/* Midpoint circle in content coords, mode as cl_point.  A PRIMITIVE, not a
+ * client-side point loop, for the same reason cl_line is one: only inside
+ * the cl_pbegin bracket do the plotted points coordinate with the driver's
+ * cursor sprite -- a bare-cl_point circle drawn under the sprite is silently
+ * stomped by the save-under restore on the next cursor move (and before
+ * cl_pend cleared cureligible it could leak the hide outright and kill the
+ * mouse).  Octant-boundary points are plotted once only, so mode 2 (XOR
+ * rubber banding) never self-cancels. */
+cl_circle(cx, cy, r, mode)
+{
+	register int x, y;
+	int d, locked;
+
+	if ( r < 0 )
+		r = -r;
+	locked = cl_pbegin(cx - r, cy - r, cx + r + 1, cy + r + 1);
+	if ( !S.mapped || cl_frozen() )	/* window unmapped / a server overlay is up */
+	{
+		cldropped = 1;		/* content lost: a repaint is owed */
+		cl_pend(locked);
+		return;
+	}
+	if ( r == 0 )
+	{
+		cl_point(cx, cy, mode);
+		cl_pend(locked);
+		return;
+	}
+	x = 0;
+	y = r;
+	d = 1 - r;
+	while ( x <= y )
+	{
+		if ( x == 0 )
+		{
+			cl_point(cx, cy + y, mode);
+			cl_point(cx, cy - y, mode);
+			cl_point(cx + y, cy, mode);
+			cl_point(cx - y, cy, mode);
+		}
+		else if ( x == y )
+		{
+			cl_point(cx + x, cy + y, mode);
+			cl_point(cx - x, cy + y, mode);
+			cl_point(cx + x, cy - y, mode);
+			cl_point(cx - x, cy - y, mode);
+		}
+		else
+		{
+			cl_point(cx + x, cy + y, mode);
+			cl_point(cx - x, cy + y, mode);
+			cl_point(cx + x, cy - y, mode);
+			cl_point(cx - x, cy - y, mode);
+			cl_point(cx + y, cy + x, mode);
+			cl_point(cx - y, cy + x, mode);
+			cl_point(cx + y, cy - x, mode);
+			cl_point(cx - y, cy - x, mode);
+		}
+		if ( d < 0 )
+			d += 2 * x + 3;
+		else
+		{
+			d += 2 * (x - y) + 5;
+			y--;
+		}
+		x++;
+	}
+	cl_pend(locked);
+}

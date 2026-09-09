@@ -1,0 +1,4 @@
+# Vellum symbol library: PROCESS / P&ID stencils.  One
+# "symbol CODE PREFIX ... end" block per stencil; the editor loads the
+# libraries /usr/vellum/etc/libs names.  See vellum(1) and symedit(1).
+# Quarter-grid units, pins on whole units (multiples of 4).

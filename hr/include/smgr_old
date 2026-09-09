@@ -1,0 +1,397 @@
+#include "rico.h"
+#include "driver.h"
+/*
+ *		General system defines that we like 
+ */
+#ifndef NULL
+#define NULL (0)
+#endif
+#define BOOLEAN	int
+
+typedef	int	PAT[16];
+
+
+/* some real pretty macros stolen from rico */
+#define BadHandle	(-1)
+#define	MAX(a, b)	((a) > (b) ? (a) : (b))
+#define	MIN(a, b)	((a) < (b) ? (a) : (b))
+#define gkTexture(p)	((p) == MAXPAT ? gkPattern : texture[(p)]);
+
+
+/*
+ * 	Constant value defines  
+ */
+/*
+ *	Display dimensions 
+ */
+#define	DIS_HEIGHT	(YMAX - YMIN)
+#define DIS_WIDTH	(XMAX - XMIN)
+
+/*
+ *	BIT-BLT Logical operations: src logop dst
+ */
+#define L_FALSE 0	/* all 0's		*/
+#define L_AND	1	/* src & dst		*/
+#define L_ANDN	2	/* src & ~dst		*/
+#define L_SRC	3	/* src			*/
+#define L_NAND	4	/* (~src) & dst		*/
+#define L_DST	5	/* dst			*/
+#define L_XOR	6	/* src ^ dst		*/
+#define L_OR	7	/* src | dst		*/
+#define L_NANDN	8	/* (~src) & (~dst)	*/
+#define L_NXOR	9	/* (~src) ^ dst		*/
+#define L_NDST	10	/* ~dst			*/
+#define L_ORN	11	/* src | (~dst)		*/
+#define L_NSRC	12	/* ~src			*/
+#define L_NOR	13	/* (~src) | dst		*/
+#define L_NORN	14	/* (~src) | (~dst)      */
+#define	L_TRUE	15	/* all 1's		*/
+#define L_EXCH	16	/* exchange src with dst*/
+#define L_BLTMAX 16	/* highest blt logical op*/
+
+
+
+
+/* 
+ *	Window type defines for screen manager 
+ */
+#define WT_1UPDATE     0x01
+#define WT_NOOBS       0x02
+#define WT_NORELOC     0x04
+#define WT_NOSIZE      0x08
+#define WT_OUTPUT      0x10
+
+/*
+ *	Constants for internal screen manager 
+ */
+#define MAX_WINDOWS	(8)
+#define NO_WINDOW     	(-1)
+
+
+
+/*
+ *	Constants
+ */
+
+#define	MAXPEN	(32)		/* maximum pen width or height		*/
+#define MVERTEX	(255)		/* maximum number of vertices		*/
+#define	MRADIUS (512)		/* maximum radius			*/
+#define MDIAMETER (1024+32)	/* maximum rectangular dimension	*/
+
+#define MAXCOLOR	1	/* maximum color number			*/
+#define	BLACK		0	/*	black color			*/
+#define	WHITE		1	/*	white color			*/
+
+#define	MAXPAT		10	/* maximum pattern number		*/
+#define FP_BACK		0	/* 	background color		*/
+#define FP_FORE		1	/*	foreground color		*/
+#define FP_GREY		2	/*	light halftone			*/
+#define	FP_ARROW	3	/*	arrow				*/
+#define FP_HALF		4	/*	halftone			*/
+#define FP_VBAR		5	/*	vertical bars			*/
+#define FP_STRIPE2	6	/* 	double stripe			*/
+#define FP_DIAG		7	/*	hatch pattern			*/
+#define	FP_CBM		8	/*	cbm chicken			*/
+#define	FP_BRICK	9	/*	brick wall			*/
+
+
+#define	BadVerb		(-1)	/*	illegal action verb		*/
+#define	VB_FRAME	1	/*	frame the shape			*/
+#define	VB_FILL		2	/*	fill with the foreground pattern*/
+#define	VB_PAINT	4	/*	fill with the given pattern	*/
+#define	VB_ERASE	6	/*	fill with the background pattern*/
+#define	VB_INVERT	8	/*	fill with the inverted dest	*/
+
+
+/*
+ *	Font Styles
+ */
+#define	NTXSTYLES	(5)		/* number of style variations	*/
+#define	TXBOLD		0x01		/* bold			*/
+#define	TXULINE		0x02		/* underlined		*/
+#define	TXOLINE		0x04		/* outlined		*/
+#define TXSHADOW	0x08		/* shadowed		*/
+#define	TXITALIC	0x10		/* italic		*/
+
+
+/*
+ *	Graphics State Control Values
+ */
+#define GCPEN       (0x0001)       /* Pen parameters         */
+#define GCLOG       (0x0002)       /* Logop                  */
+#define GCFPAT      (0x0004)       /* Foreground pattern     */
+#define GCBPAT      (0x0008)       /* Background pattern     */
+#define GCFCOLOR    (0x0010)       /* Foreground color       */
+#define GCBCOLOR    (0x0020)       /* Background color       */
+#define GCFONT      (0x0040)       /* Font parameters        */
+#define GCPAT       (0x0080)       /* Definable fill pattern */
+#define GCALL       (0x00ff)       /* all graphics values    */
+
+#define	SET_ADD	(0)
+#define SET_AND	(1)
+#define SET_SUB (2)
+#define SET_XOR (3)
+
+
+/* 
+* Below is a general list of commands accepted by the screen manager.  This
+* list is comprised principally of the window management functions.  Functions
+* which relate to the graphics environment are documented elsewhere.  The 'C'
+* defines are created in a hierarchical fashion to allow easy modification
+* in the future.
+*/
+
+#define SM_BASE_CMD     (0)
+#define SM_CREATE       (0) /* create new window            */
+#define SM_CLOSE	(1) /* delete an existing window    */
+#define SM_WRESET       (2) /* reset window parameters      */
+#define SM_FRONT        (3) /* make window frontmost        */
+#define SM_WHOFRONT     (4) /* is a window frontmost        */
+#define SM_ACTIVATE     (5) /* make a window active         */
+#define SM_WHOACTIVE    (6) /* is a window active           */
+#define SM_DEACTIVATE   (7) /* deactivate a window          */
+#define SM_GETXCLIP     (8) /* get current clipping origin  */
+#define SM_GETYCLIP     (9) /* get current clipping corner  */
+#define SM_SETXCLIP     (10) /* set new clipping origin      */
+#define SM_SETYCLIP     (11) /* set new clipping corner      */
+#define SM_CLRCLIP      (12) /* clear out the clipping area  */
+#define SM_SETPHY       (13) /* set physical window origin   */
+#define SM_GETPHY       (14) /* get physical window coords   */
+#define SM_SETLOG       (15) /* set logical window origin    */
+#define SM_GETLOG       (16) /* get logical window coords    */
+#define SM_SETSIZE      (17) /* set window physical dimension*/
+#define SM_SETEVMSK     (18) /* set window event mask        */
+#define SM_GETEVMSK     (19) /* get current event mask       */
+#define SM_RSTEVMSK     (20) /* reset window event mask      */
+#define SM_OPENFONT     (21) /* open font file               */
+#define SM_CLOSEFONT    (22) /* decrement font use count     */
+#define SM_GETFONTPARAM (23) /* return font header           */
+#define SM_SETMPAT      (24) /* set mouse pattern for window */
+#define SM_GETMPAT      (25) /* get mouse pattern for window */
+#define SM_GETMOUSE     (26) /* get mouse logical position   */
+#define SM_CHAR         (27) /* print a single character     */
+#define SM_STRING       (28) /* print a character buffer     */
+#define SM_CHARW        (29) /* return width of character    */
+#define SM_STRW         (30) /* return width of string       */
+#define SM_SCROLL       (31) /* scroll clipping region       */
+#define SM_DEFCURS      (32) /* define cursor height & width */
+#define SM_DRAWCURS     (33) /* draw (or erase? ) the cursor */
+#define SM_SETGRAPH     (34) /* set the graphics state       */
+#define SM_GETGRAPH     (35)  /* get the graphics state       */
+#define SM_RSTGRAPH     (36)  /* reset the graphics state     */
+#define SM_GETPOINT     (37)  /* get drawing point position   */
+#define SM_RSTPOINT     (38)  /* reset drawing point position */
+#define SM_POINT        (39) /* draw point absolute          */
+#define SM_TOPOINT      (40) /* draw point relative          */
+#define SM_MOVE         (41) /* move drawing point absolute  */
+#define SM_TOMOVE       (42) /* move drawing point relative  */
+#define SM_LINE         (43) /* draw line absolute           */
+#define SM_TOLINE       (44) /* draw line relative           */
+#define SM_POLY         (45) /* draw polygon absolute        */
+#define SM_TOPOLY       (46) /* draw polygon relative        */
+#define SM_RECT         (47) /* draw rectangle               */
+#define SM_RRECT        (48) /* draw rounded rectangle       */
+#define SM_OVAL         (49) /* draw oval                    */
+#define SM_WEDGE        (50) /* draw wedge                   */
+#define SM_ARC          (51) /* draw arc                     */
+#define SM_TOP_CMD	(SM_ARC)
+
+
+#define WM_BASE_CMD     (0)
+#define WM_REPLY        (0) /* a return message         */
+#define WM_ACK          (1) /* general ACK              */
+#define WM_NACK         (2) /* general NACK             */
+#define WM_TRUE         (3) /* general TRUE             */
+#define WM_FALSE        (4) /* general FALSE            */
+#define WM_URACTIVE     (5) /* you are now active       */
+#define WM_URDEACTIVE   (6) /* you've been deactivated  */
+#define WM_UPDATE       (7) /* please update your area  */
+#define WM_URGONE       (8) /* you've been deleted      */
+#define WM_SIZECHANGE   (9) /* your dimenstions changed */
+#define WM_CHARACTER    (10) /* input character          */
+#define WM_MMOVE        (11) /* the mouse moved          */
+#define WM_MTRANS       (12) /* mouse button transition  */
+#define WM_TOP_CMD      (WM_MTRANS) /* highest legal command    */
+
+
+
+/* 
+ *	Defines for default values
+ */
+
+#define DEF_EVMASK	(1)	/* default window event mask */
+
+ /*************************************************************************
+ *
+ *
+ *		STRUCTURES
+ *
+ *
+ *************************************************************************/
+
+typedef struct Point
+{
+	int x;
+	int y;
+} POINT;
+
+typedef struct 
+{
+	POINT origin;  		/* top left corner of rectangle */
+	POINT corner;		/* bottom right corner of rectangle */
+} RECT;
+
+
+typedef struct Bitmap
+{
+	int  *base;              /* top left word address */
+	unsigned width;         /* width of rectangle in pixels */
+	RECT rect;              /* image rectangle */
+	struct Obscured *obs;	/* always NULL */
+} BITMAP;
+
+typedef struct Obscured 
+{
+	struct Layer *lobs;     /* frontmost obscuring Layer */
+	struct Bitmap *bmap;    /* where the obscured data resides */
+	struct Obscured *next;  /* chaining */
+	struct Obscured *prev;  /* chaining */
+} OBSCURED;
+
+typedef struct Visible
+{
+	int	index,
+		flag;
+	struct Layer *cov_by;
+} VISIBLE;
+
+#define MAX_LRBUF (10)
+
+typedef struct Layer 
+{
+	int  *base;              /* start of data */
+	unsigned width;         /* width of rectangle in pixels */
+	RECT rect;              /* image rectangle */
+	VISIBLE vis[MAX_LRBUF];	/* list of visible regions */	
+	struct Layer *front;    /* adjacent layer in front */
+	struct Layer *back;     /* adjacent layer in back */
+} LAYER;
+
+
+typedef struct {
+	BITMAP 	*src;
+	POINT 	sp;
+	LAYER 	*dst;
+	RECT 	dr;
+	int	op;
+	int	*pat;
+	} BLTSTRUCT;
+
+
+
+typedef struct
+{
+	char	pn_Width;	/* Pen width			*/
+	char	pn_Height;	/* Pen height			*/
+	char	pn_Pat;		/* Pen fill pattern		*/
+} PEN;
+
+
+typedef struct FontInfo
+{
+	char	fi_Id;		/* font identifier, or index	*/
+	char	fi_Style;	/* font style (underlined, etc)	*/
+	POINT	fi_Scalex;	/* font scale factor in x-dir	*/
+	POINT	fi_Scaley;	/* font scale factor in y-dir	*/
+} FONTINFO;
+
+
+
+/*
+**  Graphics Drawing Characteristics
+*/
+typedef struct
+{
+	PEN	 wn_Pen;	/* working pen				    */
+	char	 wn_Logop;	/* bit-blt logical operation		    */
+	char	 wn_Fpat;	/* SOLID, HORIZONTAL, VERTICAL, CROSSHATCH  */
+	char  	 wn_Bpat;	/* background fill pattern		    */
+	char	 wn_Fcolor;	/* foreground color (background is opposite)*/
+	char	 wn_Bcolor;	/* background color			    */
+	FONTINFO wn_Font;	/* font data				    */
+        PAT	 wn_Pattern;	/* user definable fill pattern		    */
+} GRAPH;
+
+
+
+typedef struct
+{
+	int	xl;		/* low end of range	*/
+	int	xh;		/* high end of range	*/
+} RANGE;
+
+
+typedef struct
+{
+	int	rg_Size;	/* size, in #ints, of variable length area  */
+	RECT	rg_Rect;	/* enclosing rectangle                      */
+	RANGE	rg_Rast[1];	/* raster table plus range data, var length */
+} REGION;
+
+
+typedef struct
+{
+	int	py_Size;	/* number of vertices in the polygon	*/
+	POINT	py_Point[1];	/* variable length array of vertices	*/
+} POLYGON;
+
+
+
+
+
+typedef struct Wstruct
+{
+	char	wn_Type;	/* window type                             */
+	char	wn_Wid;		/* Window id.. entry in wtbl               */
+	int	wn_Wmgr;	/* Owning window manager                   */
+	LAYER	*wn_Layer;	/* display structure                       */
+	POINT	wn_Psize;	/* width & height in pixels                */
+	POINT	wn_Dp;		/* drawing point position		   */
+	GRAPH	wn_G;		/* graphics characteristics		   */
+	POINT	wn_Lorigin;	/* logical coordinate system		   */
+	RECT    wn_Crect;	/* content rectangle, physical coordinates */
+	int 	wn_Evmask;	/* window event mask                       */
+	POINT 	wn_Cursor;	/* cursor height & width                   */
+	int	wn_Cascnt;	/* cursor ascent			   */
+} WSTRUCT;
+
+
+typedef struct Win_create
+{
+	char	wc_type;	/* window type			*/
+	RECT	wc_dims;	/* outer boundarys             */
+} WIN_CREATE;
+
+
+
+/*
+ *	Indirect message data structures
+ */
+typedef struct
+{
+	char	sm_p;		/* pattern if paint mode	*/
+	char	sm_verb;	/* drawing mode			*/
+	int	sm_nv;		/* number of vertices		*/
+	POINT	*sm_vs;		/* pointer to vertices		*/
+} MPOLY;
+
+typedef struct
+{
+	char	sm_p;		/* pattern if paint mode	*/
+	char	sm_verb;	/* drawing mode			*/
+	RECT	sm_rect;	/* enclosing rectangle		*/
+	int	sm_intval1;	/* angle or corner width	*/
+	int	sm_intval2;	/* angle or corner height	*/
+	char	sm_chrval1;	/* an internal byte field	*/
+	char	sm_chrval2;	/* another internal byte field	*/
+} MSHAPE;
