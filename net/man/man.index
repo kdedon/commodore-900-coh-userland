@@ -1,0 +1,26 @@
+COHERENT.1/accept	accept()	Accept a connection on a socket
+COHERENT.1/bind	bind()	Bind a name to a socket
+COHERENT.1/connect	connect()	Connect to a socket
+COHERENT.1/endnetent	endnetent()	Close network file
+COHERENT.1/endprotoent	endprotoent()	Close protocols file
+COHERENT.1/endservent	endservent()	Close protocols file
+COHERENT.1/getnetbyaddr	getnetbyaddr()	Get a network entry by address
+COHERENT.1/getnetbyname	getnetbyname()	Get a network entry by address
+COHERENT.1/getnetent	getnetent()	Fetch a network entry
+COHERENT.1/getpeername	getpeername()	Get name of connected peer
+COHERENT.1/getprotobyname	getprotobyname()	Get protocol entry by protocol name
+COHERENT.1/getprotobynumb	getprotobynumber()	Get protocol entry by protocol name
+COHERENT.1/getprotoent	getprotoent()	Get protocol entry
+COHERENT.1/getservbyname	getservbyname()	Get a service entry by port number
+COHERENT.1/getservbyport	getservbyport()	Get a service entry by port number
+COHERENT.1/getservent	getservent()	Get a service entry
+COHERENT.1/getsockname	getsockname()	Get the name of a socket
+COHERENT.1/getsockopt	getsockopt()	Get a socket option
+COHERENT.1/libsocket	libsocket	Library of communications routines
+COHERENT.1/listen	listen()	Listen for a connection on a socket
+COHERENT.2/select	select()	Synchronous I/O multiplexing
+COHERENT.2/setnetent	setnetent()	Open a networks file
+COHERENT.2/setprotoent	setprotoent()	Open the protocols file
+COHERENT.2/setservent	setservent()	Open the services file
+COHERENT.2/setsockopt	setsockopt()	Set an option on a socket
+COHERENT.2/socket	socket()	Create a socket

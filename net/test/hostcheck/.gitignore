@@ -1,0 +1,7 @@
+# Host-only harness binaries.  Source and Makefile are tracked; nothing built
+# here is (see the tree's no-committed-binaries rule).
+*.o
+*-h
+*-old
+*-old.c
+peers
