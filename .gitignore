@@ -1,0 +1,110 @@
+# Build artifacts.  Every pattern here is ANCHORED (leading `/', or a path with
+# a slash in it).  An unanchored pattern matches at every depth, and a bare
+# `core' once ate 59 files of vendored source in the parent repository -- the
+# rule cost a clean clone its contents and nobody noticed until a build failed
+# for a reason `git status' could not show.  If you add a rule, anchor it, then
+# check `git ls-files' still lists what you expect.
+
+# ---- /build is output ------------------------------------------------------
+# Artifacts, not source: everything under it is produced by a build whose every
+# part DEPS names, and nothing here is irreplaceable.
+#
+# This rule does NOT defend against `git merge upstream/master': a merge
+# happily creates tracked files at ignored paths.  Upstream is imported BY PATH
+# (4c4828f5), and build/ is off the path list -- that, not this line, is what
+# keeps the artifacts out.
+/build/
+
+# A `make BUILD=build-<something>' staging tree, so a comparison build goes
+# beside /build rather than overwriting it.  Anchored, and it cannot match
+# /build itself.
+/build-*/
+
+# Temporary working space.  Extraction and one-off experiments go here rather
+# than in /tmp, so they sit beside the tree they are about.
+/scratch/
+
+# ---- 3.5 tree: the host build ---------------------------------------------
+/hostbuild/build/
+/hostbuild/kobj/
+# `dist.py deps' output.  The Makefile writes it to build/mk/<dist>.d, which
+# the rule above already covers; this catches a hand-run `dist.py deps > .d',
+# which is how a fragment holding 181 absolute paths into a directory layout
+# two moves ago came to be tracked and read by nothing.
+/hostbuild/.d
+# link-kernel.sh builds into kobj.<pid> and publishes into kobj/ by rename, so a
+# failed link cannot delete the kernel every other reader is using.
+/hostbuild/kobj.*/
+/hostbuild/logs/
+/net/hostbuild/build/
+# net native-build products.  By pattern, not by name: the list was
+# maintained a binary at a time and a new client reached a commit before anyone
+# noticed.  Everything net builds is an extensionless file next to its source.
+/net/*.o
+/net/*.a
+/net/test/*.o
+/net/resolv/*.o
+/net/inet/*.o
+/net/inet/generic/*.o
+/net/[a-z]*
+/net/inet/[a-z]*
+# A directory matched by the two patterns above is never descended into, so no
+# `!' rule inside it is ever consulted -- that hid a whole ported directory and
+# a notes file from `git status'.  Un-ignoring the subdirectories themselves is
+# what lets the per-directory rules below apply.
+!/net/*/
+!/net/inet/*/
+!/net/*.c
+!/net/*.h
+!/net/*.s
+!/net/Makefile
+!/net/include/
+!/net/test/
+!/net/resolv/
+!/net/hostbuild/
+!/net/inet/*.c
+!/net/inet/*.h
+!/net/inet/*.s
+!/net/inet/Makefile
+!/net/inet/generic/
+
+# ---- on-target test programs (built by ccz from test/*/) --------------
+# build-tests.sh's convention is tests/<name>/<name>.c -> tests/<name>/<name>,
+# so one pattern covers every present and future one.
+/test/*/[a-z]*
+!/test/*/*.c
+!/test/*/*.h
+!/test/*/*.s
+!/test/*/*.py
+# A probe written in shell is still a probe, and tests/ascii/check.sh IS the
+# ascii test -- but it matched the [a-z]* rule above and so existed in one
+# working tree only.
+!/test/*/*.sh
+!/test/*/Makefile
+!/test/*/*cmd*
+!/test/cmd/*
+!/test/ichan/*
+
+# ---- kboot ----------------------------------------------------------------
+/boot/build/
+
+# ---- games and MGR native-build products ----------------------------------
+/games/net/hunt/hunt/hunt
+/games/net/hunt/huntd/huntd
+/games/net/hunt/*/*.o
+
+# ---- make deps ------------------------------------------------------------
+# Where `make deps' unpacks the pinned third-party release binaries DEPS names
+# (the emulator).  Our own repositories are cloned as SIBLINGS, outside this
+# tree, so nothing else needs a rule here.
+/deps/
+
+# ---- python ---------------------------------------------------------------
+__pycache__/
+*.pyc
+
+# A `make BUILD=build-<something>' staging tree under hostbuild, the same
+# thing /build-*/ covers at the top level.  That rule is anchored and never
+# matched here, so 4456 objects and staged roots were committed once.  The
+# trailing slash matters: build-*.sh are the build SCRIPTS and are tracked.
+hostbuild/build-*/
