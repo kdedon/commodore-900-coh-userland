@@ -66,7 +66,7 @@ The distinction exists because the map answers two questions, and only one of
 them wants the same set.  A -src package wants everything the licence obliges,
 so it takes marked and unmarked paths alike and the marker costs it nothing.
 The other question is "is this staged binary older than a source it was built
-from" (commodore-900-coh-dist, dist.py source_ages), and an unmarked-only answer
+from" (commodore-900-dist, dist.py source_ages), and an unmarked-only answer
 is the one worth reading: a program is behind a source when rebuilding from that
 source would produce a different program.  Naming every program every time the
 entry point is touched is a report that no longer distinguishes the fix nobody
@@ -468,7 +468,7 @@ def main(argv):
                 "# line names and why it names more than the .c files.  Paths "
                 "are relative to\n"
                 "# the repository root, one program per line, `#' comments.  Read by "
-                "commodore-900-coh-dist\n"
+                "commodore-900-dist\n"
                 "# (dist.py, SRCMAP) to cut a component's -src package.\n"
                 "# A path written `+<path>' belongs in the program's source "
                 "package and is not\n"

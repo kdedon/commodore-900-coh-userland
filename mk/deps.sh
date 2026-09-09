@@ -136,7 +136,7 @@ toolchain)
 dist)
 	VAR="C900_DIST"
 	WANT="the distribution repository (image format tooling)"
-	LIST="$root/deps/commodore-900-coh-dist $(siblings commodore-900-coh-dist)"
+	LIST="$root/deps/commodore-900-dist $(siblings commodore-900-dist)"
 	[ -n "$given" ] || given=${C900_DIST:-}
 	fixup() { echo "$1"; }
 	# workimg.sh is the marker because it is what the test harnesses here
@@ -150,7 +150,7 @@ dist)
 	shape() { echo checkout; }
 	HOW="  The media descriptors, the image packer and the tools that read a
   packed filesystem are a repository of their own:
-      git clone <...>/commodore-900-coh-dist
+      git clone <...>/commodore-900-dist
   or point C900_DIST= at a checkout.  Only targets that BOOT an image need
   it -- compiling and linking the userland does not."
 	;;

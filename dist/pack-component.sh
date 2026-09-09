@@ -16,7 +16,7 @@
 #
 # The format the result must satisfy is the four declarations in
 # dist/packages/component-{bin,src,man,dev}.pkg, and the gate that judges one is
-# commodore-900-coh-dist's `os/dist/check-package.sh -d dist/packages'.
+# commodore-900-dist's `os/dist/check-package.sh -d dist/packages'.
 set -eu
 
 HERE=$(cd "$(dirname "$0")" && pwd)			# dist/

@@ -3,7 +3,7 @@
 # built.  `make -C hostbuild publish', and the tail of `make all'.
 #
 # This repository builds programs; it does not pack an image.  The image is
-# packed in commodore-900-coh-dist, which consumes what is published here
+# packed in commodore-900-dist, which consumes what is published here
 # (RELEASE-STYLES.md sec. H.4) -- and the one question it cannot answer for itself
 # is the one this file answers: which userland is in build/, and does it still
 # match the sources beside it.

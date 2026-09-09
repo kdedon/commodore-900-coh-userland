@@ -27,7 +27,7 @@
 # overlooked: a package must carry its check, this repository is the producer of
 # these packages, and the alternative is reaching into a dependency's checkout at
 # pack time for a file that would then ship under our name.  The FORMAT the two
-# agree on is written down once, in commodore-900-coh-dist's os/dist/
+# agree on is written down once, in commodore-900-dist's os/dist/
 # PACKAGE-FORMAT, which is what stops them drifting into meaning different
 # things.
 set -e

@@ -6,7 +6,7 @@
 # deps/ path rather than checking the toolchain repository out separately.
 #
 # This repository builds programs; it does not link a kernel and does not pack
-# an image (those are commodore-900-coh-kernel3 and commodore-900-coh-dist).
+# an image (those are commodore-900-coh-kernel3 and commodore-900-dist).
 # The gate here is `make userland' -- the cmd/games/libs sweep hostbuild/
 # Makefile's own header calls "the full ... sweep" -- followed by `publish' and
 # `check-publish-fresh', so a green run proves the same thing a human running
@@ -19,7 +19,7 @@
 #     gate would assert a Windows-native-checkout constraint this repository
 #     does not have.
 #   * a release job.  Nothing in DEPS points a downstream repository at a
-#     GitHub release of this one -- commodore-900-coh-dist consumes what
+#     GitHub release of this one -- commodore-900-dist consumes what
 #     `publish' stamps in a sibling checkout (hostbuild/publish-userland.sh,
 #     RELEASE-STYLES.md sec. H.4), not a tagged archive -- so there is no
 #     asset for a release workflow here to cut.

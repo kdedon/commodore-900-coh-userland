@@ -14,7 +14,7 @@
 # of it (mk/deps.sh no longer has a `kboot' case; hostbuild/kboot.sh and
 # kboot.mk are unreferenced from anywhere this repository builds).  `dist' is
 # the edge that replaced it in substance -- added the same day, for
-# commodore-900-coh-dist, which the boot/net-test harnesses under net and
+# commodore-900-dist, which the boot/net-test harnesses under net and
 # hostbuild now resolve through mk/dist.sh -- so it is tested here instead.
 #
 # So: the repository ALONE, six levels deep, with an empty $HOME, nothing beside

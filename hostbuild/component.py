@@ -22,7 +22,7 @@ other intended consumer is an on-box installer walking it with sh and awk:
 nothing may become the only thing that understands it.
 
 WHERE A PATH IS LOOKED FOR.  Every path in a list is relative to this
-repository's root (dist/FORMAT in commodore-900-coh-dist).  A few lists name a
+repository's root (dist/FORMAT in commodore-900-dist).  A few lists name a
 file another repository publishes -- the kernel's console drivers, the
 toolchain's Z8001 cc -- so the root is a SEARCH PATH: this repository first,
 then the checkouts named in $C900_OSPATH.  A component whose entries do not all

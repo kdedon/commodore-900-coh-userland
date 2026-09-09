@@ -11,7 +11,7 @@
 #
 # This repository builds programs; it does not link a kernel and does not
 # pack an image.  The kernel and image-packing tools live in separate
-# repositories (commodore-900-coh-kernel3 and commodore-900-coh-dist).
+# repositories (commodore-900-coh-kernel3 and commodore-900-dist).
 # This tree contains every program, its data files and its man pages.
 #
 # The recipes are the sweep scripts, which carry stateful host-port patching
@@ -104,7 +104,7 @@ MGRCLBIN = $(MGRCLIENTS:%=$(B)/mgr/bin/cl/%)
 SWEEP = userland net hunt netcmds screen archive comms tests mgr hr man
 
 # `publish' is the sweep's last step, and the sweep is its prerequisite.
-# It writes build/.ulstamp, which is how commodore-900-coh-dist knows which
+# It writes build/.ulstamp, which is how commodore-900-dist knows which
 # userland it is packing and whether that userland is still current with the
 # sources beside it -- a claim about build/, made by reading the sources.  Made without building first, that claim can be false the moment it
 # is written: a tree whose sources moved after the last sweep gets a stamp
@@ -432,7 +432,7 @@ endif
 # $(B)/licences, once each, beside them rather than inside each archive: a
 # source package already carries every program's own COPYING next to the code it
 # governs.  The distribution repository consumes both from there.  Their format is declared in dist/packages/component-{bin,src,man,dev}
-# .pkg and judged by commodore-900-coh-dist's os/dist/check-package.sh.
+# .pkg and judged by commodore-900-dist's os/dist/check-package.sh.
 PKGOUT ?= $(B)/packages
 COMPONENT = $(PYTHON) $(OS)/hostbuild/component.py
 
@@ -481,7 +481,7 @@ check-curses-header:
 	  && echo "curses.h: the toolchain's and base/lib/libcurses/ agree"
 
 # The package FORMAT gate (check-package.sh) and the image gate (check-image.py)
-# judge a packed artifact against the format commodore-900-coh-dist owns; they
+# judge a packed artifact against the format commodore-900-dist owns; they
 # live there.  `sh os/dist/check-package.sh -d <this tree>/dist/packages
 # <archive>' judges what `make packages' cuts.
 

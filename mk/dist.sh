@@ -4,7 +4,7 @@
 # The image format is not this repository's subject.  dist, the packer and
 # the tools that read a packed COHERENT filesystem live in
 #
-#	commodore-900-coh-dist
+#	commodore-900-dist
 #
 # and the harnesses here consume two of them:
 #

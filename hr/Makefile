@@ -313,7 +313,7 @@ help:
 # is what stages a userland -- and this file is reached from there for the hr
 # targets alone.  `kernel' and `dist' refuse by name, because the kernel
 # belongs to commodore-900-coh-kernel3 and image-packing to
-# commodore-900-coh-dist, which is what those targets are for.
+# commodore-900-dist, which is what those targets are for.
 all: headers libs hrgui
 headers: $(INC_TARGET)
 libs: $(LIBS)

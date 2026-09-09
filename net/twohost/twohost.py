@@ -85,7 +85,7 @@ EMU_SEARCH = emu_search()
 
 
 def dist_search():
-    """The candidate CHECKOUTS of commodore-900-coh-dist, in mk/deps.sh's
+    """The candidate CHECKOUTS of commodore-900-dist, in mk/deps.sh's
     order: deps/ (where `make deps DEP=dist' would place one -- there is no
     such release today, but the slot is not this file's to skip), then three
     parents out from this repository, then one under a `repos/' directory
@@ -98,12 +98,12 @@ def dist_search():
     mk/dist.sh -- and the images are packed over there, in a directory
     dist_imgdir() asks that repository for.
     """
-    out = [os.path.join(C900_ROOT, "deps", "commodore-900-coh-dist")]
+    out = [os.path.join(C900_ROOT, "deps", "commodore-900-dist")]
     d = C900_ROOT
     for _ in range(3):
         d = os.path.normpath(os.path.join(d, ".."))
-        out.append(os.path.join(d, "commodore-900-coh-dist"))
-    out.append(os.path.join(C900_ROOT, "repos", "commodore-900-coh-dist"))
+        out.append(os.path.join(d, "commodore-900-dist"))
+    out.append(os.path.join(C900_ROOT, "repos", "commodore-900-dist"))
     return out
 
 
@@ -111,7 +111,7 @@ DIST_SEARCH = dist_search()
 
 
 def find_dist():
-    """The commodore-900-coh-dist checkout, or "" -- refusal is at the point
+    """The commodore-900-dist checkout, or "" -- refusal is at the point
     of use, in dist_image()."""
     given = os.environ.get("C900_DIST", "")
     if given:
@@ -171,7 +171,7 @@ def dist_image(dist):
     """
     if not C900_DIST:
         say("cannot boot %s without the distribution repository." % dist)
-        say("  Clone commodore-900-coh-dist to one of:")
+        say("  Clone commodore-900-dist to one of:")
         for cand in DIST_SEARCH:
             say("    %s" % cand)
         say("  or set C900_DIST to a checkout.")
