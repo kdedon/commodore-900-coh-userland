@@ -1,0 +1,52 @@
+May 7, 1991
+
+
+Here is less Version 177 ported to Coherent.  I've made the following
+changes to the standard distribution:
+
+1) I installed the makefile by telling lconfig that the system knows
+   nothing about any sort of void useage.
+
+2) I disabled the installation of the man pages by commenting out
+   the appropriate sections of the makefile.
+
+3) I set the proper flag (#define TERMIO 0) so that sgetty.h gets used, not
+   termio.h.
+
+4) Since the standard COH 3.1 release has no library support for regular
+   expressions, the version of less you see here only supports literal
+   string searches.  If either regcmp() or recomp() become available to
+   COH programmers, regular expression searches can easily be enabled
+   with the appropriate flags in defines.h.
+
+------------------------------------------------------------------------------
+        "Tundra" Tim Daneliuk
+        PREFERRED: tundra@eskimo.chi.il.us
+        ALSO:      ...uunet!gargoyle.uchicago.edu!clout!eskimo!tundra
+------------------------------------------------------------------------------
+
+March 8, 1993
+
+I made some changes to get it running under COH 4.0:
+
+1) In makefile only libterm.a is linked to get the termcap version of tputs()
+   into less. If it doesn't link under COH 3.x change this back to
+   -lcurses -lterm.
+
+2) The BSD compatible regex functions are available for COH 3.x and 4.0,
+   so I added -lregex to the LIBS macro in makefile. Now one can use
+   regular expressions for searching. The regex lib is available from
+   raven, MWCBBS and my system.
+
+3) Under COH 4.0 one better uses termio instead of sgtty. I copied defines.h
+   to defines.h.coh3 and created a new defines.h.coh4, which is linked to
+   defines.h. This file has the neccessary changes to use termio and the
+   regular expression functions.
+   Be sure to link the right defines.h.coh[34] to defines.h, before typing make!
+
+------------------------------------------------------------------------------
+Udo Munk, Oberstr. 21, 4040 Neuss 1, Germany
+udo@umunk.GUN.de   ...!{mcshh,smurf,unido}!easix!umunk!udo   CIS: 100021,2515
+uucp: +49 2131 278869 V22/32/42bis 8N1 login: uucp pwd: public MYNAME=bbsuser
+request file /usr/spool/uucppublic/info for instructions
+------------------------------------------------------------------------------
