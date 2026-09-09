@@ -1,0 +1,1 @@
+cc -o $1 $1.c dchar.o xform.o linef.o graph.o

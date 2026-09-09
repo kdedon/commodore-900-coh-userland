@@ -1,0 +1,36 @@
+The COHERENT Lexicon, for what this component owns.
+
+COHERENT.1/ and COHERENT.2/ hold 1 articles of Mark Williams Company's on-line
+manual -- the two halves the Lexicon splits itself into, a-l and m-z --
+covering the graphics programs this component builds.  man.index is the index
+of exactly those articles, one row per article: <path> <TAB> <title> <TAB>
+<one-line description>, the format /bin/man reads.  Paths are relative to this
+directory, so an image builder copies the two directories into its manual root
+and appends these rows to the index it is assembling.
+
+The pages are MWC's text, staged exactly as the archive has it: plain ASCII as
+a *roff terminal driver rendered it, with bold and underline carried as
+backspace overstrike.  Nothing here is written or edited by this project.
+Every article is the 4.2 edition.
+
+TERMS
+-----
+
+Copyright (c) 1977-1995 by Robert Swartz.  All rights reserved.
+
+These articles are part of the Mark Williams Company COHERENT release: the
+archive Robert Swartz, the copyright holder, released as open source in 2015
+under the BSD 3-Clause licence, described by its own readme as "COHERENT
+sources and documentation" and published by Stephen A. Ness at
+<https://www.nesssoftware.com/home/mwc/source.php>.  They are covered by the
+same grant as the source beside them, and the licence text is reproduced
+verbatim in LICENSE at the root of this repository, which its first condition
+requires any redistribution to retain.
+
+No article in this directory carries a copyright notice of its own.
+
+The licence's third condition forbids using the copyright holder's name to
+endorse or promote anything derived from this software.  Nothing here is
+endorsed by, affiliated with, or approved by Robert Swartz, Stephen A. Ness, or
+the former Mark Williams Company; references to Mark Williams and to COHERENT
+are statements of lineage.
