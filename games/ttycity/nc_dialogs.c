@@ -1,0 +1,933 @@
+/* nc_dialogs.c  --  modal dialogs (budget; evaluation and graphs follow).
+ *
+ * A modal dialog runs its own nested getch loop, so the simulation is frozen
+ * while it is open (the main loop -- and thus SimFrame -- is suspended).  It
+ * reads/writes the engine's budget globals directly.
+ */
+
+#include "sim.h"
+#include <curses.h>
+#include "nc.h"
+
+/* engine budget globals (defined in w_budget.c) */
+extern double roadPercent, policePercent, firePercent;
+extern QUAD roadValue, policeValue, fireValue;
+extern QUAD roadMaxValue, policeMaxValue, fireMaxValue;
+extern int makeDollarDecimalStr();
+
+#if defined(KEY_MOUSE) && defined(NCURSES_MOUSE_VERSION)
+/*
+ * Mouse for the list modals (New Game / Load Built-in / file browser).
+ * The wheel moves the selection; clicking a row selects it and clicking
+ * the selected row again activates it; a click outside the box cancels.
+ * List rows sit at screen row top+2+i showing items off..off+listh-1.
+ * Returns 0 ignore, 1 selection moved, 2 activate selection, 3 cancel.
+ */
+static int
+modal_list_mouse(top, left, w, h, listh, off, n, sel)
+int top;
+int left;
+int w;
+int h;
+int listh;
+int off;
+int n;
+int *sel;
+{
+  MEVENT e;
+  int row;
+
+  if (getmouse(&e) == ERR) return 0;
+  if (e.bstate & BUTTON4_PRESSED) { row = *sel - 1; goto wheel; }
+#if NCURSES_MOUSE_VERSION > 1
+  if (e.bstate & BUTTON5_PRESSED) { row = *sel + 1; goto wheel; }
+#endif
+  if (!(e.bstate & (BUTTON1_PRESSED | BUTTON1_CLICKED | BUTTON1_DOUBLE_CLICKED)))
+    return 0;
+  if (e.x < left || e.x >= left + w || e.y < top || e.y >= top + h)
+    return 3;					/* outside the box */
+  row = e.y - (top + 2);
+  if (row < 0 || row >= listh || off + row >= n) return 0;
+  if (off + row == *sel) return 2;		/* second click: activate */
+  *sel = off + row;
+  return 1;
+
+wheel:
+  if (row < 0) row = 0;
+  if (row > n - 1) row = n - 1;
+  *sel = row;
+  return 1;
+}
+#endif
+
+static void
+dollar(v, out)
+long v;
+char *out;
+{
+  char num[64];
+  sprintf(num, "%ld", v);
+  makeDollarDecimalStr(num, out);
+}
+
+/* box border in the dialog's own colors; same style as the notice popup */
+static void
+dlg_frame(top, left, h, w, attr)
+int top;
+int left;
+int h;
+int w;
+chtype attr;
+{
+  chtype hl, vl, ul, ur, ll, lr;
+  int i;
+
+  if (Gfx->mono) {	/* strict 7-bit mode: poor man's lines */
+    hl = '-'; vl = '|'; ul = ur = ll = lr = '+';
+  } else {
+    hl = ACS_HLINE; vl = ACS_VLINE;
+    ul = ACS_ULCORNER; ur = ACS_URCORNER;
+    ll = ACS_LLCORNER; lr = ACS_LRCORNER;
+  }
+  attrset(attr);
+  for (i = 1; i < w - 1; i++) {
+    mvaddch(top, left + i, hl);
+    mvaddch(top + h - 1, left + i, hl);
+  }
+  for (i = 1; i < h - 1; i++) {
+    mvaddch(top + i, left, vl);
+    mvaddch(top + i, left + w - 1, vl);
+  }
+  mvaddch(top, left, ul);
+  mvaddch(top, left + w - 1, ur);
+  mvaddch(top + h - 1, left, ll);
+  mvaddch(top + h - 1, left + w - 1, lr);
+}
+
+/* the [X] close button on a dialog's top border; returns 1 when (y,x) hits it */
+#define DLG_X_HIT(y, x, top, left, w) \
+  ((y) == (top) && (x) >= (left) + (w) - 5 && (x) < (left) + (w))
+
+static void
+dlg_close_button(top, left, w)
+int top;
+int left;
+int w;
+{
+  attrset(NC_MSEL(NC_CP(COLOR_WHITE, COLOR_RED) | A_BOLD));
+  mvaddstr(top, left + w - 4, "[X]");
+}
+
+/* one funding row: label, want (100%), got (funded), percent, selected */
+static void
+fund_row(row, col, w, label, want, pct, sel)
+int row;
+int col;
+int w;
+char *label;
+long want;
+double pct;
+int sel;
+{
+  char got[64], wnt[64];
+  int i, n = (int)(pct * 10 + 0.5);	/* 0..10 bar */
+
+  dollar((long)(want * pct), got);
+  dollar(want, wnt);
+  attrset(sel ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD) : NC_CP(COLOR_WHITE, COLOR_BLUE));
+  move(row, col);
+  printw(" %-7s [", label);
+  for (i = 0; i < 10; i++) addch(i < n ? '=' : ' ');
+  printw("] %3d%%  %10s / %-10s", (int)(pct * 100 + 0.5), got, wnt);
+  { int x = getcurx(stdscr); while (x++ < col + w) addch(' '); }
+  attrset(A_NORMAL);
+}
+
+/*
+ * Modal budget dialog.  Called from w_budget.c (ShowBudgetWindowAndStartWaiting).
+ * sel: 0=tax 1=road 2=fire 3=police.  Arrows/hjkl move; left/right or -/+ adjust;
+ * Enter/Esc close.  Adjusting a percent updates *Value so the caller spends it.
+ */
+void
+nc_budget_modal()
+{
+  int sel = 0, done = 0, rows, cols, top, left, w = 56, h = 13;
+  char buf[80], d1[64], d2[64];
+
+  while (!done) {
+    long cashflow, spend;
+
+    /* keep funded amounts in sync with the sliders */
+    roadValue = (QUAD)(roadMaxValue * roadPercent);
+    fireValue = (QUAD)(fireMaxValue * firePercent);
+    policeValue = (QUAD)(policeMaxValue * policePercent);
+    spend = (long)roadValue + (long)fireValue + (long)policeValue;
+    cashflow = (long)TaxFund - spend;
+
+    getmaxyx(stdscr, rows, cols);
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    dlg_frame(top, left, h, w, NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+    attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top, left + 2, " CITY BUDGET ", w - 4);
+    dlg_close_button(top, left, w);
+
+    attrset(sel == 0 ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD) : NC_CP(COLOR_WHITE, COLOR_BLUE));
+    sprintf(buf, " Tax rate: %2d%%", CityTax);
+    mvaddnstr(top + 2, left + 2, buf, w - 4);
+
+    attrset(NC_CP(COLOR_WHITE, COLOR_BLUE));
+    dollar((long)TaxFund, d1);
+    sprintf(buf, " Taxes collected: %s", d1);
+    mvaddnstr(top + 3, left + 2, buf, w - 4);
+
+    fund_row(top + 5, left + 2, w - 4, "Road",   (long)roadMaxValue,   roadPercent,   sel == 1);
+    fund_row(top + 6, left + 2, w - 4, "Fire",   (long)fireMaxValue,   firePercent,   sel == 2);
+    fund_row(top + 7, left + 2, w - 4, "Police", (long)policeMaxValue, policePercent, sel == 3);
+
+    attrset(NC_CP(COLOR_WHITE, COLOR_BLUE));
+    dollar(cashflow < 0 ? -cashflow : cashflow, d1);
+    dollar((long)TotalFunds + cashflow, d2);
+    sprintf(buf, " Cash flow: %c%s    Funds after: %s",
+	    cashflow < 0 ? '-' : '+', d1, d2);
+    mvaddnstr(top + 9, left + 2, buf, w - 4);
+
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top + h - 2, left + 2,
+	      " up/down select  left/right adjust  Enter=OK ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+#if defined(KEY_MOUSE) && defined(NCURSES_MOUSE_VERSION)
+    case KEY_MOUSE:
+      { MEVENT e;
+	if (getmouse(&e) == ERR) break;
+	if (e.bstate & BUTTON4_PRESSED) { sel = (sel + 3) % 4; break; }
+#if NCURSES_MOUSE_VERSION > 1
+	if (e.bstate & BUTTON5_PRESSED) { sel = (sel + 1) % 4; break; }
+#endif
+	if (!(e.bstate & (BUTTON1_PRESSED | BUTTON1_CLICKED | BUTTON1_DOUBLE_CLICKED)))
+	  break;
+	if (DLG_X_HIT(e.y, e.x, top, left, w)) { done = 1; break; }
+	if (e.x < left || e.x >= left + w) break;
+	if (e.y == top + 2) sel = 0;			/* tax row */
+	else if (e.y >= top + 5 && e.y <= top + 7)	/* funding rows */
+	  sel = e.y - top - 4;
+      }
+      break;
+#endif
+    case KEY_UP: case 'k':   sel = (sel + 3) % 4; break;
+    case KEY_DOWN: case 'j': sel = (sel + 1) % 4; break;
+    case KEY_LEFT: case 'h': case '-':
+      if (sel == 0) { if (CityTax > 0) CityTax--; }
+      else if (sel == 1) { roadPercent -= 0.05f; if (roadPercent < 0) roadPercent = 0; }
+      else if (sel == 2) { firePercent -= 0.05f; if (firePercent < 0) firePercent = 0; }
+      else { policePercent -= 0.05f; if (policePercent < 0) policePercent = 0; }
+      break;
+    case KEY_RIGHT: case 'l': case '+': case '=':
+      if (sel == 0) { if (CityTax < 20) CityTax++; }
+      else if (sel == 1) { roadPercent += 0.05f; if (roadPercent > 1) roadPercent = 1; }
+      else if (sel == 2) { firePercent += 0.05f; if (firePercent > 1) firePercent = 1; }
+      else { policePercent += 0.05f; if (policePercent > 1) policePercent = 1; }
+      break;
+    case '\n': case '\r': case KEY_ENTER: case 27: case 'q':
+      done = 1; break;
+    }
+  }
+
+  roadValue = (QUAD)(roadMaxValue * roadPercent);
+  fireValue = (QUAD)(fireMaxValue * firePercent);
+  policeValue = (QUAD)(policeMaxValue * policePercent);
+  clear();
+}
+
+/* ---- evaluation window --------------------------------------------------- */
+
+extern char *probStr[10], *cityClassStr[6], *cityLevelStr[3];
+extern int CurrentYear();
+
+void
+nc_eval_modal()
+{
+  int rows, cols, top, left, w = 52, h = 16, i, done = 0;
+  char buf[80], d[64];
+
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    sprintf(buf, " CITY EVALUATION  %d", CurrentYear());
+    mvaddnstr(top, left + 2, buf, w - 4);
+
+    attrset(NC_CP(COLOR_WHITE, COLOR_BLUE));
+    sprintf(buf, " Public Opinion:   Positive %d%%   Negative %d%%",
+	    (int)CityYes, (int)CityNo);
+    mvaddnstr(top + 2, left + 2, buf, w - 4);
+
+    mvaddnstr(top + 4, left + 2, " Worst Problems:", w - 4);
+    for (i = 0; i < 4; i++) {
+      int p = ProblemOrder[i], v = (p >= 0 && p < 10) ? ProblemVotes[p] : 0;
+      if (v > 0)
+	sprintf(buf, "   %d. %-14s %d%%", i + 1, probStr[p], v);
+      else
+	sprintf(buf, "   %d. --", i + 1);
+      mvaddnstr(top + 5 + i, left + 2, buf, w - 4);
+    }
+
+    mvaddnstr(top + 10, left + 2, " Statistics:", w - 4);
+    sprintf(d, "%ld", (long)CityPop);
+    sprintf(buf, "   Population:   %s  (%s%ld)", d,
+	    (long)deltaCityPop < 0L ? "" : "+", (long)deltaCityPop);
+    mvaddnstr(top + 11, left + 2, buf, w - 4);
+    { char num[64]; sprintf(num, "%ld", (long)CityAssValue); makeDollarDecimalStr(num, d); }
+    sprintf(buf, "   Assessed Value: %s", d);
+    mvaddnstr(top + 12, left + 2, buf, w - 4);
+    sprintf(buf, "   City Class: %s     Level: %s",
+	    cityClassStr[(CityClass >= 0 && CityClass < 6) ? CityClass : 0],
+	    cityLevelStr[(GameLevel >= 0 && GameLevel < 3) ? GameLevel : 0]);
+    mvaddnstr(top + 13, left + 2, buf, w - 4);
+
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    sprintf(buf, " Overall Score: %d   (annual change %s%d)   -- any key --",
+	    (int)CityScore, (int)deltaCityScore < 0 ? "" : "+",
+	    (int)deltaCityScore);
+    mvaddnstr(top + h - 1, left + 2, buf, w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+    default: done = 1; break;
+    }
+  }
+  clear();
+}
+
+/* ---- history graphs ------------------------------------------------------ */
+
+extern short *ResHis, *ComHis, *IndHis, *MoneyHis, *CrimeHis, *PollutionHis;
+
+static void
+sparkline(row, col, width, label, arr, off, color)
+int row;
+int col;
+int width;
+char *label;
+short *arr;
+int off;
+int color;
+{
+  static char ramp[] = " .:-=+*#@";
+  int i, hi = 1, v;
+
+  for (i = 0; i < width; i++) { v = arr[off + i]; if (v > hi) hi = v; }
+  attrset(NC_CP(color, COLOR_BLACK) | A_BOLD);
+  mvaddstr(row, col, label);
+  for (i = 0; i < width; i++) {
+    v = arr[off + (width - 1 - i)];		/* newest on the right */
+    if (v < 0) v = 0;
+    mvaddch(row, col + 6 + i, ramp[(v * 8) / hi]);
+  }
+  attrset(A_NORMAL);
+}
+
+void
+nc_graph_modal()
+{
+  int rows, cols, top, left, w, h = 12, done = 0, range = 0, width, off;
+  char buf[80];
+
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    w = cols - 6; if (w > 90) w = 90; if (w < 30) w = 30;
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+    width = w - 8; if (width > 120) width = 120;
+    off = range ? 120 : 0;
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLACK));
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    attrset(NC_CP(COLOR_WHITE, COLOR_BLACK) | A_BOLD);
+    sprintf(buf, " CITY HISTORY  (%s)   r=toggle range   any other key=close",
+	    range ? "120 years" : "10 years");
+    mvaddnstr(top, left + 2, buf, w - 4);
+
+    sparkline(top + 3, left + 2, width, "Res  ", ResHis,       off, COLOR_GREEN);
+    sparkline(top + 4, left + 2, width, "Com  ", ComHis,       off, COLOR_BLUE);
+    sparkline(top + 5, left + 2, width, "Ind  ", IndHis,       off, COLOR_YELLOW);
+    sparkline(top + 6, left + 2, width, "Cash ", MoneyHis,     off, COLOR_CYAN);
+    sparkline(top + 7, left + 2, width, "Crime", CrimeHis,     off, COLOR_RED);
+    sparkline(top + 8, left + 2, width, "Poll ", PollutionHis, off, COLOR_MAGENTA);
+    attrset(NC_CP(COLOR_WHITE, COLOR_BLACK));
+    mvaddnstr(top + 10, left + 2, " oldest <-------------------- newest ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+    case 'r': case 'R': range = !range; break;
+    default: done = 1; break;
+    }
+  }
+  clear();
+}
+
+/* ---- text-input prompt (filenames) --------------------------------------- */
+
+int
+nc_prompt(title, buf, buflen)
+char *title;
+char *buf;
+int buflen;
+{
+  int rows, cols, top, left, w = 56, done = 0, ok = 0, pos, ch;
+
+  pos = (int)strlen(buf);
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    top = rows / 2 - 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < 4; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    mvaddnstr(top, left + 2, title, w - 4);
+    attrset(NC_CP(COLOR_BLACK, COLOR_WHITE));
+    { int c; move(top + 1, left + 2); for (c = 0; c < w - 4; c++) addch(' '); }
+    mvaddnstr(top + 1, left + 2, buf, w - 4);
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top + 3, left + 2, " Enter=OK  Esc=cancel ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    ch = getch();
+    if (ch == ERR) continue;
+    if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { ok = 1; done = 1; }
+    else if (ch == 27) { done = 1; }
+    else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+      if (pos > 0) buf[--pos] = 0;
+    } else if (ch >= 32 && ch < 127 && pos < buflen - 1) {
+      buf[pos++] = ch; buf[pos] = 0;
+    }
+  }
+  clear();
+  return ok;
+}
+
+/* ---- load / save --------------------------------------------------------- */
+
+extern int LoadCity();
+extern int SaveCityAs();
+extern int SaveCity();
+extern char *CityFileName;
+
+extern char *HomeDir;
+
+/* A directory entry name here is at most DIRSIZ (14) bytes, and the browser's
+ * table is static: at the upstream 512 x 260 it was a 133 KB automatic, which
+ * is larger than a whole hardware segment, let alone a stack frame. */
+#define FB_MAX	128
+#define FB_NAME	16
+
+typedef struct { char name[FB_NAME]; int isdir; } FBEnt;
+static FBEnt FbEnts[FB_MAX];
+
+static int
+fb_cmp(a, b)
+const char *a;
+const char *b;
+{
+  const FBEnt *x = (const FBEnt *)a, *y = (const FBEnt *)b;
+  if (x->isdir != y->isdir) return y->isdir - x->isdir;	/* directories first */
+  return strcmp(x->name, y->name);
+}
+
+static int
+fb_is_city(name)
+char *name;
+{
+  int n = (int)strlen(name);
+  return (n > 4) && (!strcmp(name + n - 4, ".cty") || !strcmp(name + n - 4, ".scn"));
+}
+
+/* read <dir> into ents[] (".." first, then dirs, then .cty/.scn); returns count */
+static int
+fb_read(dir, ents, max)
+char *dir;
+FBEnt *ents;
+int max;
+{
+  struct stat st;
+  char path[300];
+  char *names[FB_MAX];
+  int got, i, n = 0;
+
+  strcpy(ents[n].name, ".."); ents[n].isdir = 1; n++;
+  if ((got = tc_dirlist(dir, names, max)) > 0) {
+    for (i = 0; (i < got) && (n < max); i++) {
+      if (names[i][0] == '.') continue;		/* skip dotfiles + . .. */
+      if ((strlen(dir) + strlen(names[i]) + 2) > sizeof(path)) continue;
+      sprintf(path, "%s/%s", dir, names[i]);
+      if (stat(path, &st) != 0) continue;
+      if ((st.st_mode & S_IFMT) == S_IFDIR) {
+	strncpy(ents[n].name, names[i], FB_NAME - 1);
+	ents[n].name[FB_NAME - 1] = 0;
+	ents[n].isdir = 1; n++;
+      } else if (fb_is_city(names[i])) {
+	strncpy(ents[n].name, names[i], FB_NAME - 1);
+	ents[n].name[FB_NAME - 1] = 0;
+	ents[n].isdir = 0; n++;
+      }
+    }
+  }
+  if (got > 0) tc_dirfree(names, got);
+  if (n > 1) qsort((char *)(ents + 1), n - 1, sizeof(FBEnt), fb_cmp);
+  return n;
+}
+
+/* realpath(3) does not exist here.  The browser only ever appends a name or
+ * "..", so collapse the path textually: drop "x/.." pairs and any "/." . */
+static char *
+tc_realpath(in, out)
+char *in;
+char *out;
+{
+  char *s, *d;
+
+  if ((in == (char *)0) || (out == (char *)0)) return ((char *)0);
+  if (*in != '/') {
+    if (getcwd(out, 256) == (char *)0) return ((char *)0);
+    if (out[strlen(out) - 1] != '/') strcat(out, "/");
+    strcat(out, in);
+  } else
+    strcpy(out, in);
+
+  d = out;
+  for (s = out; *s; ) {
+    if ((s[0] == '/') && (s[1] == '/')) { s++; continue; }
+    if ((s[0] == '/') && (s[1] == '.') && ((s[2] == '/') || (s[2] == 0))) {
+      s += 2; continue;
+    }
+    if ((s[0] == '/') && (s[1] == '.') && (s[2] == '.') &&
+	((s[3] == '/') || (s[3] == 0))) {
+      while ((d > out) && (*--d != '/')) ;	/* back over one component */
+      s += 3; continue;
+    }
+    *d++ = *s++;
+  }
+  if (d == out) *d++ = '/';
+  *d = 0;
+  return (out);
+}
+
+/*
+ * File browser: navigate directories with the arrow keys, Enter opens a folder
+ * (".." goes up) or loads a .cty/.scn file, Esc cancels.
+ */
+void
+nc_load_modal()
+{
+  char cwd[256], tmp[288];
+  FBEnt *ents = FbEnts;
+  int n, sel = 0, off = 0, done = 0;
+  int rows, cols, top, left, w, h, listh, i;
+
+  sprintf(tmp, "%s/cities", HomeDir ? HomeDir : ".");	/* start near the cities */
+  if (!tc_realpath(tmp, cwd))
+    if (!getcwd(cwd, sizeof(cwd))) strcpy(cwd, ".");
+
+  n = fb_read(cwd, ents, FB_MAX);
+
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    w = cols - 8; if (w > 64) w = 64; if (w < 24) w = 24;
+    /* fixed height (don't shrink to fit the entry count) so a smaller directory
+     * fully overwrites a larger one -- no leftover rows below the box */
+    h = rows - 4; if (h > 26) h = 26; if (h < 8) h = 8;
+    listh = h - 4;
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    if (sel < off) off = sel;
+    if (sel >= off + listh) off = sel - listh + 1;
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    mvaddnstr(top, left + 2, " Load City ", w - 4);
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE));
+    { int l = (int)strlen(cwd); char *p = cwd + (l > w - 4 ? l - (w - 4) : 0);
+      mvaddnstr(top + 1, left + 2, p, w - 4); }
+
+    for (i = 0; i < listh && off + i < n; i++) {
+      FBEnt *en = &ents[off + i];
+      char line[300];
+      int selrow = (off + i == sel);
+      attrset(selrow ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD)
+		     : (en->isdir ? (NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD)
+				  : NC_CP(COLOR_WHITE, COLOR_BLUE)));
+      sprintf(line, " %s%s", en->name, en->isdir ? "/" : "");
+      { int x; move(top + 2 + i, left + 1); for (x = 0; x < w - 2; x++) addch(' '); }
+      mvaddnstr(top + 2 + i, left + 1, line, w - 2);
+    }
+
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top + h - 1, left + 2, " up/down  Enter=open  Esc=cancel ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    { int act = 0;
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+    case KEY_UP: case 'k':   sel--; break;
+    case KEY_DOWN: case 'j': sel++; break;
+    case KEY_NPAGE:          sel += listh; break;
+    case KEY_PPAGE:          sel -= listh; break;
+    case '\n': case '\r': case KEY_ENTER:
+      act = 1; break;
+#if defined(KEY_MOUSE) && defined(NCURSES_MOUSE_VERSION)
+    case KEY_MOUSE:
+      switch (modal_list_mouse(top, left, w, h, listh, off, n, &sel)) {
+      case 2: act = 1; break;
+      case 3: done = 1; break;
+      }
+      break;
+#endif
+    case 27: case 'q':
+      done = 1; break;
+    }
+    if (act && n > 0) {
+      if (ents[sel].isdir) {
+	sprintf(tmp, "%s/%s", cwd, ents[sel].name);
+	if (tc_realpath(tmp, cwd)) { n = fb_read(cwd, ents, FB_MAX); sel = 0; off = 0; }
+      } else {
+	sprintf(tmp, "%s/%s", cwd, ents[sel].name);	/* mutable buffer for LoadCity */
+	if (LoadCity(tmp)) {
+	  CursorX = WORLD_X / 2; CursorY = WORLD_Y / 2;
+	  nc_set_status("City loaded.");
+	} else {
+	  nc_set_status("Could not load that file.");
+	}
+	done = 1;
+      }
+    }
+    }
+  }
+  clear();
+}
+
+void
+nc_save_modal(saveas)
+int saveas;
+{
+  char path[256];
+
+  if (!saveas && CityFileName && CityFileName[0]) {
+    if (SaveCity()) nc_set_status("City saved.");
+    else nc_set_status("Save failed.");
+    return;
+  }
+  path[0] = 0;
+  if (CityFileName && CityFileName[0])
+    strcpy(path, CityFileName);			/* loaded/saved from disk */
+  else if (CityName && CityName[0])
+    sprintf(path, "%s.cty", CityName);		/* built-in city: suggest its name */
+  else
+    strcpy(path, "mycity.cty");
+  if (nc_prompt("Save city as -- enter path:", path, sizeof(path))) {
+    if (SaveCityAs(path)) nc_set_status("City saved.");
+    else nc_set_status("Save failed.");
+  }
+}
+
+/* ---- new game / scenario picker ------------------------------------------ */
+
+extern int LoadScenario();
+extern int GenerateSomeCity();
+extern int SetGameLevelFunds();
+extern int setCityName();
+extern int setSpeed();
+extern short Rand16();
+
+static char *newgame_items[] = {
+  "New City  -  Easy    ($20,000)",
+  "New City  -  Medium  ($10,000)",
+  "New City  -  Hard    ($5,000)",
+  "Scenario: Dullsville      1900",
+  "Scenario: San Francisco   1906",
+  "Scenario: Hamburg         1944",
+  "Scenario: Bern            1965",
+  "Scenario: Tokyo           1957",
+  "Scenario: Detroit         1972",
+  "Scenario: Boston          2010",
+  "Scenario: Rio de Janeiro  2047"
+};
+#define NG_N 11
+
+void
+nc_newgame_modal()
+{
+  int rows, cols, top, left, w = 40, h = NG_N + 5, sel = 0, done = 0, i;
+
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    mvaddnstr(top, left + 2, " NEW GAME ", w - 4);
+    for (i = 0; i < NG_N; i++) {
+      attrset(i == sel ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD)
+			: NC_CP(COLOR_WHITE, COLOR_BLUE));
+      mvaddch(top + 2 + i, left + 2, ' ');
+      mvaddnstr(top + 2 + i, left + 3, newgame_items[i], w - 5);
+    }
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top + h - 1, left + 2, " Enter=start  Esc=cancel ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    { int act = 0;
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+    case KEY_UP: case 'k':   sel = (sel + NG_N - 1) % NG_N; break;
+    case KEY_DOWN: case 'j': sel = (sel + 1) % NG_N; break;
+    case '\n': case '\r': case KEY_ENTER:
+      act = 1; break;
+#if defined(KEY_MOUSE) && defined(NCURSES_MOUSE_VERSION)
+    case KEY_MOUSE:
+      switch (modal_list_mouse(top, left, w, h, NG_N, 0, NG_N, &sel)) {
+      case 2: act = 1; break;
+      case 3: done = 1; break;
+      }
+      break;
+#endif
+    case 27: case 'q':
+      done = 1; break;
+    }
+    if (act) {
+      if (sel < 3) {
+	StartupGameLevel = sel;
+	GenerateSomeCity((int)Rand16());
+	setCityName("Micropolis");
+	SetGameLevelFunds((short)sel);
+      } else {
+	LoadScenario((short)(sel - 2));
+      }
+      EditorView->tool_state = residentialState;
+      CursorX = WORLD_X / 2; CursorY = WORLD_Y / 2;
+      setSpeed(1);
+      done = 1;
+    }
+    }
+  }
+  clear();
+}
+
+/* ---- built-in (embedded) city picker ------------------------------------- */
+
+extern int EmbeddedCityCount();
+extern const char *EmbeddedCityName();
+extern int LoadEmbeddedCity();
+
+/* Scrollable list of the cities baked into the binary (cities/<name>.cty).  Enter
+ * loads the selected one from memory; it is then saveable to disk (Save As). */
+void
+nc_load_embedded_modal()
+{
+  int n = EmbeddedCityCount();
+  int rows, cols, top, left, w, h, listh, i;
+  int sel = 0, off = 0, done = 0;
+
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    w = cols - 8; if (w > 48) w = 48; if (w < 24) w = 24;
+    h = rows - 4; if (h > 26) h = 26; if (h < 8) h = 8;
+    listh = h - 4;
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    if (sel < off) off = sel;
+    if (sel >= off + listh) off = sel - listh + 1;
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    mvaddnstr(top, left + 2, " Load Built-in City ", w - 4);
+
+    for (i = 0; i < listh && off + i < n; i++) {
+      const char *nm = EmbeddedCityName(off + i);
+      char line[300];
+      int selrow = (off + i == sel);
+      attrset(selrow ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD)
+		     : NC_CP(COLOR_WHITE, COLOR_BLUE));
+      sprintf(line, " %s", nm ? nm : "");
+      { int x; move(top + 2 + i, left + 1); for (x = 0; x < w - 2; x++) addch(' '); }
+      mvaddnstr(top + 2 + i, left + 1, line, w - 2);
+    }
+
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top + h - 1, left + 2, " up/down  Enter=load  Esc=cancel ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    { int act = 0;
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+    case KEY_UP: case 'k':   sel--; break;
+    case KEY_DOWN: case 'j': sel++; break;
+    case KEY_NPAGE:          sel += listh; break;
+    case KEY_PPAGE:          sel -= listh; break;
+    case '\n': case '\r': case KEY_ENTER:
+      act = 1; break;
+#if defined(KEY_MOUSE) && defined(NCURSES_MOUSE_VERSION)
+    case KEY_MOUSE:
+      switch (modal_list_mouse(top, left, w, h, listh, off, n, &sel)) {
+      case 2: act = 1; break;
+      case 3: done = 1; break;
+      }
+      break;
+#endif
+    case 27: case 'q':
+      done = 1; break;
+    }
+    if (act) {
+      { const char *nm = EmbeddedCityName(sel);
+	char buf[256];
+	if (nm) {
+	  strncpy(buf, nm, sizeof(buf) - 1); buf[sizeof(buf) - 1] = 0;
+	  if (LoadEmbeddedCity(buf)) {
+	    CursorX = WORLD_X / 2; CursorY = WORLD_Y / 2;
+	    nc_set_status("Built-in city loaded.");
+	  } else {
+	    nc_set_status("Could not load that city.");
+	  }
+	}
+	done = 1;
+      }
+    }
+    }
+  }
+  clear();
+}
+
+/* ---- graphics-mode picker ------------------------------------------------- */
+
+/*
+ * 'u' key / Options menu "Graphics >": pick a mode from a list instead of
+ * cycling blind through them.  The active mode is marked "[x]" and
+ * preselected; unavailable modes (e.g. "aa" without `make aalib`) are listed
+ * with a tag but picking one is a no-op.
+ */
+void
+nc_gfx_modal()
+{
+  int n = nc_gfx_count();
+  int rows, cols, top, left, w, h, listh, i;
+  int sel = nc_gfx_current(), off = 0, done = 0;
+
+  while (!done) {
+    getmaxyx(stdscr, rows, cols);
+    w = cols - 8; if (w > 40) w = 40; if (w < 24) w = 24;
+    h = n + 5; if (h > rows - 2) h = rows - 2; if (h < 8) h = 8;
+    listh = h - 4;
+    top = (rows - h) / 2; if (top < 0) top = 0;
+    left = (cols - w) / 2; if (left < 0) left = 0;
+    nc_popup_snap(&left, &w);
+
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    if (sel < off) off = sel;
+    if (sel >= off + listh) off = sel - listh + 1;
+
+    { int r, c;
+      attrset(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD);
+      for (r = 0; r < h; r++) { move(top + r, left); for (c = 0; c < w; c++) addch(' '); }
+    }
+    mvaddnstr(top, left + 2, " Graphics Mode ", w - 4);
+
+    for (i = 0; i < listh && off + i < n; i++) {
+      int mi = off + i, selrow = (mi == sel);
+      char line[64];
+      attrset(selrow ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD)
+		     : NC_CP(COLOR_WHITE, COLOR_BLUE));
+      sprintf(line, " [%c] %s%s", mi == nc_gfx_current() ? 'x' : ' ',
+	      nc_gfx_name_at(mi), nc_gfx_avail_at(mi) ? "" : "  [unavailable]");
+      { int x; move(top + 2 + i, left + 1); for (x = 0; x < w - 2; x++) addch(' '); }
+      mvaddnstr(top + 2 + i, left + 1, line, w - 2);
+    }
+
+    attrset(NC_CP(COLOR_YELLOW, COLOR_BLUE) | A_BOLD);
+    mvaddnstr(top + h - 1, left + 2, " up/down  Enter=select  Esc=cancel ", w - 4);
+    attrset(A_NORMAL);
+    refresh();
+
+    { int act = 0;
+    switch (getch()) {
+    case ERR: break;
+    case '`': nc_screenshot("/tmp/ttycity_shot.txt"); break;
+    case KEY_UP: case 'k':   sel--; break;
+    case KEY_DOWN: case 'j': sel++; break;
+    case KEY_NPAGE:          sel += listh; break;
+    case KEY_PPAGE:          sel -= listh; break;
+    case '\n': case '\r': case KEY_ENTER:
+      act = 1; break;
+#if defined(KEY_MOUSE) && defined(NCURSES_MOUSE_VERSION)
+    case KEY_MOUSE:
+      switch (modal_list_mouse(top, left, w, h, listh, off, n, &sel)) {
+      case 2: act = 1; break;
+      case 3: done = 1; break;
+      }
+      break;
+#endif
+    case 27: case 'q':
+      done = 1; break;
+    }
+    if (act && nc_gfx_avail_at(sel)) {
+      char msg[64];
+      sprintf(msg, "Graphics: %s", nc_gfx_name_at(sel));
+      nc_gfx_select_at(sel);
+      nc_set_status(msg);
+      done = 1;
+    }
+    }
+  }
+  clear();
+}

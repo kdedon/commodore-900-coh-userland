@@ -1,0 +1,16 @@
+#define ACS_ULCORNER 	'+'
+#define ACS_HLINE	' '
+#define ACS_TTEE	'.'
+#define ACS_URCORNER	'+'
+#define ACS_LTEE	'.'
+#define ACS_PLUS	'.'
+#define ACS_RTEE	'.'
+#define ACS_LLCORNER	'+'
+#define ACS_BTEE	'.'
+#define ACS_LRCORNER	'+'
+#define ACS_UARROW	'^'
+#define ACS_LARROW	'<'
+#define ACS_RARROW	'>'
+#define ACS_DARROW	'v'
+/* A_BLINK is a curses attribute bit in <curses.h> here, not an escape string,
+ * and the two uses of it in gomoku.c are commented out upstream anyway. */

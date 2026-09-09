@@ -1,0 +1,350 @@
+/* nc_menu.c  --  top menu bar with dropdown menus.
+ *
+ * A classic menu bar (row 0): File / Options / Disasters / Speed / Views.
+ * Open with F10 or Esc; Left/Right switch menus, Up/Down move, Enter selects,
+ * Esc closes.  Actions call the engine directly (toggles, speed, disasters,
+ * new/quit) or open a dialog (budget/eval/graph -- added in their phases).
+ */
+
+#include "sim.h"
+#include <curses.h>
+#include "nc.h"
+
+/* engine entry points */
+extern int  setSpeed();
+extern void Pause();
+extern void Resume();
+extern void MakeFire();
+extern void MakeFlood();
+extern void MakeEarthquake();
+extern void MakeMeltdown();
+extern void MakeMonster();
+extern void MakeTornado();
+extern void DoBudgetFromMenu();
+
+/* action ids */
+enum {
+  A_NONE = 0, A_SEP,
+  A_NEW, A_LOAD, A_LOAD_RES, A_SAVE, A_SAVEAS, A_QUIT,
+  A_T_BUDGET, A_T_BULLDOZE, A_T_GOTO, A_T_DISAST, A_T_SOUND,
+  A_T_ANIM, A_T_MSG, A_T_NOTICE,
+  A_DIS_MONSTER, A_DIS_FIRE, A_DIS_FLOOD, A_DIS_TORNADO, A_DIS_QUAKE, A_DIS_MELT,
+  A_SPD_PAUSE, A_SPD_SLOW, A_SPD_MED, A_SPD_FAST,
+  A_BUDGET, A_EVAL, A_GRAPH, A_MAP, A_THEME, A_GFX
+};
+
+typedef struct { char *label; int id; } Item;
+typedef struct { char *title; Item *items; int n; } Menu;
+
+static Item file_items[] = {
+  { "New City",          A_NEW },
+  { "Load Built-in...",  A_LOAD_RES },
+  { "Load from Disk...", A_LOAD },
+  { "Save City",         A_SAVE },
+  { "Save As...",        A_SAVEAS },
+  { "",                  A_SEP },
+  { "Quit",              A_QUIT }
+};
+static Item opt_items[] = {
+  { "Auto Budget",   A_T_BUDGET },
+  { "Auto Bulldoze", A_T_BULLDOZE },
+  { "Auto Goto",     A_T_GOTO },
+  { "Disasters",     A_T_DISAST },
+  { "Sound",         A_T_SOUND },
+  { "Animation",     A_T_ANIM },
+  { "Messages",      A_T_MSG },
+  { "Notices",       A_T_NOTICE },
+  { "Land Color >",  A_THEME },
+  { "Graphics >",    A_GFX }
+};
+static Item dis_items[] = {
+  { "Monster",    A_DIS_MONSTER },
+  { "Fire",       A_DIS_FIRE },
+  { "Flood",      A_DIS_FLOOD },
+  { "Tornado",    A_DIS_TORNADO },
+  { "Earthquake", A_DIS_QUAKE },
+  { "Meltdown",   A_DIS_MELT }
+};
+static Item spd_items[] = {
+  { "Pause",  A_SPD_PAUSE },
+  { "Slow",   A_SPD_SLOW },
+  { "Medium", A_SPD_MED },
+  { "Fast",   A_SPD_FAST }
+};
+static Item view_items[] = {
+  { "Budget",     A_BUDGET },
+  { "Evaluation", A_EVAL },
+  { "Graph",      A_GRAPH },
+  { "Map/Overlay",A_MAP }
+};
+
+static Menu menus[] = {
+  { "File",      file_items, 7 },
+  { "Options",   opt_items,  10 },
+  { "Disasters", dis_items,  6 },
+  { "Speed",     spd_items,  4 },
+  { "Views",     view_items, 4 }
+};
+#define NMENUS ((int)(sizeof(menus) / sizeof(menus[0])))
+
+static int MenuOpen = -1;	/* -1 = closed, else menu index */
+static int MenuSel = 0;		/* highlighted item in the open menu */
+
+/* Repaint the whole screen (dropdown gone) before an action opens a modal:
+ * the modal's nested input loop freezes the main render loop, so whatever is
+ * on screen now stays visible behind the modal box. */
+static void
+menu_backdrop()
+{
+  clear();
+  nc_draw_toolbar(EditorView);
+  nc_draw_minimap();
+  nc_draw_editor(EditorView);
+  nc_draw_status(EditorView);
+  nc_minimap_late();
+  nc_menu_draw(COLS);
+}
+
+int
+nc_menu_active()
+{
+  return MenuOpen >= 0;
+}
+
+void
+nc_menu_enter()
+{
+  MenuOpen = 0;
+  MenuSel = 0;
+}
+
+/* current on/off state of a toggle action (for the checkbox) */
+static int
+toggle_state(id)
+int id;
+{
+  switch (id) {
+  case A_T_BUDGET:   return autoBudget;
+  case A_T_BULLDOZE: return autoBulldoze;
+  case A_T_GOTO:     return autoGo;
+  case A_T_DISAST:   return !NoDisasters;
+  case A_T_SOUND:    return UserSoundOn;
+  case A_T_ANIM:     return DoAnimation;
+  case A_T_MSG:      return DoMessages;
+  case A_T_NOTICE:   return DoNotices;
+  }
+  return -1;			/* not a toggle */
+}
+
+extern void start_new_city_menu();	/* provided by nc_main.c */
+
+static void
+do_action(id)
+int id;
+{
+  switch (id) {
+  case A_NEW:      nc_newgame_modal(); break;
+  case A_LOAD_RES: nc_load_embedded_modal(); break;
+  case A_LOAD:     nc_load_modal(); break;
+  case A_SAVE:   nc_save_modal(0); break;
+  case A_SAVEAS: nc_save_modal(1); break;
+  case A_QUIT:   Quitting = 1; break;
+
+  case A_T_BUDGET:   autoBudget = !autoBudget; MustUpdateOptions = 1; break;
+  case A_T_BULLDOZE: autoBulldoze = !autoBulldoze; MustUpdateOptions = 1; break;
+  case A_T_GOTO:     autoGo = !autoGo; MustUpdateOptions = 1; break;
+  case A_T_DISAST:   NoDisasters = !NoDisasters; MustUpdateOptions = 1; break;
+  case A_T_SOUND:    UserSoundOn = !UserSoundOn; MustUpdateOptions = 1; break;
+  case A_T_ANIM:     DoAnimation = !DoAnimation; MustUpdateOptions = 1; break;
+  case A_T_MSG:      DoMessages = !DoMessages; MustUpdateOptions = 1; break;
+  case A_T_NOTICE:   DoNotices = !DoNotices; MustUpdateOptions = 1; break;
+
+  case A_DIS_MONSTER: MakeMonster(); nc_set_status("A monster attacks!"); break;
+  case A_DIS_FIRE:    MakeFire(); nc_set_status("Fire reported!"); break;
+  case A_DIS_FLOOD:   MakeFlood(); nc_set_status("Flooding reported!"); break;
+  case A_DIS_TORNADO: MakeTornado(); nc_set_status("Tornado sighted!"); break;
+  case A_DIS_QUAKE:   MakeEarthquake(); nc_set_status("Earthquake!"); break;
+  case A_DIS_MELT:    MakeMeltdown(); nc_set_status("Nuclear meltdown!"); break;
+
+  case A_SPD_PAUSE: setSpeed(0); break;
+  case A_SPD_SLOW:  setSpeed(1); break;
+  case A_SPD_MED:   setSpeed(2); break;
+  case A_SPD_FAST:  setSpeed(3); break;
+
+  case A_BUDGET: DoBudgetFromMenu(); break;
+  case A_EVAL:   nc_eval_modal(); break;
+  case A_GRAPH:  nc_graph_modal(); break;
+  case A_MAP:    nc_minimap_cycle(); break;
+  case A_THEME:
+    { char msg[64]; sprintf(msg, "Land color: %s", nc_cycle_theme());
+      nc_set_status(msg); }
+    break;
+  case A_GFX: nc_gfx_modal(); break;
+  }
+}
+
+/* dropdown geometry, shared by draw and mouse hit-testing */
+static void
+menu_geom(mi, mx, w)
+int mi;
+int *mx;
+int *w;
+{
+  int i, l;
+
+  *mx = 1;
+  for (i = 0; i < mi; i++) *mx += (int)strlen(menus[i].title) + 3;
+  *w = 12;
+  for (i = 0; i < menus[mi].n; i++) {
+    l = (int)strlen(menus[mi].items[i].label) + 5;	/* " [x] " + label */
+    if (l > *w) *w = l;
+  }
+  nc_popup_snap(mx, w);
+  while (*mx + *w > COLS && *mx - 2 >= 0) *mx -= 2;	/* keep on screen */
+}
+
+static int
+next_item(m, sel, dir)
+int m;
+int sel;
+int dir;
+{
+  int n = menus[m].n, i = sel, guard = 0;
+  do {
+    i = (i + dir + n) % n;
+    if (menus[m].items[i].id != A_SEP) return i;
+  } while (++guard < n);
+  return sel;
+}
+
+/* handle a key while a menu is open; returns 1 if consumed */
+int
+nc_menu_key(ch)
+int ch;
+{
+  if (MenuOpen < 0) return 0;
+
+  switch (ch) {
+  case KEY_LEFT: case 'h':
+    MenuOpen = (MenuOpen - 1 + NMENUS) % NMENUS; MenuSel = 0; break;
+  case KEY_RIGHT: case 'l':
+    MenuOpen = (MenuOpen + 1) % NMENUS; MenuSel = 0; break;
+  case KEY_UP: case 'k':
+    MenuSel = next_item(MenuOpen, MenuSel, -1); break;
+  case KEY_DOWN: case 'j':
+    MenuSel = next_item(MenuOpen, MenuSel, 1); break;
+  case '\n': case '\r': case KEY_ENTER:
+    { int id = menus[MenuOpen].items[MenuSel].id;
+      MenuOpen = -1;
+      menu_backdrop();
+      if (id != A_SEP) do_action(id); }
+    break;
+  case 27:			/* Esc */
+#ifdef KEY_F
+  case KEY_F(10):
+#endif
+    MenuOpen = -1; clear(); break;
+  default:
+    return 1;			/* swallow other keys while menu open */
+  }
+  return 1;
+}
+
+/*
+ * Mouse click at (y,x): row 0 opens/toggles a menu title; a click inside an
+ * open dropdown runs that item; any other click while open just closes it.
+ * Returns 1 when the click was consumed.  Geometry mirrors nc_menu_draw.
+ */
+int
+nc_menu_mouse(y, x)
+int y;
+int x;
+{
+  int i, j, w, mx;
+  Menu *m;
+
+  if (y == 0) {				/* the menu bar itself */
+    mx = 1;
+    for (i = 0; i < NMENUS; i++) {
+      int tw = (int)strlen(menus[i].title) + 3;
+      if (x >= mx && x < mx + tw - 1) {
+	if (MenuOpen == i) MenuOpen = -1;
+	else { MenuOpen = i; MenuSel = 0; }
+	clear();
+	return 1;
+      }
+      mx += tw;
+    }
+    if (MenuOpen >= 0) { MenuOpen = -1; clear(); }
+    return 1;				/* bare bar: swallow the click */
+  }
+
+  if (MenuOpen < 0) return 0;
+
+  m = &menus[MenuOpen];
+  menu_geom(MenuOpen, &mx, &w);
+
+  j = y - 1;				/* dropdown rows start under the bar */
+  if (j >= 0 && j < m->n && x >= mx && x < mx + w) {
+    int id = m->items[j].id;
+    MenuOpen = -1;
+    menu_backdrop();
+    if (id != A_SEP) do_action(id);
+    return 1;
+  }
+  MenuOpen = -1;			/* clicked elsewhere: close */
+  clear();
+  return 1;
+}
+
+void
+nc_menu_draw(cols)
+int cols;
+{
+  int i, x = 0;
+  char *gname = Gfx->name;
+  int glen = (int)strlen(gname);
+
+  /* menu bar */
+  attrset(NC_CP(COLOR_BLACK, COLOR_WHITE));
+  for (i = 0; i < cols; i++) mvaddch(0, i, ' ');
+  x = 1;
+  for (i = 0; i < NMENUS; i++) {
+    int hot = (MenuOpen == i);
+    attrset(hot ? NC_MSEL(NC_CP(COLOR_WHITE, COLOR_BLUE) | A_BOLD)
+		: NC_CP(COLOR_BLACK, COLOR_WHITE));
+    mvaddch(0, x, ' ');
+    mvaddstr(0, x + 1, menus[i].title);
+    addch(' ');
+    x += (int)strlen(menus[i].title) + 3;
+  }
+  /* current -gfx mode, top right */
+  attrset(NC_CP(COLOR_BLACK, COLOR_WHITE));
+  if (cols - glen - 1 > x) mvaddstr(0, cols - glen - 1, gname);
+  attrset(A_NORMAL);
+
+  /* open dropdown */
+  if (MenuOpen >= 0) {
+    Menu *m = &menus[MenuOpen];
+    int w, mx, j;
+    menu_geom(MenuOpen, &mx, &w);
+    for (j = 0; j < m->n; j++) {
+      char line[64];
+      int st, sel = (j == MenuSel);
+      Item *it = &m->items[j];
+      attrset(sel ? NC_MSEL(NC_CP(COLOR_BLACK, COLOR_CYAN) | A_BOLD)
+		  : NC_CP(COLOR_WHITE, COLOR_BLUE));
+      if (it->id == A_SEP) {
+	int k; move(1 + j, mx); for (k = 0; k < w; k++) addch('-');
+	continue;
+      }
+      st = toggle_state(it->id);
+      if (st >= 0)	/* both forms fill the full snapped width */
+	sprintf(line, " [%c] %-*s", st ? 'x' : ' ', w - 5, it->label);
+      else
+	sprintf(line, " %-*s", w - 1, it->label);
+      mvaddnstr(1 + j, mx, line, w);
+    }
+    attrset(A_NORMAL);
+  }
+}

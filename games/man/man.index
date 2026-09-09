@@ -1,0 +1,4 @@
+COHERENT.1/fortune	fortune	Print randomly selected, hopefully humorous, text
+COHERENT.2/moo	moo	Greatly amusing numeric guessing game
+COHERENT.1/hunt	hunt	Multi-player maze game over the network
+COHERENT.1/huntd	huntd	Driver for the hunt game

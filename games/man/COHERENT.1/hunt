@@ -1,0 +1,126 @@
+hhuunntt -- Command
+
+Multi-player maze game over the network
+//uussrr//ggaammeess//hhuunntt [ --bbccffmmqqSSss ] [ --nn _n_a_m_e ] [ --tt _t_e_a_m ] [ --pp _p_o_r_t ] \
+        [ --ww _m_e_s_s_a_g_e ] [ _h_o_s_t ]
+
+The object of hhuunntt is to kill off the other players.  There are no rooms, no
+treasures and no monsters: you wander around a maze, find grenades, trip
+mines, and shoot down walls and players.  The more players you kill before
+you die, the better your score.
+
+hhuunntt looks for a game in progress on the local network by broadcasting a UDP
+request; if none answers, it starts a driver, //uussrr//ggaammeess//lliibb//hhuunnttdd, on the
+local machine.  Naming a _h_o_s_t asks that machine's driver instead, so a game
+must already be running there (see hhuunnttdd).  If more than one game answers,
+hhuunntt lets you pick one.
+
+hhuunntt needs a terminal of at least 24 lines and 80 columns with cursor
+addressing, described in //eettcc//tteerrmmccaapp under the name TTEERRMM gives.
+
+The options are:
+
+--bb            Do not beep when the typeahead limit is reached.
+--cc            Enter the game cloaked (hidden from scanners).
+--ff            Enter the game flying.
+--mm            Enter as a monitor: watch the game without playing.
+--nn _n_a_m_e       Play under _n_a_m_e instead of asking for it.
+--pp _p_o_r_t       Rendezvous on UDP _p_o_r_t, for a private game.
+--qq            Report the games found on the network, and exit.
+--SS            Print the current game's statistics, and exit.
+--ss            Enter the game scanning.
+--tt _t_e_a_m       Join _t_e_a_m, a single digit; team-mates appear as it.
+--ww _m_e_s_s_a_g_e    Send _m_e_s_s_a_g_e to every player's screen on entering.
+
+The environment variable HHUUNNTT supplies the player name and, after commas,
+the options _t_e_a_m_=, _c_l_o_a_k, _s_c_a_n, _f_l_y, _n_o_b_e_e_p, _p_o_r_t_=, _h_o_s_t_=, _m_e_s_s_a_g_e_= and
+_m_a_p_k_e_y_=; for example
+
+    HUNT="name=Sneaky,team=1,cloak,mapkey=zoFf"; export HUNT
+
+plays as Sneaky on team 1, cloaked, with zz mapped to oo and FF to ff. _m_a_p_k_e_y_=
+must come last, and no option's value may contain a comma.
+
+_P_l_a_y_i_n_g
+
+The right of the screen is the status area: damage sustained, charges left,
+who is playing, who is scanning (\\*) or cloaked (++), and the scores. The
+rest is your map of the maze; line 24 carries messages too long for the
+status area.
+
+The movement keys are vvii's: hh, jj, kk and ll move left, down, up and right. 
+The upper-case key HH, JJ, KK or LL turns to face that way without moving; you
+can only fire or throw in the direction you face. Moving into another player
+stabs him.  The other commands are:
+
+ff or 11   Fire a bullet (1 charge)
+gg or 22   Throw a grenade (9 charges)
+FF or 33   Throw a satchel charge (25 charges)
+GG or 44   Throw a bomb (49 charges)
+55 .. 99   Throw larger bombs (81, 121, 169, 225 and 289 charges)
+00, @@     Throw the two largest bombs (361 and 441 charges)
+oo, OO     Throw small or big slime (5 or 10 charges)
+pp, PP     Throw bigger or biggest slime (15 or 20 charges)
+ss         Scan: show where the other players are (1 charge)
+cc         Cloak: hide from scanners (1 charge)
+^^LL        Redraw the screen
+qq         Quit
+
+The map uses these symbols:
+
+-- || ++     walls              // \\      deflecting walls
+##         doors (disperse shots)   ;;  gg    small and large mines
+::         bullet             oo OO @@    grenade, satchel, bomb
+ss $$       small and big slime      \\*        explosion
+>> << ^^ vv   you, facing right, left, up or down
+}} {{ ii !!   another player, facing right, left, up or down
+??         a wandering bomb, released every 30 deaths or so
+
+Shots move five times as fast as you do, and the gun must cool after three
+in a row.  A stab does 2 points of damage, a shot 5, and slime 5 each time
+it touches.  You start with 15 charges and get 5 more each time a player
+enters. Every explosion is centred on the square it hits and does most
+damage there; a grenade covers 3 by 3, the bombs 5 by 5 up to 21 by 21. 
+Slime flows around walls over as many squares as the charges spent.  A shot
+destroys an ordinary wall; deflecting walls and doors survive shots but not
+an adjacent grenade. Destroyed walls regenerate in the order they fell, one
+in a hundred as a deflector or a door, and a wall regenerated under a player
+throws him some distance and hurts him on landing.  A mine trips with
+probability 2% when walked onto forward, 50% sideways and 95% backing up,
+costing 5 or 10 points; defusing one is worth 1 or 9 charges.  Cloaking
+costs one charge per 20 of your moves, scanning one per 20 times the number
+of players of theirs, and turning one on turns the other off.  A kill adds 2
+to your damage capacity and takes 2 damage points away.  Typeahead is at
+most 5 characters, and if nobody moves, nothing moves.
+
+When you die you are asked whether to re-enter.  Besides yy and nn you may
+answer ww, to write a message first, or oo, to change how you enter.
+
+Your score is the decayed average of kills per entry, kept only for the
+session.  A running game raises the load average by about the number of
+players plus one half.
+
+_S_t_a_t_i_s_t_i_c_s
+
+hhuunntt --SS prints one row per player with these columns: _s_c_o_r_e, the last
+score; _d_u_c_k_e_d, _a_b_s_o_r_b, shots ducked and absorbed; _f_a_c_e_d, _s_h_o_t, shots fired
+at the player's face and at the player; _r_o_b_b_e_d, _m_i_s_s_e_d, the player's shots
+absorbed and ducked; _s_l_i_m_e_K, slime kills; _e_n_e_m_y, _f_r_i_e_n_d, enemies and friends
+(including oneself) killed; _d_e_a_t_h_s; _s_t_i_l_l, deaths without a command typed;
+and _s_a_v_e_d, shots or bombs that would have killed but for ducking or
+absorbing.
+
+_F_i_l_e_s
+
+//uussrr//ggaammeess//lliibb//hhuunnttdd -- The driver hhuunntt starts when it finds no game
+
+_S_e_e _A_l_s_o
+
+ccoommmmaannddss, hhuunnttdd, tteerrmmccaapp, vvii
+
+_N_o_t_e_s
+
+hhuunntt was written by Conrad Huang, Ken Arnold and Greg Couch of the
+University of California, San Francisco, Computer Graphics Lab, and is
+distributed under the BSD licence.  To keep up the pace, not everything is
+as realistic as possible.

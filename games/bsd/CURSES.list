@@ -1,0 +1,27 @@
+# Games in games/bsd/ that need the curses/termcap link line.
+#
+# build-games.sh SKIPS every name here and build-curses-games.sh builds it, so
+# the two sweeps never both claim a game and neither silently drops one.  A
+# curses game left off this list is built by the plain sweep, fails to link, and
+# shows up as a failure in a sweep that has nothing to do with it.
+#
+# "curses" here means the link line, not necessarily the API: battlestar draws
+# with plain stdio but its fly(6) sequence uses curses, and any game that reaches
+# termcap through tputs belongs here too.
+#
+# A name here must be a DIRECTORY games/bsd/<name>/ -- the curses sweep globs
+# <name>/*.c.  Single-file plain games are games/bsd/<name>.c instead.
+#
+# One name per line; blank lines and # comments ignored.
+robots
+rain
+worms
+atc
+tetris
+gomoku
+canfield
+cribbage
+mille
+battlestar
+hangman
+monop

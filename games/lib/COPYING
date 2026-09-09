@@ -1,0 +1,84 @@
+Data files for the games.
+
+games/bsd/COPYING states the terms for the game SOURCE.  The data those
+games read lives here, one directory away, and most of it is Berkeley's on the
+same terms.  A reader who found COPYING next to the source would not learn
+that, so this file says it.
+
+
+BERKELEY / NetBSD, on the terms in ../bsd/COPYING
+-------------------------------------------------
+
+    quiz.db/            35 files, the NetBSD/Debian bsdgames quiz database.
+                        See the separate notice below -- this is the one
+                        part of the directory that carries its own grant.
+    atc/                16 air-traffic-control scenarios, NetBSD's verbatim.
+                        atc additionally carries Ed James 1987 terms; see
+                        ../bsd/COPYING, which already names them.
+    cribbage.instr      BSD games/cribbage/instr
+    fish.instr          BSD games/fish/fish.instr
+    wump.info           BSD games/wump/wump.info
+    monop.inp           BSD games/monop/cards.inp
+
+    adventure.msg       NOT a copy -- generated here from ../bsd/adventure/
+                        glorkz by dumper.c.host, and checked in.  Its parent
+                        is BSD adventure, which per ../bsd/COPYING is the
+                        FOUR-clause BSD form (with the advertising clause)
+                        plus Copyright (c) 1997 Christos Zoulas.  That is the
+                        strictest term in the games tree, and being a binary
+                        blob this file gives no sign of it.  Noted for that
+                        reason.
+
+
+quiz.db/Makefrag carries its own grant
+--------------------------------------
+
+Reproduced from quiz.db/Makefrag, lines 3-27, which is 3-clause BSD:
+
+    # Copyright (c) 1997, 1998, 1999 Joseph Samuel Myers.
+    # All rights reserved.
+    #
+    # Redistribution and use in source and binary forms, with or without
+    # modification, are permitted provided that the following conditions
+    # are met:
+    # 1. Redistributions of source code must retain the above copyright
+    #    notice, this list of conditions and the following disclaimer.
+    # 2. Redistributions in binary form must reproduce the above copyright
+    #    notice, this list of conditions and the following disclaimer in the
+    #    documentation and/or other materials provided with the distribution.
+    # 3. The name of the author may not be used to endorse or promote products
+    #    derived from this software without specific prior written permission.
+
+    (the standard BSD disclaimer follows it in that file)
+
+quiz.db/index.in still carries the unsubstituted autoconf token `@quiz_dir@'
+on every line, which is how the Debian bsdgames lineage was established.
+
+
+MARK WILLIAMS COHERENT, on the terms in the root LICENSE
+--------------------------------------------------------
+
+    fortunes            363 entries separated by blank lines, which is the
+                        format COHERENT's own fortune(1) reads.  MWC's,
+                        byte-identical to the 4.2 holding, and the Lexicon's
+                        fortune page describes it.  It replaced NetBSD's
+                        583,924-byte fortunes.big and the strfile index built
+                        from it, which is why no BSD fortune database is
+                        listed above any more.
+    rubik.m4
+    kl                  (zero bytes upstream too)
+
+
+WRITTEN FOR THIS PORT
+---------------------
+
+    src/                2 K&R shims for the 3.2 libc -- err.c and fgetln.c.
+                        BSD API names, implementations written here; each
+                        says so in its own header.  The other nine shims are
+                        gone: libc has all of them, and a source on the link
+                        line was shadowing the library's.
+    cursrc/             curs_set.c, waddch.c -- overrides for a big-endian
+                        Z8001 bug in the in-tree libcurses.
+    hangman.words       19357 words derived from COHERENT's own spell
+                        dictionary, not from BSD (the tree has no
+                        /usr/dict/words); see ../bsd/hangman/hangman.h.

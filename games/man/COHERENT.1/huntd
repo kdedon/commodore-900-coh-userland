@@ -1,0 +1,33 @@
+hhuunnttdd -- Command
+
+Driver for the hunt game
+//uussrr//ggaammeess//lliibb//hhuunnttdd [ --ss ] [ --pp _p_o_r_t ]
+
+hhuunnttdd runs a game of hhuunntt: it keeps the maze and the players, and every hhuunntt
+client talks to it over a TCP connection.  A client that finds no game
+starts a driver itself, so hhuunnttdd is seldom run by hand.
+
+When a hhuunntt client starts it broadcasts a UDP request on every interface,
+asking for a game.  A hhuunnttdd that hears it answers with the TCP port the
+client should connect to; a client that hears nothing runs
+//uussrr//ggaammeess//lliibb//hhuunnttdd on its own machine and connects to that.
+
+The options are:
+
+--ss         Server mode: keep running after the last player leaves.
+           Without it, hhuunnttdd exits when the game empties.
+--pp _p_o_r_t    Listen for rendezvous requests on UDP _p_o_r_t instead of
+           the default, giving a private game that only hhuunntt --pp _p_o_r_t
+           finds.
+
+Errors are reported on the standard error.
+
+_S_e_e _A_l_s_o
+
+ccoommmmaannddss, hhuunntt
+
+_N_o_t_e_s
+
+hhuunnttdd was written by Conrad Huang, Ken Arnold and Greg Couch of the
+University of California, San Francisco, Computer Graphics Lab, and is
+distributed under the BSD licence.
