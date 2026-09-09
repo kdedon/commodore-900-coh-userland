@@ -1,0 +1,33 @@
+# Launcher catalog, read by the window server (zview): what the right-click
+# desktop menu offers -- the fallback launcher that works even with no dock.
+# The dock keeps its OWN catalog, /usr/hr/etc/dock: the two lists are
+# independent, so an app can sit in this menu without a dock icon (or the
+# other way round).
+# One line per app:  name:execpath:multi:args   (the last two optional)
+#   name        menu label AND the app's title base: by convention it equals
+#               the title the program declares in its HRAPP, which is how the
+#               menu's single-instance re-raise matches windows to this entry.
+#   execpath    program, run from the menu with these arguments
+#   multi       1 = may open many copies (menu shows "New <name>...");
+#               0 = single instance (a second launch raises it instead)
+#   args        extra command-line arguments, blank-separated, passed to the
+#               program at launch
+#
+# The window itself -- title, size, icon while hidden, whether it may be
+# stretched -- is NOT configured here: the application declares it at
+# start-up (hr_open, see inc/hrapp.h), so a program can also be run straight
+# from a shell.
+#
+# The rc script /usr/hr/etc/rc runs at desktop start-up: it starts the dock,
+# and anything else that should be genuinely RESIDENT from power-on.
+Shell:/usr/hr/bin/zterm:1
+Files:/usr/hr/bin/zfile:1
+Editor:/usr/hr/bin/zedit:1
+Mail:/usr/hr/bin/zmail:0
+Manual:/usr/hr/bin/zman:0
+Calculator:/usr/hr/bin/zcalc:0
+Printer:/usr/hr/bin/zprint:0
+Monitor:/usr/hr/bin/zmon:0
+Puzzle:/usr/hr/bin/zpuzzle:0
+Maze:/usr/hr/bin/zmaze:0
+Clock:/usr/hr/bin/zclock:0

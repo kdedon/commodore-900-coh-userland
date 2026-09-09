@@ -1,0 +1,9 @@
+1 page: 1 row of 1
+2 pages: 1 row of 2
+2 pages: 1 row of 2
+1 page: 1 row of 1
+velplot: print: 1616 dots wide, the head prints 960 -- use -tile or -fit
+velplot: -tile and -fit are opposite instructions
+conflict=2
+velplot: -T wants lp, ps or hpgl
+badmode=2

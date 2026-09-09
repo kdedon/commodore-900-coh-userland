@@ -1,0 +1,26 @@
+velcheck: check clean
+amp=0
+velcheck: check clean
+logic=0
+velcheck: check clean
+flow=0
+velcheck: check clean
+lan=0
+velcheck: check clean
+struct=0
+velcheck: check clean
+bracket=0
+velcheck: check clean
+feed=0
+velcheck: check clean
+oneline=0
+velcheck: check clean
+office=0
+velcheck: check clean
+curve=0
+velcheck: check clean
+plate=0
+velcheck: check clean
+panel=0
+velcheck: check clean
+psu=0

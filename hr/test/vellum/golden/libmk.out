@@ -1,0 +1,18 @@
+rm -f pid.sym
+cat /usr/vellum/eg/sk/HEADER > pid.sym
+/usr/vellum/bin/velsym -pfx P  -org 40,30 -scale 4 PUMP  /usr/vellum/eg/sk/pump.d  >> pid.sym
+/usr/vellum/bin/velsym -pfx V  -org 40,30 -scale 4 VGATE /usr/vellum/eg/sk/vgate.d >> pid.sym
+/usr/vellum/bin/velsym -pfx V  -org 40,30 -scale 4 VCHK  /usr/vellum/eg/sk/vchk.d  >> pid.sym
+/usr/vellum/bin/velsym -pfx V  -org 40,30 -scale 4 VCTL  /usr/vellum/eg/sk/vctl.d  >> pid.sym
+/usr/vellum/bin/velsym -pfx TK -org 40,30 -scale 4 TANK  /usr/vellum/eg/sk/tank.d  >> pid.sym
+/usr/vellum/bin/velsym -pfx VS -org 40,30 -scale 4 VESS  /usr/vellum/eg/sk/vess.d  >> pid.sym
+/usr/vellum/bin/velsym -pfx E  -org 40,30 -scale 4 HX    /usr/vellum/eg/sk/hx.d    >> pid.sym
+/usr/vellum/bin/velsym -pfx K  -org 40,30 -scale 4 COMP  /usr/vellum/eg/sk/comp.d  >> pid.sym
+/usr/vellum/bin/velsym -pfx I  -org 40,30 -scale 4 INST  /usr/vellum/eg/sk/inst.d  >> pid.sym
+/usr/vellum/bin/velcheck -sym pid.sym
+velcheck: symcheck clean
+make=0
+cmp=0
+ /usr/vellum/bin/velcheck -sym pid.sym
+velcheck: symcheck clean
+check=0

@@ -1,0 +1,20 @@
+: "ZView desktop start-up.  An ordinary /bin/sh script, run by the window"
+: "server when it comes up.  (The : lines predate the V3.4.5 sh, which does"
+: "have # comments.)"
+:
+: "The dock (zdock) is the desktop's 'shell': it draws the icon bar along"
+: "the top of the screen from /usr/hr/etc/dock and launches/switches apps."
+: "The server itself draws no icons -- without the dock the desktop still"
+: "runs, with the right-click menu as the only launcher."
+:
+: "Put further lines here only for an app that must be genuinely RESIDENT"
+: "from power-on, started in the BACKGROUND with & -- a GUI app does not"
+: "exit while its window is open, so a line without & would hold this"
+: "script, and the rest of the desktop, until that one window closed."
+:
+: "Options every GUI app understands (inc/hrapp.h):"
+: "	-P <X>,<Y>	where to put the window (top-left of the frame)"
+: "	-S <W>x<H>	content size, for a resizable app only"
+: "	-T <title>	window title	-I <file.icn>	desktop icon"
+: "	-H		start minimised (hidden)"
+/usr/hr/bin/zdock &
