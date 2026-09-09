@@ -1,0 +1,64 @@
+C-Kermit is Columbia University's, not this project's, and is not covered by
+the repository's root LICENSE.  This directory had no statement of that; the
+authority is the notice each source file carries, and this file collects them
+so that a reader who finds the tree without the tarball can see the terms.
+
+What this is
+------------
+
+C-Kermit 4E(072), 24 Jan 89 -- the version string is the first line of
+ckcmai.c.  Taken from the tier-2 MWC BBS copy of the distribution; 21 of our
+23 files are byte-identical to it.  A newer COHERENT-supporting release exists
+in the holdings (5A(188), 23 Nov 92) and is NOT used, because its own Makefile
+says the 16-bit COHERENT target "Does not work, version 5A is too large" and
+our 4E binary is already too large to stage.
+
+Terms
+-----
+
+Nineteen of the twenty-three files carry a copyright notice.  Seventeen of
+them are Columbia's, reproduced verbatim from ckcmai.c:
+
+    Author: Frank da Cruz (fdc@cunixc.cc.columbia.edu, FDCCU@CUVMA.BITNET),
+    Columbia University Center for Computing Activities.
+    First released January 1985.
+    Copyright (C) 1985, 1989, Trustees of Columbia University in the City of New
+    York.  Permission is granted to any individual or institution to use, copy, or
+    redistribute this software so long as it is not sold for profit, provided this
+    copyright notice is retained.
+
+The years differ by file (1985 alone on the files unchanged since first
+release; 1985, 1989 on those revised for 4E; 1987, 1989 on ckcdeb.h) and
+nothing else does.
+
+READ THE TERMS BEFORE SELLING ANYTHING.  This grant is not BSD and not Free:
+it permits use, copying and redistribution only "so long as it is not sold for
+profit".  This project distributes an image at no charge, which is what the
+grant permits.  It also requires that the copyright notice be RETAINED, and
+every one of the nineteen notices is present and unedited in the sources here.
+
+Two files are contributed code with their own copyright holder, on the same
+terms in the same words:
+
+    ckudia.c    Copyright (C) 1985, Herman Fischer, 16400 Ventura Blvd,
+    ckuscr.c    Encino CA 91436.  "Contributed to Columbia University for
+                inclusion in C-Kermit."
+
+(ckuusr.c notes at its XXSHE code that Fischer assigned those rights to
+Columbia.)
+
+Four files carry no notice of their own, and none is invented for them here:
+
+    ckopct.c    Howie Kaye, Columbia University, 3/11/86 -- the BOO decoder,
+                credited in its header, no grant stated.
+    cktock.c    F. da Cruz, CUCCA, Aug 87 -- file-renaming helpers for the
+    cktoxk.c    author's own working tree, credited, no grant stated.
+    ckcsym.h    a symbol-definition header, no header credit at all.
+
+They came in the same distribution as the eighteen and there is no reason to
+read them as separately licensed, but that is a reading and not a statement
+they carry.
+
+The Kermit PROTOCOL was developed at Columbia University; the sources say so.
+
+See ../zmodem/COPYING for the other file-transfer program in this tree.

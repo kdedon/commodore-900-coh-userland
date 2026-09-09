@@ -1,0 +1,69 @@
+rz/sz -- Chuck Forsberg's XMODEM/YMODEM/ZMODEM file transfer programs.
+
+This directory is rz 1.31 / sz 1.44, dated 1988 (rz.c line 1, sz.c line 1).
+
+The files name their authors but carry no permission statement of their own,
+which is what upstream shipped: the grant for rz/sz was published in the
+ZMODEM protocol document rather than in the source.  This file records the
+terms that were found and says plainly where each one comes from.
+
+
+1.  What is stated inside these files
+-------------------------------------
+
+Two grants, both in rbsb.c, both reproduced verbatim.
+
+rbsb.c lines 350-360 -- Stephen Satchell and Chuck Forsberg, on the CRC
+update macro:
+
+    /*
+     * updcrc macro derived from article Copyright (C) 1986 Stephen Satchell.
+     *  NOTE: First srgument must be in range 0 to 255.
+     *        Second argument is referenced twice.
+     *
+     * Programmers may incorporate any or all code into their programs,
+     * giving proper credit within the source. Publication of the
+     * source routines is permitted so long as proper credit is given
+     * to Stephen Satchell, Satchell Evaluations and Chuck Forsberg,
+     * Omen Technology.
+     */
+
+rbsb.c lines 364-367 -- Gary S. Brown, on the 32-bit CRC table:
+
+    /*
+     * Copyright (C) 1986 Gary S. Brown.  You may use this program, or
+     * code or tables extracted from it, as desired without restriction.
+     */
+
+Authorship, with no terms attached, is stated at rz.c line 7 (`rz.c By Chuck
+Forsberg') and zm.c lines 1-4 (`ZMODEM protocol primitives / 11-10-87 Chuck
+Forsberg Omen Technology Inc').  rz.c line 44 notes that the directory-creating
+routines come from "Public Domain TAR by John Gilmore".
+
+
+2.  Forsberg's own grant, which is NOT in this tree
+---------------------------------------------------
+
+Forsberg placed rz/sz in the public domain, but he did so in the ZMODEM
+protocol specification, not in the source files.  That document is not held by
+this project, so the following is quoted from it at second hand and is flagged
+as such rather than presented as something found here.  The ZMODEM protocol
+document, sections 3.4 and 22, states:
+
+    ZMODEM was developed for the public domain under a Telenet contract.  The
+    ZMODEM protocol descriptions and the Unix rz/sz program source code are
+    public domain.  No licensing, trademark, or copyright restrictions apply
+    to the use of the protocol, the Unix rz/sz source code and the ZMODEM
+    name.
+
+Anyone relying on that sentence should obtain the protocol document and read
+it, rather than relying on this transcription.  The upstream distribution this
+directory came from contains no licence file either, so there is nothing
+further to vendor from the holding.
+
+
+3.  What this file does not do
+------------------------------
+
+It grants nothing, and it does not assert that section 2 reaches these
+particular files.  It records what is here and what is not.
