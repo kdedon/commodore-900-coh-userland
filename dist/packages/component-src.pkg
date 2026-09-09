@@ -1,0 +1,74 @@
+# component-src.pkg -- the SOURCE half of a component, and why it is not a
+# courtesy.
+#
+# The BINARY packages create licence obligations, and a source package is how
+# they are satisfied.  What ships in one image of ours:
+#
+#	tools     rcs, under the GNU GPL VERSION 1 (all 19 files say so and
+#	          "version 2" appears nowhere in the directory); gzip, GPLv2
+#	games     tetris, distributable only "without any fee or other monetary
+#	          gains", authorship statement reproduced on all copies
+#	net       GNU screen, GPL VERSION 1 -- its COPYING is the v1 text and all
+#	          11 sources say "either version 1".
+#	mgr       Bellcore's grant: no sale for profit, and "the copyright notice
+#	          must be reproduced on copies"
+#
+# So a source package that omitted what the licence requires would be worse than
+# none: it reads as the obligation having been discharged.  WHICH components are
+# under which terms is dist/licences.tab, and a component whose terms oblige
+# source declares the `src' kind so this package is cut.  THE RULE APPLIED,
+# stated so a reader can check it rather than trust it:
+#
+#   FOR EVERY EXECUTABLE THE SIBLING -bin PACKAGE INSTALLS, this package carries
+#   the complete corresponding source for that executable, the recipe that
+#   compiles it, and every licence text that governs that source.  Not the
+#   component's `.c' files -- the SOURCE ROOT, so a COPYING sitting beside them
+#   travels with them; and not the whole producing repository either, because a
+#   package that ships everything says nothing about what this component needed.
+#
+# The mapping from a shipped program to its sources is the BUILD's (one
+# directory is not one program: base/cmd/diff builds diff and diffh,
+# base/cmd/knapsack builds enroll, xencode and xdecode and no `knapsack'), so it
+# is read from the map the build itself records -- hostbuild/ulsrcmap.py writes
+# hostbuild/build/.ulsrcmap -- and never guessed at.  `component.py component
+# <name> src' REFUSES while any executable is unmapped, and names them.  That refusal is the gate for the rule above:
+# coverage is not partial here, it is all or nothing.
+#
+# The count is recorded rather than recomputed: `programs' is how many
+# executables the -bin half installs and `mapped' is how many this package
+# answers for.  They must be equal, and `keymatch' below is what says so from
+# inside the archive, so an operator who has only the source package can still
+# see that it is complete.
+kind      component-src
+what      one component's complete corresponding source, its recipe and its licences
+producer  dist/pack-component.sh
+archive   c900-@C@-src-v@V@.tar.gz
+toplevel  c900-@C@-src-v@V@
+version   VERSION
+stamp     .provenance  kind commit version package component pkgkind entries programs mapped contentid
+text      .provenance  ^package=@C@-src$
+text      .provenance  ^pkgkind=src$
+text      .provenance  ^component=@C@$
+# Every executable accounted for, asserted from the package's own stamp.  A
+# source package that covers 40 of a component's 50 programs states an
+# obligation it has not discharged, and this is the line that refuses it.
+keymatch  .provenance programs  .provenance mapped
+file      LICENSE
+# ---- THE TERMS THE CONTENTS ARE UNDER ----
+# LICENSE above is what this repository says about its OWN files.  What the
+# component's CONTENTS are under travels with the release, not inside each
+# archive: the texts are collected once into `licences' beside the packages,
+# with an index.tab saying which regimes govern which component.  A source
+# package carries each program's own COPYING beside the code as well, because
+# it ships the source root upstream put it in.
+file      manifest.tab
+dir       files
+glob      files/*  1
+text      manifest.tab  ^f .
+# ---- WHICH BYTES ----
+# Source is text, so unlike a compiler its bytes ARE a stable name for it: a
+# content id is recomputable here and is recorded.  See component-bin.pkg.
+file      .contents
+file      check-contents.sh
+idfile    .contents  .provenance  contentid
+gate      check-contents.sh

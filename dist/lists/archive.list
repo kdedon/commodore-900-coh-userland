@@ -1,0 +1,91 @@
+# archive.list -- file archivers and serial file transfer.  All period
+# third-party ports that shipped for COHERENT on the MWC BBS; sources in
+# os/archive and os/comms, built by hostbuild/build-archive.sh and
+# hostbuild/build-comms.sh.
+#
+# Everything here goes in /usr/bin.  Read tools.list's note on the /bin versus
+# /usr/bin split before moving any of it: /bin is what the single-user
+# maintenance shell can reach, and none of these is a repair tool.  Together
+# they are about 477 blocks of /usr, against the roughly 756 that file measured
+# as free -- check the mkimage block counts before adding more.
+
+# --- archivers --------------------------------------------------------------
+# zoo 2.1 (Rahul Dhesi, 1991).  Creates and extracts.  Its `a' and `x' are the
+# common cases, `l' lists and `P' packs an archive down.  Packing matters here:
+# when compression makes a member LARGER, zoo rewrites it stored over the same
+# offset and cannot shorten the file afterwards, so an archive of incompressible
+# data carries the failed attempt's tail as slack.  The archive still lists and
+# extracts correctly; `zoo P' removes the slack.
+#
+#   2.1, NOT 2.01, and the reason is the licence.  Dhesi's statement for 2.00
+#   and 2.01 permits distribution "for noncommercial purposes" only and forbids
+#   shipping compiled code without the source; his 1991 statement for 2.1
+#   permits copying "for any purpose, whether commercial or noncommercial".
+#   This repository publishes a disk image, so that difference is load-bearing.
+#   2.1 also adds LZH (method 2) alongside the 13-bit LZW, which is what takes
+#   the binary from 64 KB to 90 KB -- about 54 blocks more of /usr.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  archive
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+# ARTICLES -- kermit is C-Kermit installed under the protocol's name, and the
+# Lexicon documents it as ckermit (the vendor's own page, comms/man); the
+# article is claimed for the program so the -man package carries it.
+articles kermit ckermit
+
+f	/usr/bin/zoo		755 0 1	src=hostbuild/build/bin/zoo
+# lharc 1.00 / C-LHarc (Y. Tagawa, K. U. Rommel, 1989-90).  LZHUF, and it
+# compresses appreciably better than zoo's LZW -- 46 KB against 53 KB on the
+# same 166 KB test set.  The COHERENT configuration defines NODIRECTORY, so it
+# archives the files it is named and does NOT descend into directories.
+# Terms: os/archive/lharc/COPYING (Tagawa's "This is FREEWARE"), and NOTICE.md.
+f	/usr/bin/lharc		755 0 1	src=hostbuild/build/bin/lharc
+# unzip 4.1 (Info-ZIP, 1991).  EXTRACT ONLY -- the matching creator is zip(1),
+# which is not built.  It reads stored, shrunk, reduced and imploded members,
+# which is every method PKZIP 1.x produced and therefore every method the .zip
+# files in the archives on this system use.  It predates deflate, so it cannot
+# read a zipfile written by a modern zip.
+# Terms: os/archive/unzip/COPYING (Smith 1989, and Info-ZIP's own record of what
+# he intended), and NOTICE.md -- 5.41+ is the licensed successor, not yet ported.
+f	/usr/bin/unzip		755 0 1	src=hostbuild/build/bin/unzip
+
+# --- serial file transfer ---------------------------------------------------
+# rz/sz (Chuck Forsberg, Omen Technology).  ZMODEM, with YMODEM and XMODEM
+# fallbacks.  cu(1) dials a line; these move files over one.  Upstream links
+# each under three names -- the base name speaks ZMODEM, the `b' name YMODEM
+# and the `x' name XMODEM -- and the programs switch on argv[0], so the extra
+# names are not decoration, they are how the other protocols are selected.
+f	/usr/bin/sz		755 0 1	src=hostbuild/build/bin/sz
+f	/usr/bin/sb		755 0 1	src=hostbuild/build/bin/sz
+f	/usr/bin/sx		755 0 1	src=hostbuild/build/bin/sz
+f	/usr/bin/rz		755 0 1	src=hostbuild/build/bin/rz
+f	/usr/bin/rb		755 0 1	src=hostbuild/build/bin/rz
+f	/usr/bin/rx		755 0 1	src=hostbuild/build/bin/rz
+# minirb: a small XMODEM receiver, the bootstrap for a machine that has no
+# transfer program yet -- type it in over a dumb line, then use it to pull rz
+# and sz across.
+f	/usr/bin/minirb		755 0 1	src=hostbuild/build/bin/minirb
+
+# C-Kermit 4E(072).  KERMIT protocol over a serial line, and the interactive
+# client (`kermit c') for a line cu(1) is not wanted on.  Both halves of the
+# objection that kept it off an image until now are settled:
+#
+#   SIZE.  It is 128334 bytes, 251 blocks.  The "279 blocks to spare" this
+#   entry used to cite was never the number: /usr is 34408 blocks free on
+#   hd42-coh and 2362 on the 21 MB media, so it fits with room over on both.
+#   TRANSFER.  It could not send a byte at all: ttoc(), conoc() and zchout()
+#   each take the address of a char PARAMETER, and the compiler retyped such a
+#   parameter to int, so `&c' addressed the high half of its promoted word --
+#   a NUL for every ASCII character (#324, the #321 defect class).  The
+#   compiler is fixed; the three sites copy the byte to a local as well, so
+#   the source is right under an older toolchain too.  A file now moves
+#   between two machines on one wire, verified end to end under the emulator.
+f	/usr/bin/kermit		755 0 1	src=hostbuild/build/bin/kermit

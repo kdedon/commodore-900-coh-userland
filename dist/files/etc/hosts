@@ -1,0 +1,33 @@
+#
+# hosts -- the host name database, in the traditional format:
+#
+#	address		name [aliases...]
+#
+# Read by gethostbyname()/gethostbyaddr() (os/net/netdb.c).  It is consulted
+# BEFORE the network: a dotted quad first, then this file, and only then the
+# DNS resolver -- and the resolver only at all if /etc/resolv.conf exists.  So
+# a name here answers with no packet, and a name in neither this file nor the
+# DNS is HOST_NOT_FOUND.
+#
+# The names of this machine and of its SLIP peer belong here rather than in the
+# DNS, for two reasons: they must resolve before the link is up (rc.net starts
+# slip after ifconfig), and the nameserver named in /etc/resolv.conf is itself
+# 10.0.0.1, so a machine that needed DNS to find its peer could never ask.
+#
+# The first name on a line is the canonical one and the rest are aliases; a
+# lookup matches any of them and answers with the canonical name.
+#
+# The entries below match /etc/rc.net's default SLIP configuration: this
+# machine is 10.0.0.2 and the host at the far end of the serial line is
+# 10.0.0.1.  Change them together with IFADDR in rc.net, the nameserver line in
+# /etc/resolv.conf, and /etc/hostname.
+#
+# /etc/hostname holds `c900.localnet', which is the canonical name below on
+# purpose: gethostname() has to resolve to this machine's own interface address
+# and not to 127.0.0.1.  hunt's client asks its own name to decide which network
+# to look for a game driver on, and a hostname that resolved to loopback made it
+# unable to find a server running on this very machine.
+#
+127.0.0.1	localhost
+10.0.0.2	c900.localnet c900 coherent
+10.0.0.1	peer.localnet peer slip-peer

@@ -1,0 +1,67 @@
+# component-bin.pkg -- the RUNTIME half of a component: the files that run.
+#
+# ONE DECLARATION, EVERY COMPONENT.  `@C@' stands for the component name, so
+# this file describes c900-net-bin-v3.5.0.tar.gz and c900-mgr-bin-v3.5.0.tar.gz
+# and every other one.  The alternative was eleven near-identical .pkg files,
+# which is the shape the toolchain's two host archives were in when the Windows
+# zip lost host/ and no gate noticed.  A kind gains a component the day a
+# dist/lists/*.list gains a `package' line, and nothing here has to be written
+# again.
+#
+# WHAT IT IS.  A component is a dist/lists/*.list that is a package: base,
+# runtime, net, mail-light, games, net-games, mgr, mgr-clients, tools, editors,
+# archive.  That list, resolved against its producer's build output, IS this
+# package -- so what a component-bin package installs and what an image carries
+# are the same files by construction, not by two lists that have to be kept
+# level.  The kernel repository's console-* components are cut to this same
+# declaration by its own os/hostbuild/pack-component.sh: one format, wherever
+# the files were built.
+#
+# manifest.tab is the whole of the installation instruction: `<type> <path>
+# <mode> <uid> <gid>', the six columns of `component.py component', minus the
+# source column, which named a path on the machine that packed it and means
+# nothing afterwards.  A tar archive cannot carry a COHERENT uid/gid or a setuid bit
+# through an unpack on somebody's Linux box, so the modes are DATA here and the
+# installer applies them; an installer that reads the tar bits alone would give
+# /usr/bin/screen 0755 instead of 6511 and it would silently not work.
+kind      component-bin
+what      one component's runtime files: what it installs and the modes to install them with
+producer  dist/pack-component.sh
+archive   c900-@C@-bin-v@V@.tar.gz
+toplevel  c900-@C@-bin-v@V@
+version   VERSION
+stamp     .provenance  kind commit version package component pkgkind entries contentid
+text      .provenance  ^package=@C@-bin$
+text      .provenance  ^pkgkind=bin$
+text      .provenance  ^component=@C@$
+file      LICENSE
+# ---- THE TERMS THE CONTENTS ARE UNDER ----
+# LICENSE above is what this repository says about its OWN files.  What the
+# component's CONTENTS are under travels with the release, not inside each
+# archive: the texts are collected once into `licences' beside the packages,
+# with an index.tab saying which regimes govern which component.  A source
+# package carries each program's own COPYING beside the code as well, because
+# it ships the source root upstream put it in.
+file      manifest.tab
+dir       files
+glob      files/*  1
+# The manifest is not decoration: every payload path is a row of it, and
+# check-contents.sh (below) is what asserts the two agree.  A package whose
+# files/ and manifest.tab disagree installs a set nobody declared.
+text      manifest.tab  ^f /
+# ---- WHICH BYTES ----
+# .contents is md5sum's own format over every other file here and
+# .provenance:contentid is its sha1, exactly as the toolchain packages do it, so
+# a flipped byte is caught inside the archive and named.  There is no source id:
+# a component-bin package is a SELECTION of the bytes a producer built, and the
+# stamp names THE SET IT SELECTED FROM, by the id that set is known by.  Two
+# producers cut this kind: for this repository's components it is `ulid', the
+# content id publish-userland.sh records over the published tree, so a package
+# can be matched to the sweep that produced it; for the kernel repository's
+# console drivers it is `kernel_linkid', the id of the kernel `ld -k' bound them
+# to, which is the only kernel they load into.
+text      .provenance  ^(ulid|kernel_linkid)=
+file      .contents
+file      check-contents.sh
+idfile    .contents  .provenance  contentid
+gate      check-contents.sh

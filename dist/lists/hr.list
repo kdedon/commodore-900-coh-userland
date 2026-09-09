@@ -1,0 +1,85 @@
+# hr.list -- ZView, the hi-res window system: the server, its driver and the
+# files it cannot come up without.
+#
+# HI-RES HARDWARE ONLY.  /drv/hr is major 7 and a superset of hrtty(4): it owns
+# the frame buffer at 0x3E0000, the keyboard interrupt, the polled mouse and the
+# drawing-lock slow path, and zview loads it through /etc/load at start-up and
+# unloads it on the way out.  So this fragment is meaningful only on a machine
+# with the hi-res board, alongside console-hr.list or console-both.list, and on
+# an LR or serial machine the load fails and nothing draws.  It is not spelled
+# `require': the six dists that carry it name the console two different ways,
+# console-hr.list on the hi-res dist and console-both.list on the rest.
+#
+# ZView is the window system this port carries; MGR (lists/mgr.list) is the
+# other one.  Both may be installed on one image and only one owns the board at
+# a time -- /drv/hr rewires hrtty's interrupt vectors while it is loaded, which
+# is why zview unloads it before it exits.
+#
+# ONE BLOCKING READ, NOT A COROUTINE STACK.  Every client and the input pump
+# write to one command pipe; the server reads it, keeps the WSTRUCT/LAYER table,
+# and does clipping, z-order and damage with the rendering engine's own
+# primitives.  zvpump and zvwatch are the input pump and the crash watchdog,
+# exec'd rather than forked so the server's ~65 KB of text is not copied for the
+# session.  hrclip reads and sets the PRIMARY selection from a shell and has no
+# window of its own.
+#
+# WITHOUT THE FONTS NOTHING STARTS.  zview opens "sysfont" at start-up, and
+# the three .hf faces the server loads into the shared VRAM tail are generated
+# from the raw FM fonts by tools/mkfont.py in the producing repository.  Both
+# sets are staged here, in one tree entry, because they land in one directory.
+#
+# The three catalogs under /usr/hr/etc name the applications: apps is the
+# server's right-click menu, dock is zdock's icon bar, and rc is the /bin/sh
+# script the server runs at start-up, whose one line starts zdock.  All three
+# name programs from lists/hr-clients.list, so a distribution taking this list
+# without that one comes up with a menu and a dock of programs that are not on
+# the disk.  `require' states that without staging anything: it fails the build
+# instead.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  hr
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+require	lists/hr-clients.list
+
+# The driver.  Kernel code: it is compiled against the kernel's header set and
+# bound to one kernel image by `ld -k', so it is relinked whenever the kernel is.
+f	/drv/hr		755 0 1
+#
+# The graphical greeter is NOT here: staging /etc/zlogin is what asks a machine
+# to boot into the window system, so it belongs to lists/login-graphical.list,
+# which is the half of the login pair that says so.  This list is the window
+# system itself, which a character-login machine may perfectly well carry.
+#
+d	/usr/hr
+d	/usr/hr/bin
+f	/usr/hr/bin/zview	755 0 1
+f	/usr/hr/bin/zvpump	755 0 1
+f	/usr/hr/bin/zvwatch	755 0 1
+f	/usr/hr/bin/hrclip	755 0 1
+#
+# The 16 raw FM fonts and the three .hf faces generated from them (gacha.r 8x15
+# for terminals, gacha.b 9x16 for the window chrome, sail 6x8 for icon labels).
+# A `t' entry copies a directory's files without descending, and this directory
+# has no subdirectories.
+t	/usr/hr/fonts
+#
+# The desktop icons zview blits for a minimised window, and the artwork zdock
+# draws in its bar.  A dock entry naming artwork that is not here falls back to
+# icon0.icn rather than drawing nothing.
+t	/usr/hr/icons
+#
+d	/usr/hr/etc
+f	/usr/hr/etc/apps	644 0 1
+f	/usr/hr/etc/dock	644 0 1
+# Run with `execl("/bin/sh", "sh", "/usr/hr/etc/rc")', so it is read and not
+# executed and carries no x bit.
+f	/usr/hr/etc/rc		644 0 1

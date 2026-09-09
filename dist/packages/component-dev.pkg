@@ -1,0 +1,63 @@
+# component-dev.pkg -- what is needed to COMPILE AGAINST a component.
+#
+# -dev AND -src ARE NOT THE SAME PACKAGE, and the difference is the reason this
+# kind exists rather than being folded into the other.  -src is what you need to
+# REBUILD the component and is where its licence obligations are discharged;
+# -dev is what you need to build something ELSE that talks to it -- the headers
+# that declare its interface and the library that implements the client half.
+# Somebody writing an MGR client wants mgr.h and the client library and has no
+# use for the server's 1,953 files; somebody exercising the GPL wants all 1,953
+# and has no use for a convenience library.
+#
+# TWO COMPONENTS DECLARE `dev', and each is one line per file or directory at
+# the head of its own list -- `dev <path it installs at> <path in a checkout>',
+# which is a directive and not an entry because none of it goes on an image:
+#
+#   net-dev  the socket interface -- inet_ipc.h, which is the request and reply
+#            framing of the FIFO channel to /etc/inet and so the interface in
+#            the strictest sense; inet_chan.h, netdb.h, arpa/inet.h and net/,
+#            which declare what the calls take and return; and libsocket.a,
+#            which resolves them.  The daemon's own internals (minix/,
+#            netdb_priv.h) are not in it: a header a client must not include is
+#            not part of an interface.
+#   mgr-dev  MGR's client half -- include/mgr, the headers a client writes
+#            against, include/c900, which they include, and libmgrcl.a, the
+#            client library MGR's own build keeps apart from the server's.
+#
+# The producer resolves and packs them, as it does every other kind, because it
+# is the repository the headers and the built library are in.  The same shape is
+# what the TOOLCHAIN lane's headers-and-libraries packages take: include.pkg and
+# libc.pkg are -dev packages of a component called `toolchain', written before
+# the concept had a name, and they are not renamed onto this declaration --
+# they carry a source id (tcid) a component package has no way to state.
+kind      component-dev
+what      one component's headers and link-time libraries: the compile-time interface
+producer  dist/pack-component.sh
+archive   c900-@C@-dev-v@V@.tar.gz
+toplevel  c900-@C@-dev-v@V@
+version   VERSION
+stamp     .provenance  kind commit version package component pkgkind entries contentid
+text      .provenance  ^package=@C@-dev$
+text      .provenance  ^pkgkind=dev$
+text      .provenance  ^component=@C@$
+file      LICENSE
+# ---- THE TERMS THE CONTENTS ARE UNDER ----
+# LICENSE above is what this repository says about its OWN files.  What the
+# component's CONTENTS are under travels with the release, not inside each
+# archive: the texts are collected once into `licences' beside the packages,
+# with an index.tab saying which regimes govern which component.  A source
+# package carries each program's own COPYING beside the code as well, because
+# it ships the source root upstream put it in.
+file      manifest.tab
+dir       files
+# An interface is headers, or a library, or both -- but a -dev package with
+# NEITHER is an empty promise, and `glob' with a floor of 1 over the union is
+# what refuses it.  The floor is on files/, not on include/, so a component
+# publishing only a library is not forced to invent a header.
+glob      files/*  1
+text      manifest.tab  ^f .
+# ---- WHICH BYTES ----
+file      .contents
+file      check-contents.sh
+idfile    .contents  .provenance  contentid
+gate      check-contents.sh

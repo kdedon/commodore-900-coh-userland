@@ -1,0 +1,38 @@
+: cpsys -- copy the later distribution volumes onto the installed system.
+:
+: This runs FROM THE HARD DISK, after the machine has been reset and has
+: booted the system that build made.  That is the whole trick, and it comes
+: from the original: while the installer is running, the volume it booted IS the
+: mounted root filesystem, and swapping the disc out from under it would
+: leave the kernel writing cached blocks of one disc onto another.  Once the
+: root is the hard disk the drive is free, so one drive is enough -- which is
+: as well, because no Commodore 900 shipped with two.
+:
+: build installs this as /.profile on the new system, so the first login
+: runs it with no instruction to remember, and the last line here puts the
+: real /.profile in its place: the job is done once.
+:
+: NOTE for anyone editing this file: this shell has no comment character.
+: Every line above begins with the null command, so none of them may contain
+: a shell metacharacter -- a parenthesis in a comment is a syntax error.
+:
+: /etc/volumes is generated from the dist descriptor and put here by build,
+: one volume per line, in the order they are asked for.  Empty means a
+: one-volume distribution and this loop does nothing.
+for v in `/bin/cat /etc/volumes`
+do
+	echo "Insert distribution volume $v and press RETURN."
+	read j
+	: Read-only: a distribution volume is a source, and nothing here has any
+	: business writing to it.  The mount point is /f0, as the original's was.
+	/etc/mount /dev/fd1 /f0 -r
+	: A volume is a partial image of this system's root -- its list names
+	: absolute paths -- so it copies wholesale, and /usr and /usr/man are
+	: already mounted underneath by /etc/rc.
+	/bin/cpdir -d /f0 /
+	/etc/umount /dev/fd1
+	echo "Volume $v copied."
+done
+/bin/sync
+echo 'The distribution is installed.  Remove the floppy.'
+/bin/mv /etc/pro.def /.profile

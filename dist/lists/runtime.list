@@ -1,0 +1,512 @@
+# runtime.list -- the general-purpose command set, on top of a base system.
+#
+# WHAT SEPARATES THIS FROM base.list is the line COHERENT 0.7.3 drew when it
+# decided what its own root filesystem held: base is that root set -- the
+# skeleton, the /etc configuration that reaches multi-user, the shell, the
+# tools that make and repair a filesystem, an editor and the file utilities a
+# Makefile invokes -- and this is everything else a general-purpose machine
+# runs.  The text and document tools, the administrative and accounting
+# commands, the archivers, the mail and printing plumbing, the spooling
+# daemons, the /usr spool directories and the data files all of them read.  A
+# distribution that wants a general-purpose machine includes both, and one that
+# does not wants base alone.
+#
+# Console drivers are NOT here (console-*.list) and neither are the games
+# (games.list), the further editors (editors.list) or the networking
+# (net.list): each is a choice a distribution makes by name.  See ../README.md
+# for the format.
+
+# --- directory skeleton -----------------------------------------------------
+# The directories this component's own programs need.  The root skeleton
+# itself -- /bin, /dev, /etc, /lib, /tmp, /usr and the two below it -- is
+# base's, and a `d' entry is not idempotent, so nothing here restates one.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  runtime
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+# `require', not `include': every program below assumes the system base brings
+# up, and the directories it stages are children of base's skeleton.
+require  lists/base.list
+
+# THE LIBRARIES THIS COMPONENT BUILDS, whose Lexicon articles are therefore
+# this component's manual: libcurses and libterm are compiled from base/lib/libcurses and
+# base/lib/libterm (hostbuild/build-curses.sh), libmp from base/lib/libmp into
+# bc and dc, and libfs from base/lib/libfs into the file-system check tools.
+# Forty-three articles -- the three overviews, the multiple-precision calls, the
+# terminfo and termcap readers -- that no package held while a -man package was
+# the pages for a component's PROGRAMS alone.  libfs is named because this
+# component builds it, and contributes nothing: the Lexicon never described it.
+#
+# libm AND libmisc ARE NOT THIS COMPONENT'S.  What every program here links is
+# the TOOLCHAIN's libm-z8001.a and libmisc-z8001.a, built from its src/libm and
+# src/libmisc, and the libmisc article's roster (alloc(), approx(), ask(),
+# picture(), virtual arrays) is that archive's contents.  The tty-lock code init
+# needs, base/cmd/lock.c, is in no article.  liby is not named either: nothing
+# in this repository compiles base/lib/liby.
+libraries libcurses libterm libmp libfs
+
+# /usr filesystem.
+d	/usr/adm
+# The mail system's control files (mail(1) Lexicon, `Files'): /usr/lib/mail
+# holds aliases, and smail would add paths/fullnames here if UUCP transport is
+# ever ported.
+d	/usr/lib/mail
+d	/usr/man
+# 777 because at(1) is NOT setuid and writes its own spool file here as the
+# caller: "Anyone can write in the at spooling directory.  Security is maintained
+# because at sets the set uid, set gid and owner execute bits" (cmd/at.c).  The
+# reference disk has it 777 for the same reason; at 755 the
+# whole at/atrun pair is root-only and silently so.
+d	/usr/spool/at	777 0 1
+# lpr(1) chdir()s to /usr/spool/lpd before it queues anything and lpd(1) says
+# "spool directory botch" and dies when the chdir fails, so the spooler needs
+# the DIRECTORY, not a data file.  Owner and mode are the reference system's:
+# daemon:daemon 755, because cmd/lpr/run makes lpr, lpskip
+# and lpd setuid daemon and it is as daemon that they write here.
+d	/usr/spool/lpd		755 1 1
+d	/usr/tmp
+# mail(1) rewrites a mailbox by unlink() + create (cmd-3.x/mail/mail.c:568), and
+# msgs(1) creates bounds and its numbered message files (cmd-3.x/msgs.c:89-95),
+# both as the invoking user -- so both directories must be world-writable.
+# uunlink() tests only write permission on the containing directory
+# (sys/coh/sys3.c), and ISVTXT is the save-text bit here, not a sticky-directory
+# bit (sys/h/ino.h:76), so 1777 would restrict nothing and is not used.
+d	/usr/spool/mail		777 0 1
+d	/usr/msgs		777 0 1
+# These two sit UNDER the /usr mount point but on the ROOT filesystem, so the
+# running system never sees them -- /usr is mounted over them by /etc/rc.  They
+# are almost certainly vestigial (inherited from the pre-dist build); kept with
+# an explicit part= so the layout is reproducible.  FLAGGED for review: if
+# nothing needs them, delete both lines.
+d	/usr/spool		part=/
+d	/usr/spool/uucp		part=/
+
+# --- /etc configuration -----------------------------------------------------
+# Orderly shutdown.  Four files, and none of them works without the others.
+#
+# WHAT IT IS FOR is the filesystem dirty flag: a modified filesystem carries
+# FSDIRTY in its super block and comes up read only, needing check(1), until
+# something writes FSCLEAN back.  sync(2) is what does that (sys/coh/fs2.c
+# msync), so the whole point of a shutdown here is to be the last thing that
+# touches the disk.  Before these, the documented procedure was `sync' and then
+# switch off, and every machine that was switched off any other way fsck'd on
+# the way back up.
+#
+#   /etc/shutdown  warns the users, counts down, and hands over to init with
+#                  kill -1 1.  A port of the COHERENT 4.2 script (Udo Munk,
+#                  1993; source/4.2.x/etc/shutdown), which outranks the 3.x
+#                  script this tree holds twice in RCS and never checked out.
+#   /.profile      the other half: init spawns the single-user shell as a login
+#                  shell, so this is where the shutdown finishes once nothing
+#                  else is running.  Guarded on /etc/shutdown.lvl, because it is
+#                  also root's login profile on every terminal.
+#   /etc/umount.all unmount everything but the root.  Also a 4.2 port.
+#   /etc/halt      sync, unmount, and stop the machine through halt(2).  NEW,
+#                  and there is no candidate for it: 4.2's script sleeps forever
+#                  and tells the operator to switch off, because the AT it ran
+#                  on had no halt path from userland.  This one does.
+#   /etc/reboot    there is no warm restart on this machine.  It says so and
+#                  halts.  The 3.x reboot.c in os/etc-3.x is an 8042 pulse-reset
+#                  for a PC/AT and is still not built.
+f	/etc/shutdown	755 0 1
+f	/etc/umount.all	755 0 1
+f	/etc/reboot	755 0 1
+f	/etc/halt	755 0 1
+# /etc/ttys is NOT here: it selects what logs a machine in, and that is a
+# per-dist choice like the console driver.  Every dist includes exactly one of
+# lists/login-text.list or lists/login-graphical.list.
+# The two halves of /etc/hostname, split the way the mail system reads them:
+# mail(1) builds `From: <uucpname>!<user>' from /etc/uucpname and the Message-Id
+# domain from /etc/domain.  Absent, it signs mail as `<unknown>!user' at
+# `.UNKNOWN'.  uuinstall(1) would rewrite both.
+f	/etc/uucpname
+f	/etc/domain
+# /etc/profile picks TERM by console, and carries NO comments: this shell has
+# no comment character at all (see /etc/rc, which has none either -- a
+# commented rc silently lost a mknod once), so the explanation lives here.
+# Every login shell reads /etc/profile before its own .profile (cmd/sh/main.c),
+# root included, which is why the pick lives here and not in /.profile: root is
+# the only account with a .profile of its own, so putting it there left every
+# other account with no TERM at all.
+#
+# THE TWO VIDEO CONSOLES ARE DIFFERENT TERMINALS, and must not be treated as
+# one:
+#
+#   LR (sys/z8001/rec/mm.c)      emulates an H19/Z19: ESC then a letter --
+#                                ESC J/K/H/Y/A/B/C/D/I.  That is the VT52 set,
+#                                and the screen is 80x24 (NROW/NCOL).
+#   HR (hrtty/src/hrterm2.c)     emulates ANSI: ESC [ then a letter --
+#                                ESC [ H/A/B/C/D/E/L/M/K/@/P/J.  The screen is
+#                                85x32, not 80x24: display.h has XMAX 1024 and
+#                                YMAX 800, subr.h divides by YSCROLL 25 and by a
+#                                12-pixel cell.
+#
+# So they get separate termcap entries (lr and hr) rather than a shared one, and
+# neither claims `am' -- hrtty's plotc() drops a character past MAXCOL instead of
+# wrapping, and mm.c ignores one too.  Telling a program the wrong one puts
+# escapes on the screen as text: elvis drew a column of "~ESC[K" down the LR
+# console under TERM=vt100, and clear(1) stopped working on HR when both were
+# briefly given vt52.
+#
+# A SERIAL console is whatever is plugged into it, and vt100 is the safe
+# assumption.  /etc/console names the driver vidsel picked and is written by
+# /etc/load, the only thing that knows (cmd/load.c).  The patterns are anchored:
+# "notty" CONTAINS "tty", so a substring match calls the serial console a video
+# one.
+f	/etc/profile
+e	/usr/adm/wtmp
+
+# --- data files belonging to commands below ---------------------------------
+f	/usr/lib/more.help	src=base/cmd/more/more.help
+# mail(1) resolves every local recipient through /usr/lib/mail/aliases before it
+# looks in /etc/passwd, and says `Cannot open alias file' on every send when the
+# file is absent.  Contents are the COHERENT 4.2 baseline (postmaster, uucp and
+# daemon all to root).
+f	/usr/lib/mail/aliases
+# nroff(1) reads its macro package from /usr/lib/tmac.<name> (cmd/nroff/roff.h
+# TMACDIR + TMACFMT), so `nroff -man' and `nroff -ms' both died on `cannot open
+# file "tmac.an"'.  Both packages come from relicD -- the SAME holding our nroff
+# is built from -- checked out of os/usr.lib-3.x/RCS/tmac.{an,s},v at 1.1.  The
+# 0.7.3 copies under src/dist/usr/lib are a different vintage and are not used.
+f	/usr/lib/tmac.an
+f	/usr/lib/tmac.s
+# bc(1) -l reads /usr/lib/lib.b.  relicD's os/usr.lib-3.x/RCS/lib.b,v 1.1 and the
+# 0.7.3 src/dist/usr/lib/lib.b are BYTE-IDENTICAL, so the vintage question that
+# kept this file out of the image had no answer to give: it is one file.
+f	/usr/lib/lib.b
+# units(1) finds its table by pathn() over LIBPATH for `units' then `binunits'
+# (cmd/units.c), i.e. /lib:/usr/lib, and dies "can't find unit file" without it.
+# Only the ASCII table ships: with no binunits present units COMPILES one on
+# first run, which is the only way to get a binary table with this machine's
+# byte order in it -- a shipped binunits from any holding is little-endian and
+# would be read as garbage.  The table is romana/source/4.2.x/usr/lib/units,v
+# (rank 1); it differs from the 0.7.3 one only in the currency rates, which are
+# a Wall Street Journal quote of 1990 rather than 1980.
+f	/usr/lib/units
+# help(1) opens /etc/helpfile and /etc/helpindex (cmd/help.c HELPFILE/HELPINDEX),
+# and with neither present every topic answered "no information on <cmd>".  The
+# helpfile is relicD's /etc copy, romana/relic/d/etc/RCS/helpfile,v 1.1 -- 185
+# topics, `ls' among them -- NOT the shorter /usr/lib one that os/usr.lib-3.x/RCS
+# also carries.  The INDEX is deliberately not shipped: it is a file of binary
+# offsets and every holding's copy is little-endian, and it does not need to be,
+# because fastlook() rebuilds an index older than the helpfile and lookup() falls
+# back to a linear scan when it cannot write one.
+f	/etc/helpfile
+
+# --- userland ---------------------------------------------------------------
+# Placement (which of /bin, /etc, /usr/bin) follows where c900final.bin kept
+# each command.  setuid bits are explicit.
+# passwd belongs in /bin, which is also where MANIFEST always expected it
+# (its dead `bin/passwd 4755' override).  placement.lst had it at /etc/passwd,
+# where the password file overwrote it -- see below.
+f	/bin/passwd	4755 0 1
+f	/bin/su		4755 0 1
+f	/usr/bin/7mail
+f	/usr/bin/Ncron
+f	/bin/ac
+f	/etc/accton
+f	/bin/ar
+# at is deliberately NOT setuid and must not become so -- cmd/at.c says why: the
+# spool directory is world-writable and the security is in the MODE at(1) gives
+# the script (06500, set-uid + set-gid + owner read-exec), which atrun refuses to
+# run without.  atrun is the other side of that and must be setuid AND setgid
+# root: it setuid/setgid's to the OWNER of each spooled script before running it
+# (cmd/atrun.c, "In order to have the ability to set its uid and group id, it must
+# be set uid to root"), which an unprivileged process cannot do.  The reference
+# disk agrees -- its /usr/lib/atrun is 6755.
+# INERT TODAY either way: cron(1) reads /usr/lib/crontab (cmd/cron.c) and no list
+# ships one, so nothing invokes atrun until a crontab does.  The mode is set now
+# so that adding the crontab is one line and not one line plus a silent failure.
+f	/bin/at
+f	/usr/bin/atrun	6755 0 0
+# awk IS nawk on this system: a SECOND NAME for /bin/nawk (below), not a copy
+# and not the 1985 Mark Williams awk.  There are
+# no symbolic links in a V7 filesystem, so this is a hard link -- one inode,
+# link count 2, `ls -l /bin/awk /bin/nawk' shows one size and one 2.
+#
+# WHAT CHANGES FOR A USER.  nawk is a superset on everything measured: all nine
+# must-work cases of tests/awkrules produce byte-identical output to the 1985
+# language, and `awk '{n++} END{print n}'' -- which the 1985 grammar refuses,
+# because it terminates a rule with a newline and nothing else -- now works.
+# 1/3 is 0.333333 rather than 0, and printf "%x" prints hex.  The whole nawk
+# language (function, split, gsub, substr, sprintf, getline var, -F, arrays,
+# do...while) arrives with it.
+#
+# See os/man/COHERENT.1/nawk.
+l	/bin/awk	to=/bin/nawk
+f	/usr/bin/badscan
+f	/bin/banner
+f	/bin/basename
+f	/bin/bc
+f	/bin/c
+f	/bin/cal
+f	/usr/bin/calendar
+f	/usr/bin/cgrep
+f	/usr/bin/chmog
+f	/usr/bin/chroot
+f	/bin/col
+f	/bin/comm
+f	/bin/compress
+f	/bin/conv
+# cron reads /usr/lib/crontab, which is NOT shipped -- it is site configuration
+# with no natural source in this tree, and belongs in dist/files/ when somebody
+# decides what a default C900 crontab should say.  cron with no table does
+# nothing rather than failing, which is why this has gone unnoticed.
+f	/etc/cron
+f	/usr/bin/crypt
+f	/bin/cu
+# cu's far end.  cu(1) moves a file by typing "/etc/cuxcvr " down the line to
+# the REMOTE system (cmd/cu/cu.c:731), so the path is wired into cu and the
+# transceiver has to be at it.  It is a separate program with its own main,
+# sharing only the packet layer; without it, ~%take and ~%put between two of
+# these machines cannot work.
+f	/etc/cuxcvr
+f	/usr/bin/cut
+f	/bin/dc
+f	/bin/deroff
+# diff3(1) is two pieces, per the Lexicon's Files section: /bin/diff3 is a shell
+# script that runs diff(1) twice into /tmp/d3$$[ab], and /usr/lib/diff3 is the
+# compiled collator that merges those two difference files.  The collator alone
+# takes a tempfile-name stem, not three file names, so installing it as
+# /bin/diff3 gives a command nobody can invoke.
+# /usr/lib/diffh is the heuristic diff that diff(1) execs for -h and for -d on
+# a file over 25000 bytes -- which is the option the diff3 script passes.
+f	/bin/diff3	755 0 1	src=base/cmd/diff3.sh
+f	/usr/lib/diff3	755 0 1	src=hostbuild/build/bin/diff3
+f	/usr/lib/diffh	755 0 1	src=hostbuild/build/bin/diffh
+# cmd/dump is four programs (cmd/dump/run): the dumper, the restorer that reads
+# its tapes, and the two report programs that read a dump's header and its
+# directory.  They were one binary until the sweep learned to split a directory.
+f	/bin/dump
+f	/bin/restor
+f	/bin/dumpdate
+f	/bin/dumpdir
+f	/usr/bin/enable
+f	/usr/bin/env
+f	/bin/factor
+# false and true are the shell's own no-op idioms (`while true', `cmd ||
+# false'): a status and nothing else, so neither has a .c anywhere.  The
+# vendor's own build makes both -- os/cmd-3.x/Makefile's `false' target checks
+# out a one-line `exit 1' script, `true' touches an empty file -- and that is
+# what dist/files/bin holds, which is where a shipped file with no producer
+# lives and is where every system's list resolves them from.
+f	/bin/false	555 3 1
+f	/bin/from
+f	/bin/head
+f	/bin/help
+# NOT SHIPPED: `hpr' had no build step at all -- the pre-dist image carried a
+# 3-week-old binary from an untracked build, at mode 664 so it was not even
+# executable.  cmd-3.x/hpr is the lpr/lpd pair and does not link (`print_'
+# undefined -- a source file is missing from the directory).  Restore when the
+# port is real; a stale artifact is not a shipped command.
+f	/bin/join
+# There is no `knapsack' program: cmd/knapsack is the public-key mail package
+# and its makefile builds three commands, which is what /usr/bin/knapsack used
+# to be a glob of.  enroll(1) writes a user's key pair, xencode(1) encrypts to a
+# recipient's public key and xdecode(1) decrypts with the private one; they are
+# they are shipped plain 755.
+#
+# cmd/knapsack/makefile installs them setuid to `xmail' so that they alone may
+# write the shared /usr/spool/pubkey.  Neither exists here -- dist/files/etc/passwd
+# has no xmail and no list makes the directory -- and setuid to a uid no passwd
+# entry names is a mode nothing can check.  Each user's own keys still work; the
+# shared public-key ring wants that user and that directory decided first.
+f	/bin/enroll
+f	/bin/xencode
+f	/bin/xdecode
+f	/bin/learn
+f	/bin/lex
+# NOT SHIPPED: `login-tmp' has NO SOURCE anywhere in the tree.  Nothing may
+# ship without source.
+f	/bin/look
+# The printer set is FOUR programs (cmd/lpr/run), which is what /bin/lpr was a
+# glob of: lpr(1) queues a job into /usr/spool/lpd, /usr/lib/lpd is the daemon
+# that prints it, lpskip(1) aborts the current page and opr(1) copies straight to
+# the printer.  Globbed, the main() the linker kept was lpd1.c's, so /bin/lpr WAS
+# the daemon and `lpr /etc/motd' read the argument as lpd's optional PRINTER name
+# and answered "lpd: /etc/motd: permission denied".
+# lpr, lpskip and lpd run setuid daemon: it is as daemon that they write
+# /usr/spool/lpd (see the directory skeleton above).  opr writes no spool.
+f	/bin/lpr	4755 1 1
+f	/bin/lpskip	4755 1 1
+f	/bin/opr
+f	/usr/lib/lpd	4755 1 1
+f	/bin/m4
+# mail(1) is its own local delivery agent: it opens /usr/spool/mail/<recipient>
+# and chowns the box to the recipient, so it runs setuid root.  The MWC
+# Makefile installed it 6511 root:root; the setgid half buys nothing here and
+# 4755 0 1 is what the rest of this list gives a setuid-root command.
+f	/bin/mail	4755 0 1
+f	/bin/man
+f	/bin/mesg
+f	/usr/bin/more
+# msg and write both open ANOTHER user's terminal, and the console and the two
+# real serial lines are 700 root (dist/devices/hd.devices), so neither can
+# deliver anything without the bit.  Both drop the privilege as soon as they have
+# the descriptor -- cmd/write.c's setuid(getuid()) under "Turn off setuid
+# privileges" -- and both say so in their own first comment ("This is setuid in
+# order to ...").  mesg(1) is the other half of the pair and needs nothing: it
+# chmods the caller's OWN tty.
+f	/bin/msg	4755 0 1
+f	/usr/bin/msgs
+f	/bin/ncheck
+# nawk -- the 1989 Hirabayashi awk clone (cmd/nawk), a different program from
+# the 1985 awk and the one /bin/awk now names.  In /bin and not /usr/bin so
+# that the two names can be one inode: a hard link cannot cross the /usr mount.
+f	/bin/nawk
+# newgrp needs the setuid bit to exist at all: its whole job is setgid(2), which
+# an unprivileged process cannot do, and cmd/newgrp.c says so in its own header
+# ("to make it work: chmod u+s /bin/newgrp").  It then setuid(getuid())s straight
+# back down before exec'ing the shell, so only the group changes.  Shipped 755 it
+# reached its own "cannot change group id" and exited 1 -- and before the error
+# path was fixed it printed nothing and handed out a shell in the caller's own
+# group, which is why the missing bit hid the bug rather than showing it.
+f	/bin/newgrp	4755 0 1
+f	/bin/nm
+f	/bin/nroff
+# NOT SHIPPED HERE: placement.lst put the `passwd' COMMAND at /etc/passwd, where
+# the /etc/passwd password FILE above overwrote it -- so no passwd command has
+# ever shipped, and MANIFEST's `bin/passwd 4755' override was dead.  The command
+# belongs at /bin/passwd; added there separately so this list first reproduces
+# the existing image byte-for-byte.  Duplicate dest paths are now a hard error.
+f	/bin/pr
+f	/bin/prep
+f	/bin/prof
+f	/usr/bin/qfind
+f	/bin/quot
+f	/bin/ranlib
+f	/bin/rev
+# The RESTRICTED shell -- COHERENT's rsh predates the BSD remote shell, which
+# is remsh here (net.list).  It is BYTE-IDENTICAL to /bin/sh below by design:
+# one program, built once from cmd/sh, restricting itself when argv[0] says
+# `rsh'.  Two source copies drift, and a drifted rsh restricts nothing; if
+# cmd/rsh ever comes back as a source directory, that is the bug returning.
+#
+# What it refuses after the profiles run, and the much longer list of what it
+# does NOT protect against, is os/man/COHERENT.1/rsh -- shipped as `man rsh'.
+# The short version, because it decides whether shipping this helps anyone: the
+# restriction is only as good as the PATH the account's .profile sets.  A
+# restricted account whose PATH reaches /bin gets an unrestricted shell by
+# typing `sh', and gets one out of ed, elvis, less, awk, mail or find too.
+#
+# login(1) also has to cooperate, and until this was written it did not: it
+# exec'd /bin/sh whatever the passwd entry said, so no account could be given
+# rsh at all.  cmd/login/login.c runs the shell the entry names now.
+f	/usr/bin/rsh
+f	/bin/sa
+f	/bin/sed
+f	/bin/size
+f	/bin/sleep
+f	/bin/sort
+# spell(1) is a shell script over a binary, per cmd/spell/run: /bin/spell is
+# cmd/spell/spellcmd, which pipes deroff|sort into /usr/lib/spell, the
+# hashed-dictionary lookup; spellin(1) builds such a hashed list from a word
+# list.  /bin/spell used to BE the lookup, which takes a hashed list and a
+# history file rather than the file names a user passes.
+#
+# The dictionary itself (/usr/dict/clist{a,b}) is not shipped and has no source
+# here, so spell answers "cannot open" until one is built with spellin; that is
+# a content decision, not a build one.
+f	/bin/spell	755 0 1	src=base/cmd/spell/spellcmd
+f	/usr/lib/spell	4755 0 1
+f	/usr/bin/spellin
+f	/bin/split
+f	/usr/bin/strings
+f	/bin/strip
+f	/bin/stty
+f	/bin/sum
+# The system log: one daemon, its configuration, and the client a shell uses.
+#
+# syslogd reads records from the FIFO /dev/log and appends them where
+# /etc/syslog.conf says.  The node is NOT made here and not by rc: syslogd
+# mkfifo()s it itself at startup, because a daemon whose rendezvous point is
+# missing fails for a reason nothing records.  It does need an rc line to be
+# STARTED, and /etc/rc now does it: `/etc/syslogd &' sits after the mounts (the
+# log files are in /usr/adm) and ahead of the rc.net block, so it holds the read
+# end of the FIFO before inetd or smtpd write to it -- a record written
+# with no daemon listening is discarded.  Measured, not assumed: on a booted
+# machine syslogd has the lowest daemon pid of the lot.
+#
+# It ships from base.list rather than net.list because nothing here is the
+# network: the first callers are login, su and cron.  /usr/adm, where the log
+# lands, is already a directory above.
+#
+# logger(1) is in /bin because it is a shell tool: it is also what says the
+# whole path works, since it does nothing except call syslog(3).
+f	/etc/syslogd	755 0 1
+f	/etc/syslog.conf	644 0 1	src=base/cmd/syslogd/syslog.conf
+f	/bin/logger
+f	/bin/tail
+f	/bin/tar
+f	/bin/tee
+# top(1) is the only program here that is not a COHERENT program: no holding
+# has one, so it is William LeFebvre's top 3.3 (1995) with a machine module,
+# m_coherent.c, written for this system -- ps(1)'s walk of the kernel process
+# chain behind top's own display.  Like ps it needs /coherent to be the running
+# kernel.  It draws with top's own termcap package and links libterm, not
+# libcurses; see os/cmd/top/COPYING for the terms and where the source came
+# from.
+#
+# setuid root, and for the reason base.list's ps(1) is: the three files it
+# reads are 600 root nodes (dist/devices/hd.devices), so without the bit no
+# ordinary user could run it at all.  The privilege is dropped the moment it
+# has the descriptors -- it opens /dev/kmem,
+# /dev/mem and /dev/swap in machine_init() (cmd/top/m_coherent.c) and calls
+# setuid(getuid()) before returning, so the whole display, the ~/.toprc it
+# reads and writes, and the kill and renice commands its interactive mode
+# offers all act as the real user -- top's own permission test is getuid()
+# (cmd/top/top.c, cmd/top/commands.c), which is the id that survives.
+f	/bin/top	4755 0 1
+f	/bin/touch
+f	/bin/tr
+f	/bin/true	555 3 1
+# NOT SHIPPED: same story as hpr -- stale, mode 664, no build step.
+# cmd-4.2/troff needs vfprintf(), which our libc does not have yet.
+f	/bin/tsort
+f	/bin/typo
+# uname(1) reports the kernel's identity: the system channel id, the node name
+# from /etc/uucpname, the release, and the kabi/fsabi pair a package compares
+# against.  It ships from base.list and not net.list because it is what says
+# WHICH system this is, and an offline install answers that question too.
+f	/bin/uname
+f	/bin/uncompress
+f	/bin/uniq
+f	/bin/units
+f	/usr/bin/unmkfs
+f	/bin/version
+# wall writes EVERY line in /etc/utmp, so like msg and write it has to open
+# terminals it does not own, and the console and tty50/tty51 are 700 root.  It is
+# not root-only in practice: /etc/shutdown execs it as the operator's warning, and
+# the reference disk ships it 4755 for the same reason.
+f	/etc/wall	4755 0 1
+f	/usr/bin/which
+f	/bin/who
+# whoami answers for the EFFECTIVE uid, which `who am i' does not: that reads
+# /etc/utmp, so it still names the login user after an su and says nothing at all
+# for a process with no terminal.
+f	/bin/whoami
+# clear links libterm, so build-curses-games.sh builds it (that is the one place
+# that knows where libterm.a is) and it is staged from there rather than from the
+# flat userland sweep.
+f	/bin/clear	755 0 1	src=hostbuild/build/bin/clear
+# NOT SHIPPED HERE: worm is a curses game and ships at /usr/games/worm via
+# games.list.  The /usr/bin copy was a stale pre-split leftover, mode 664 and
+# therefore unrunnable -- two copies of one game, one of them broken.
+f	/bin/write	4755 0 1
+f	/bin/xmail
+f	/bin/yacc
+# yacc's parser skeleton, and the same shape of omission as make's two library
+# files above: y6.c opens `parser' -- /lib/yyparse.c (y0.c) -- to write the
+# driver half of y.tab.c, and without it dies "can't find parser" (FATAL) after
+# doing all the work.  A yacc that cannot produce y.tab.c is not a yacc.
+f	/lib/yyparse.c		644 0 1	src=base/cmd/yacc/yyparse.c
+f	/bin/yes
+f	/bin/zcat

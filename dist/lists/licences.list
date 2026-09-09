@@ -1,0 +1,25 @@
+# licences.list -- the terms every component on this system is distributed
+#	          under, one copy, where a reader can find them.
+#
+# /usr/licences holds index.tab -- which licence regime governs which component
+# -- and beside it each regime's licence text verbatim, as the tree that holds
+# the code holds it.  dist/licences.tab is the register they are cut from, and
+# `make packages' collects them into hostbuild/build/licences, and the
+# distribution repository copies that directory beside the component archives it
+# releases, so an installed system and a release carry the same texts.
+#
+# NOT /usr/lib: nothing here is a support file a program opens.  NOT /usr/man:
+# man(1) scans that tree's man.index, and these are not Lexicon articles.  This
+# is a body of documents a person reads, which is what a directory of its own
+# under /usr is for, as /usr/man and /usr/mgr are.
+#
+# Every dist includes this.  A licence obligation attaches to what is handed
+# over, and each of these regimes governs something one of the images installs;
+# 28 files and 224 KB on a /usr with 12944 blocks free is not worth the
+# machinery a per-image subset would take.
+#
+# This list is not a component: it publishes no package, because what it stages
+# is what every OTHER component's package is under.
+
+d	/usr/licences		755 0 1
+t	/usr/licences		src=hostbuild/build/licences

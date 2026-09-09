@@ -1,0 +1,20 @@
+: 'Every login shell reads this file before its own .profile (cmd/sh/main.c),'
+: 'so this is the one place a setting reaches every account, not just root.'
+: 'TERM is guessed from the console only when nothing has already said what'
+: 'the terminal is.  A window manager, telnetd and rlogind all know better'
+: 'than /etc/console does: an mgr window on a machine that booted hrtty is'
+: 'not an hrtty, and a login over the network is not this machine console at'
+: 'all.  login(1) sets no TERM, so a console login still lands here.'
+if /bin/test -z "$TERM"
+then
+	TERM=vt100
+	if /bin/grep '^lrtty$' /etc/console >/dev/null 2>&1
+	then
+		TERM=lr
+	fi
+	if /bin/grep '^hrtty$' /etc/console >/dev/null 2>&1
+	then
+		TERM=hr
+	fi
+fi
+export TERM

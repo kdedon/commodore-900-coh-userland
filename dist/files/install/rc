@@ -1,0 +1,8 @@
+umask 022
+rm -f /tmp/*
+>/etc/mnttab
+>/etc/utmp
+chmod 777 /tmp
+date >/dev/console
+echo 'This is the OpenCoherent installation floppy.'
+echo 'Type   build   to install the system onto the hard disk.'

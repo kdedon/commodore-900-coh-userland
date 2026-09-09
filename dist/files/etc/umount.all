@@ -1,0 +1,52 @@
+: '/etc/umount.all -- unmount every filesystem except the root.'
+: ''
+: 'Ported from the COHERENT 4.2 original (source/4.2.x/etc/umount.all,v'
+: 'revision 4.2, 9 November 1993), which is generic where the 3.x scripts of'
+: 'the same name were hand-written lists of one site own devices.'
+: ''
+: 'This shell has no comment lexer, so the explanation is in : arguments.'
+: ''
+: 'THE PARSE IS OF mount(1) WITH NO ARGUMENTS, which reports one line per'
+: 'mounted filesystem as "/dev/hd1 on /usr (writeable) since <date>"'
+: '(cmd/mount.c mlist).  DEV is the block special, DIR the directory; the'
+: 'root is reported like any other filesystem and has to be recognised and'
+: 'skipped, since it cannot be unmounted while the system is running.'
+: ''
+: 'A REFUSED UNMOUNT DOES NOT STOP THE REST.  umount(2) fails while any'
+: 'process holds a file or a working directory on the filesystem, and the'
+: 'ones that are still free should come down anyway.  The second pass names'
+: 'what is left rather than returning a count: a pipeline runs in a subshell'
+: 'here, as in every Bourne shell, so nothing set inside the loop survives'
+: 'it, and there is no scratch filesystem to carry it out through either --'
+: '/tmp is one of the filesystems this has just tried to unmount.  The'
+: 'caller that needs the answer as a status is /etc/halt, which does its own'
+: 'unmounting through umount(2) and reports each refusal with its errno.'
+: ''
+: 'UNMOUNT ORDER IS THE ORDER mount(1) REPORTS, which is the order /etc/rc'
+: 'mounted in -- shallow before deep, since dist.py sorts the generated'
+: 'mount commands by mount-point length.  That is the wrong way round for'
+: 'unmounting a nested filesystem (/usr/man sits inside /usr), so the first'
+: 'pass runs twice: the inner one comes down on the first sweep only if it'
+: 'happened to be reported first, and on the second sweep otherwise.'
+
+pass=1
+while /bin/test $pass -le 2
+do
+	/etc/mount | while read DEV x DIR y
+	do
+		if /bin/test "$DIR" != /
+		then
+			/etc/umount $DEV 2>/dev/null
+		fi
+	done
+	pass=`/bin/expr $pass + 1`
+done
+
+/etc/mount | while read DEV x DIR y
+do
+	if /bin/test "$DIR" != /
+	then
+		echo "umount.all: $DEV is still mounted on $DIR"
+	fi
+done
+exit 0

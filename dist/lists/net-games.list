@@ -1,0 +1,28 @@
+# net-games.list -- the games that need the network: hunt(6) and its driver.
+#
+# hunt talks to huntd over sockets, so it needs libsocket as well as curses and
+# is built by its own `make hunt' target rather than the games sweep.  It
+# `require's lists/net.list: a dist that includes this and not that fails the
+# build instead of shipping a game with no /dev/tcp to open.  The other 33
+# games are lists/games.list and need only a tty.
+#
+# huntd lives in /usr/games/lib because that is the path the client is compiled
+# to exec when it has to start a driver itself (HUNTD_PATH in the port's
+# Makefile).  Move one without the other and hunt will not find it.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  net-games
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+require	lists/net.list
+
+f	/usr/games/hunt		755 0 1	src=games/net/hunt/hunt/hunt
+f	/usr/games/lib/huntd	755 0 1	src=games/net/hunt/huntd/huntd

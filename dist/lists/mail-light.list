@@ -1,0 +1,58 @@
+# mail-light.list -- SMTP mail between machines on a LAN, in 600 lines.
+#
+# THE MAIL TRANSPORT.  It does exactly what "send mail between networked C900s"
+# asks and nothing else: smtpd answers on port 25 and delivers into
+# /usr/spool/mail, smtpsend hands a message to another machine's port 25.  A
+# machine has one holder of port 25, and this is it.
+#
+# It needs the stack, so it `require's lists/net.list -- a dist that includes
+# this and not that fails the build rather than shipping a daemon with no
+# /dev/tcp to open.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  mail-light
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, which
+# os/dist/PACKAGE-FORMAT argues and which refuses without the producer's source
+# map.  No `man': neither smtpd nor smtpsend has a page, so both ship
+# undocumented, which os/dist/coverage.tab records.
+kinds    src
+
+require	lists/net.list
+
+# smtpd receives.  It is /etc/smtpd rather than /bin/smtpd because it is a
+# daemon nobody types, and it is an INETD SERVICE, not a standing daemon:
+# /etc/inetd.conf carries an enabled `smtp' line, and inetd offers no service
+# whose program is not installed -- so INSTALLING THIS LIST IS WHAT TURNS THE
+# SERVICE ON, the same conf file opens no SMTP port without it, and nothing has
+# to edit inetd.conf or be kept in step with it.  Nothing of the daemon is
+# resident between callers; the switchboard's listener holds one of the stack's
+# fifteen connections.
+#
+# A site that wants it standalone -- more than one delivery at a time, or no
+# switchboard -- runs `/etc/smtpd -m N &' from rc.net and comments the smtp line
+# out of inetd.conf.  Each pre-forked child is a channel held for as long as it
+# waits, whether or not anybody calls (FINDINGS C-2).
+#
+# It runs as root -- it must, to append to another user's mailbox and to chown
+# it afterwards -- and it accepts mail for any domain naming a local user.
+# There is no relaying and no authentication, which is right for a private LAN
+# and wrong for a machine that can be reached from outside it.
+f	/etc/smtpd	755 0 1	src=hostbuild/build/bin/smtpd
+
+# smtpsend sends.  mail(1) invokes it on a pipe for a recipient containing an
+# `@' (cmd-3.x/mail/send.c ssend()), exactly where it invokes uux for one
+# containing a `!'; it is also usable by hand, reading the message on standard
+# input.  Resolution is gethostbyname(), so /etc/hosts answers on a LAN and no
+# nameserver is required -- there is no MX lookup at all, which is why this
+# list is not blocked on the resolver ever having run.
+#
+# There is no queue anywhere in this transport.  A host that does not answer is
+# a failure reported to the sender, and mail(1) then saves the letter in
+# $HOME/dead.letter as it does for any other delivery failure.  Nothing is
+# retried, so a machine that is off when mail is sent to it does not get that
+# mail when it comes back.
+f	/bin/smtpsend	755 0 1	src=hostbuild/build/bin/smtpsend

@@ -1,0 +1,49 @@
+# login-graphical.list -- graphical login on the hi-res bitmap console.
+#
+# /etc/getty hands the hi-res console to /etc/zlogin, which draws a login panel
+# on the frame buffer, authenticates against /etc/passwd and execs the window
+# system: the chain is getty -> zlogin -> zview, and zview is the session.
+#
+# STAGING THE GREETER IS THE WHOLE SWITCH.  This file installs /etc/zlogin and
+# lists/login-text.list does not; getty's last condition is that the greeter is
+# there and executable (cmd/getty.c).  So one userland boots either way, and
+# which way is a property of the dist rather than of a file somebody edits on
+# the running machine.
+#
+# /etc/ttys IS THE ORDINARY ONE.  The console line is enabled and the five
+# serial lines are off, exactly as under login-text: init spawns getty on the
+# console either way.  What differs is only that getty finds a greeter to hand
+# the line to.
+#
+# A SERIAL LINE NEVER MATCHES.  getty requires two things of itself before it
+# hands off (cmd/getty.c hrconsole()): that its own line IS /dev/console, and
+# that /etc/console names hrtty -- the driver vidsel chose at boot, after
+# checking the board is the 1024x800 mono variant /drv/hrtty can plot on.  So a
+# terminal on tty51 gets the character prompt on the very machine whose console
+# is graphical, which is what an operator at that terminal wants.
+#
+# TWO WAYS BACK TO A CHARACTER LOGIN, in the order they are reached:
+#
+#  1. Single user.  init offers a root shell on the console whenever a boot
+#     cannot go multi-user: the root file system could not be repaired, the
+#     boot loader asked for single user, or /etc/ttys enables no line at all.
+#     That shell is a login no part of the window system can take away.
+#  2. The greeter gives up.  Anything unrecoverable -- no card, no font --
+#     makes zlogin exec /etc/getty with a third argument "text", which skips
+#     the hand-off, so the console reaches the character prompt instead of the
+#     two execing each other forever.
+#
+# PACKAGE.  The other half of the pair; see login-text.list.
+package  login-graphical
+role     alternative
+conflict lists/login-text.list
+# The greeter draws with the hi-res rendering engine and reads the UI font that
+# list stages; without it there is nothing for getty to hand a console to.
+require  lists/hr.list
+# KINDS -- see os/dist/PACKAGE-FORMAT.  `bin' is the list below; `src' is the
+# complete corresponding source for every executable it installs and `man' the
+# pages for those programs.  Both refuse to be cut from a guess.
+kinds    src man
+
+f	/etc/ttys
+f	/etc/zlogin	755 0 1

@@ -1,0 +1,30 @@
+# hostfs.list -- the host-directory pass-through disk.
+#
+# DEVELOPMENT ONLY.  NEVER include this list from a shipped dist: the device is
+# a sandbox escape by definition (the guest reads and writes a directory on the
+# simulator host), so it exists only in a dev dist that is never shipped, and
+# even there it is inert unless the host daemon (gotools/hostfsd) was started
+# and was given a directory to export with -dir.  No hostfsd, no export: the
+# driver's open fails ENXIO and nothing else is reachable.
+#
+# The /dev nodes (block /dev/hfs + char /dev/rhfs, major 11 minor 0) are NOT
+# listed here because device tables are per-dist (.devices files) and the
+# shipped one must not change; hostfs(1) creates both nodes on first use.
+#
+# Built by hostbuild/build-hostfs.sh into build/drv and build/bin.
+#
+# This list serves the GO-SIM transport only.  The minimal-emulator
+# transport ships nothing at all: it is the stock /dev/fd1 floppy plus
+# hostfsd -render/-extract on the host.
+# PACKAGE.  The host filesystem driver and its client, additive and
+# development-only in practice, but nothing about it is exclusive.
+package  hostfs
+role     optional
+# KINDS -- see os/dist/PACKAGE-FORMAT.  `bin' is the list below; `src' is the
+# complete corresponding source for every executable it installs, and refuses
+# to be cut from a guess.  No `man': neither the driver nor its client has a
+# page, so both ship undocumented, which os/dist/coverage.tab records.
+kinds    src
+
+f	/drv/hostfs	755 0 1
+f	/bin/hostfs	755 3 1

@@ -1,0 +1,91 @@
+# component-man.pkg -- one component's manual pages, and the two gaps that
+# become visible the moment the manual is cut per component.
+#
+# Measured against the machine, system-wide, the manual is wrong in both
+# directions: shipped programs with no page at all, and pages for programs we do
+# not install (`man vi', the dos* family).  System-wide, that is one number
+# nobody owns.  Per component it is somebody's: net's 23 programs have 0 pages,
+# mgr-clients' 50 have 2, base's 173 have 152.
+#
+# THE CORPUS IS THIS REPOSITORY'S OWN.  hostbuild/extract-man.sh assembles
+# hostbuild/build/man out of the pages every component tracks in its own tree --
+# base/man, net/man, tools/man, editors/man and the rest -- so a manual package
+# is cut from material this repository holds and versions, and there is no
+# third-party archive to fetch before one can be.
+#
+# The package is THE PAGES FOR WHAT THIS COMPONENT BUILDS: the rows of man.index
+# whose name column is a program the -bin half installs, and the articles for the
+# LIBRARIES its list's `libraries' line names.  A library's manual belongs with
+# the component that builds it for the same reason a program's does: net's
+# twenty-six socket pages, from accept() to socket(), are the manual for
+# something net ships, against one page for its twenty-three programs, and a
+# rule about programs alone leaves them in no package at all.  Which pages
+# document a library is read from the pages, where the Lexicon already says it:
+# a title line is `accept() -- Sockets Function (libsocket)'.
+#
+# A component's own man/ directory is not the unit, because those directories are
+# not one-to-one with components -- base/man alone holds 666 of the 1,206 pages,
+# which is the whole reference manual, and packing it whole would put `man vi'
+# into a package for an image that has no vi.  Two consequences, both wanted:
+#
+#   A COMPONENT WITH NO PAGES CANNOT CUT ONE.  `component.py component <n> man'
+#   refuses rather than writing an empty archive, because an empty archive that
+#   unpacked and passed a gate is read as coverage.  Nine components are in that
+#   position and the libraries do not move any of them: not one of the nine
+#   builds a library the Lexicon describes.
+#   AN ARTICLE NO COMPONENT CLAIMS IS NEVER PACKED.  It stays in the assembled
+#   manual, which is where the whole reference lives and where an image's
+#   /usr/man is staged from, and it is not offered as though it documented a
+#   program this system installs.
+#
+# man.index is GENERATED here, holding exactly the rows for the pages present.
+# /bin/man scans it a line at a time and cannot reach a page that has no row, so
+# an index copied wholesale would promise 1,206 articles to a tree holding 152.
+kind      component-man
+what      the manual pages for one component's programs and libraries, and an index of exactly those
+producer  dist/pack-component.sh
+archive   c900-@C@-man-v@V@.tar.gz
+toplevel  c900-@C@-man-v@V@
+version   VERSION
+stamp     .provenance  kind commit version package component pkgkind entries programs documented libraries contentid
+text      .provenance  ^package=@C@-man$
+text      .provenance  ^pkgkind=man$
+text      .provenance  ^component=@C@$
+# What this package does NOT cover, said in the package rather than in a report
+# somebody has to go and find: `programs' is the component's executable count and
+# `documented' is how many of them have a page here.  They are allowed to differ
+# -- that is the state of the manual -- but the difference is carried with the
+# artifact, so nobody reads a man package as the component being documented.
+# Both count PROGRAMS: a library's articles are pages in the archive and are not
+# added to `documented', which would otherwise report net as documenting
+# twenty-seven of twenty-three programs.  `libraries' names whose articles the
+# rest of the pages are -- `libsocket' for net, `-' for a component that builds
+# no library the Lexicon describes -- so the count and the archive agree without
+# anybody opening it.
+file      LICENSE
+# ---- THE TERMS THE CONTENTS ARE UNDER ----
+# LICENSE above is what this repository says about its OWN files.  What the
+# component's CONTENTS are under travels with the release, not inside each
+# archive: the texts are collected once into `licences' beside the packages,
+# with an index.tab saying which regimes govern which component.  A source
+# package carries each program's own COPYING beside the code as well, because
+# it ships the source root upstream put it in.
+file      manifest.tab
+dir       files
+file      files/man.index
+# THE SECTION IS NOT ALWAYS 1.  net-man and mgr-man carry nothing but COHERENT.2
+# pages -- screen(2) and the two MGR articles -- so a declaration naming
+# COHERENT.1 would fail for them while passing for every component whose pages
+# happen to be in section 1.  What a man package must carry is a page in SOME
+# section and an index row for it, which is what these say.
+glob      files/COHERENT.*/*  1
+text      manifest.tab  ^f COHERENT[.]
+text      files/man.index  ^COHERENT[.]
+# ---- WHICH BYTES ----
+# nroff source, so a content id is recomputable and is recorded.  The pages are
+# the manual's text as this repository tracks it; what this package adds is the
+# SELECTION, and .contents is what makes the selection checkable.
+file      .contents
+file      check-contents.sh
+idfile    .contents  .provenance  contentid
+gate      check-contents.sh

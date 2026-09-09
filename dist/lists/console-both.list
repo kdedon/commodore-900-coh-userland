@@ -1,0 +1,18 @@
+# console-both.list -- ship every console driver and let the machine choose.
+#
+# THE CONSOLE IS A RUNTIME CHOICE, NOT A BUILD VARIANT.  `vidsel' (md.s) probes
+# for a video board at boot and patches init's argv[2] to name the driver to
+# load, falling back to the serial redirect.  One kernel binary therefore serves
+# serial, LR and HR machines, and these fragments only decide which drivers are
+# PRESENT to be chosen.  Never build a per-console kernel.
+#
+# This is what a general distribution should ship -- it boots correctly on any
+# machine and the whole console payload is ~10 KB.  console-lr / console-hr exist
+# only to trim an image for a known-hardware install.
+#
+# The three fragments are the kernel repository's (os/dist/lists there): it
+# links the drivers, so it defines the components and cuts their packages.  They
+# resolve here through the same search path as the drivers they stage.
+include	lists/console-serial.list
+include	lists/console-lr.list
+include	lists/console-hr.list

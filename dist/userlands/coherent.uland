@@ -1,0 +1,16 @@
+# coherent.uland -- the forward-ported userland: everything the userland
+# repository's host build produces, networking and MGR and the rest included.
+#
+# A USERLAND descriptor answers one question: where the user-visible files of a
+# system come from.  The kernel and the loader are the other half and stay in
+# systems/*.sys, so a dist may pair either kernel with either userland.
+#
+# The name says what an owner installs, not which release it is -- the release
+# is the file the system descriptor's `version' key names, resolved at build
+# time.  See ../FORMAT.
+#
+# Paths are relative to os/, exactly as in a .sys.
+name	coherent
+drv	hostbuild/build/drv
+bin	hostbuild/build/bin
+root	hostbuild/build/root

@@ -1,0 +1,158 @@
+# toolchain.list -- the C compiler, ON the machine.
+#
+# THE MACHINE COMPILES ITS OWN SOURCE.  This is what puts a compiler of OURS on
+# an `extended' image, on a project whose stated position is that the native
+# compiler is the product and that the deliverable runs on the C900.  The other
+# compiler in the tree is lists/toolchain-1985.list, the Mark Williams chain as
+# the reference machine shipped with it; that one reproduces a system and this
+# one equips the forward port.  os/tests/buildenv, which maps a toolchain in
+# from the host, proves the compiler RUNS on the machine; this list is what
+# also puts it on the disk.
+#
+# WHAT IS STAGED is the toolchain repository's COMPILER ENVIRONMENT, `ours' --
+# the cc0/cc1/cc2 self-host fixpoint, the driver, the assembler and the linker,
+# all Z8001 binaries, with the C library and the headers of this same extended
+# tree (see that repository's docs/ENVIRONMENTS.md, and host/build-env.sh which
+# composes it).  It is the SAME tree the buildenv test maps in, so the compiler
+# an image carries and the compiler that harness proves is one artifact rather
+# than two builds of one idea.
+#
+# `ours' AND NOT `inherited' OR `mwc1985'.  Those two are the COHERENT tree's
+# own compiler and Mark Williams' recovered 1985 binaries -- neither is built
+# from source in any repository of this project, so neither can discharge a
+# -src package (PACKAGE-FORMAT, WHAT `-src' COVERS), and the component that
+# ships the 1985 bytes declines the kind out loud instead.  This component does
+# not: the toolchain publishes a source map for `ours' alone and removes it for
+# the others, so the environment named here and the sources the package answers
+# for cannot come apart.
+#
+# EVERYTHING IS ON /usr, AND THAT IS AN ARITHMETIC RESULT, NOT A PREFERENCE.
+# The driver looks its parts up by path and every default path it uses has a
+# /usr arm (src/cc/coh/cc.c with host/include/path.h: P_BIN passes on DEFPATH
+# ":/bin:/usr/bin", P_LIB passes, crts0.o and libc.a on DEFLIBPATH
+# "/lib:/usr/lib", and cpp's DEFDISK is "/usr/include" outright), so `cc x.c'
+# works with no options from here.  MEASURED, by packing coherent3-dev and
+# coherent3-full-test -- the same media, the same userland, this list the only
+# difference -- /usr goes from 27,936 free blocks of 39,671 to 26,249, so this
+# list costs 1,687 blocks (about 864 KB) and leaves 66.2% free.  The ROOT
+# filesystem of that media has 3,258 blocks free in total: putting the compiler
+# there would have taken half of its entire slack and pushed it at or under
+# check-image.py's 20% floor, which is a refusal and not a judgement call.
+#
+# WHAT IS NOT HERE, and why:
+#
+#   ar(1)   base.list already ships /bin/ar, built from the userland's own
+#           cmd/ar.c.  The environment carries one for a guest that has no
+#           system at all; an image that has base does not need a second.
+#   cc3     the fourth pass exists in the toolchain build and the environment
+#           does not stage it: cc2 emits the object directly here.  A file
+#           nothing runs is a file that goes stale unnoticed.
+#   the kernel headers.  /usr/include is the USERLAND compile-time interface.
+#           Building a kernel or a loadable driver on the machine needs
+#           /usr/sys/h and /usr/sys/z8001/h as well, which no build of ours
+#           installs on any image yet; a dist that claimed to build a kernel
+#           and could not would be the same defect this list is fixing.
+#
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not.
+package  toolchain
+role     optional
+# KINDS -- `src' AND `man', and NOT `dev'.
+#
+# src   the complete corresponding source for all six programs installed here,
+#       the harnesses that compile them and the licence text governing them,
+#       out of the toolchain's own hostbuild/build/.ulsrcmap.  It is the same
+#       obligation every other component's -src discharges and this one is not
+#       exempted for being a compiler.
+# man   the Lexicon documents all six (cc, cc0, cc1, cc2, as, ld).  #370's
+#       other half was pages for programs no image installs -- `man cc' on a
+#       machine with no cc -- and for these six that is now false in the
+#       direction that was worth fixing.
+# dev   ALREADY EXISTS, under its pre-scheme name, and is deliberately not
+#       declared again here.  packages/include.pkg and packages/libc.pkg are
+#       the toolchain component's -dev packages: the target headers and the
+#       Z8001 libraries, cut by the toolchain's own release-pack.sh, gated,
+#       and carrying identity this list could not restate.  Declaring `dev'
+#       would cut a SECOND package over the same headers, and two packages
+#       claiming one interface is the divergence PACKAGE-FORMAT exists to
+#       prevent.
+kinds    src man
+
+# --- the directories ---------------------------------------------------------
+# /usr/bin AND /usr/lib ARE NOT HERE.  A `d' entry is NOT idempotent -- dist.py
+# refuses two entries staging one path on one filesystem, because the second
+# would silently overwrite the first's mode and owner -- and both directories
+# are already staged by whichever command set a dist carries (base.list, or
+# base.list).  There is no dist without it, and a
+# dist that managed it would be refused here by name for the missing parent
+# rather than shipping a compiler nothing can reach.
+#
+# /usr/include and its two subdirectories are filled by the `t' entries at the
+# foot of this file, which make a directory as well as filling it.  base.list's
+# skeleton declares /usr/include with a `d' -- the 0.7.3 root has the directory
+# whether or not a compiler is installed -- and dist.py takes one `d' and one
+# `t' at one path as one directory, the `d' declaring it and the `t' filling
+# it (dist/FORMAT).  A second `d' here would be a refusal.  No other list
+# stages the headers; a compile-time header tree belongs to whoever ships the
+# compiler.
+
+# --- the driver, the assembler and the linker --------------------------------
+# P_BIN passes: `cc' execs them by name off DEFPATH, so /usr/bin is where they
+# are found with no -B and no PATH of the operator's own.
+f	/usr/bin/cc	755 0 1	src=host/build/env/ours/bin/cc
+f	/usr/bin/as	755 0 1	src=host/build/env/ours/bin/as
+f	/usr/bin/ld	755 0 1	src=host/build/env/ours/bin/ld
+
+# --- the compiler passes -----------------------------------------------------
+# P_LIB passes: searched on DEFLIBPATH, which is why these are not in /usr/bin
+# and are not on anybody's $PATH.  cc0 is the parser, cc1 the optimiser and
+# code selector, cc2 the Z8001 emitter.
+f	/usr/lib/cc0	755 0 1	src=host/build/env/ours/lib/cc0
+f	/usr/lib/cc1	755 0 1	src=host/build/env/ours/lib/cc1
+f	/usr/lib/cc2	755 0 1	src=host/build/env/ours/lib/cc2
+# pass[CRT].p_pln is the literal "crts0.o": the driver asks the C runtime
+# startoff for by that name and no other, so it is installed under it.
+f	/usr/lib/crts0.o	644 0 1	src=host/build/env/ours/lib/crts0.o
+# makelib() composes "lib" + the -l name + ".a", so the default -lc resolves to
+# libc.a here.  This is the SAME library the images' own programs are linked
+# against on the host -- the environment takes it from this tree.
+f	/usr/lib/libc.a	644 0 1	src=host/build/env/ours/lib/libc.a
+# -lm resolves the same way, to libm.a: the maths library, which cc does not
+# link unless it is named.
+f	/usr/lib/libm.a	644 0 1	src=host/build/env/ours/lib/libm.a
+
+# --- the debugger ------------------------------------------------------------
+# EVERY OTHER ENTRY OF THIS COMPONENT comes out of the toolchain repository's
+# compiler environment, host/build/env/ours.  This one comes out of the
+# USERLAND build, because that is the tree that builds it, which is a fact
+# about where the producer is and not a gap to close by moving a build.
+#
+# db(1), COHERENT's symbolic debugger: it reads a core file or drives a live
+# process through ptrace(2), which is a development tool and so ships with the
+# development tools rather than in the minimum system 0.7.3 put it in.  Its
+# source is split by MACHINE -- base/cmd/db/trace0.c..trace6.c plus a z8001/
+# directory holding the instruction table, the ptrace layer and the stack
+# unwinder -- which is why the userland's build-cmd.sh names it specially.
+#
+# /usr/bin, beside cc/as/ld, for the same two reasons they are there: it is on
+# the driver's DEFPATH ":/bin:/usr/bin" so the name resolves with no PATH of
+# the operator's own, and the root filesystem's slack is what this component
+# must not spend.  lists/toolchain-1985.list stages the recovered 1985
+# debugger at /bin/db; that is a different artifact, kept at a different path,
+# and no live distribution includes both lists.
+f	/usr/bin/db	755 0 1	src=hostbuild/build/bin/db
+
+# --- the headers -------------------------------------------------------------
+# cpp's DEFDISK, so #include <stdio.h> resolves with no -I.
+#
+# THREE TREE ENTRIES AND NOT ONE, because `t' is FLAT: dist.py stages and packs
+# the top-level FILES of a tree and silently ignores its subdirectories (see
+# `elif e.type == "t"' in both Dist._stage and component_kind).  One entry over
+# usr/include would ship 62 headers of 156 and drop <sys/*.h> entirely -- an
+# image that boots, a compiler that runs, and every program that includes
+# <sys/types.h> failing.  A subdirectory named here is a subdirectory somebody
+# has to notice.
+t	/usr/include		src=host/build/env/ours/usr/include
+t	/usr/include/sys	src=host/build/env/ours/usr/include/sys
+t	/usr/include/netinet	src=host/build/env/ours/usr/include/netinet
+# end of toolchain.list

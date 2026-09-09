@@ -1,0 +1,130 @@
+# mgr.list -- MGR 0.69, the Bellcore window manager, on the HR bitmap.
+#
+# HR CONSOLE ONLY.  mgr writes virtual segments 0x3A/0x3B with plain far
+# pointers, which are pointed at the board by /drv/hrtty's portst() -- so this
+# fragment is only meaningful alongside console-hr.list, and mgr will paint
+# into nothing on an LR or serial console.
+#
+# Setuid root for the same reason screen(1) is: pty masters are mode 600 and
+# root-owned (dist/devices/hd.devices), and mgr has to open one per window.
+#
+# SIXTEEN WINDOWS is the ceiling, and two limits land on it at once.
+# sys/drv/pty.c has `#define NPTY 16' with `int NUPTY = NPTY', and
+# dist/devices/hd.devices carries the sixteen node pairs /dev/ptyp0../dev/ptypf
+# and /dev/ttyp0../dev/ttypf to match.  Descriptors now bind at the same number
+# rather than above it: NOFILE is 20 (include/sys/param.h), the server keeps
+# fds 0, 1 and 2 plus the mouse and holds one master per window -- the HR screen
+# is memory and costs no descriptor (libbitblit/hr/hrscreen.c bit_initscreen) --
+# which is 3 + 1 + 16 = 20 exactly.  The server's own MAXWIN is 24
+# (src/mgr/defs.h:18).  min(16, 16, 24) = 16.
+#
+# The descriptor table being exactly full at sixteen is not free: get_font()
+# opens a font file while it reads it, so a client that asks for a font not
+# already loaded gets EMFILE on the sixteenth window.  Fifteen is the number to
+# design a desktop around; /.mgrc opens six.
+# The desktop /.mgrc builds names clients from mgr-clients.list -- ify(1),
+# mclock, mgrbiff and mgrload -- so a distribution taking this list without
+# that one starts a dock of windows whose programs are not on the disk.  `require'
+# states that without staging anything: it fails the build instead.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  mgr
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man dev
+
+# THE COMPILE-TIME INTERFACE -- mgr-dev, what somebody needs to write an MGR
+# CLIENT, as opposed to mgr-src, which is the server's own source and where its
+# licence obligations are discharged.  A client is an ordinary program: it draws
+# by writing escape sequences down its stdout and reads events from stdin, so
+# what it needs is the header that spells those sequences and the library that
+# emits them, and nothing of the server at all.
+#
+# include/mgr is that header set as a client includes it -- <mgr/mgr.h> for the
+# protocol and the event loop, <mgr/window.h> and <mgr/bitblit.h> for geometry
+# and the frame buffer, <mgr/font.h>, <mgr/hfont.h>, <mgr/share.h>,
+# <mgr/restart.h>.  include/c900 travels with it because mgr.h and bitblit.h
+# include <c900/c900.h> and <termios.h> from there: a header set that does not
+# compile is not an interface.
+dev	/usr/include/mgr	mgr/include/mgr
+dev	/usr/include/c900	mgr/include/c900
+# libmgrcl.a is the CLIENT library and is deliberately not the server's: MGR's
+# own build keeps them apart because libmgr's term.c and oldinfo.c define
+# get_info() and get_font() a second time.  One archive carries the client half
+# of libmgr and libbitblit, which is what the four clients that reach the frame
+# buffer directly also link.
+dev	/usr/lib/libmgrcl.a	hostbuild/build/mgr/lib/libmgrcl.a
+
+require	lists/mgr-clients.list
+
+d	/usr/mgr
+d	/usr/mgr/bin
+#
+# $HOME/.mgrc, read by mgr.c:476 after $FONTDIR/.mgrc, and the only thing that
+# makes the server open a window at start: without it MGR comes up with the
+# root pattern and nothing on it, and the first window has to be drawn with the
+# mouse.  root's home is `/' (dist/files/etc/passwd) and root is the only
+# account with a shell, so this one file is the whole desktop: two 80x24 shells
+# on the 1024x800 board, the icon column of clients down its right edge, a
+# template for the ones meta-n opens, and the menu bootstrap below.  It opens
+# six of the sixteen pty channels and leaves the rest for windows opened by
+# hand.
+f	/.mgrc		644 0 1
+f	/usr/mgr/bin/mgr	6511 0 0	src=hostbuild/build/mgr/bin/mgr
+f	/usr/mgr/bin/mgrlogin	6511 0 0	src=hostbuild/build/mgr/bin/mgrlogin
+#
+# Fonts.  font/ upstream is 591 files and 3.9 MB; these eight are 23,744 bytes
+# and cover the useful range at 1024x800.  cmr-9x16 is also compiled into the
+# server as the default font, and is shipped as well so that .mgrc can name it
+# by number.  A client asks for "font n"; n comes from .mgrc's `font' lines and
+# from nothing else -- there is no opendir here -- so a font not named in
+# .mgrc cannot be selected however many are on the disk.
+d	/usr/mgr/font
+f	/usr/mgr/font/.mgrc	644 0 1
+f	/usr/mgr/font/cmr-9x16		644 0 1	src=mgr/font/cmr-9x16
+f	/usr/mgr/font/cmrb-10x16	644 0 1	src=mgr/font/cmrb-10x16
+f	/usr/mgr/font/term-9x16		644 0 1	src=mgr/font/term-9x16
+f	/usr/mgr/font/termB-9x16	644 0 1	src=mgr/font/termB-9x16
+f	/usr/mgr/font/Xfixed-7x13	644 0 1	src=mgr/font/Xfixed-7x13
+f	/usr/mgr/font/XfixedB-7x14	644 0 1	src=mgr/font/XfixedB-7x14
+f	/usr/mgr/font/gacha-6x8		644 0 1	src=mgr/font/gacha-6x8
+f	/usr/mgr/font/cmr14x25		644 0 1	src=mgr/font/cmr14x25
+#
+# Icons.  The server's own banner and cursors are compiled in (icon_server.c);
+# icon_dir is read only when a client downloads a bitmap by name
+# (down_load.c:203) and by the write permission check (write_ok.c:62).  A `t'
+# entry copies a directory's FILES without descending, and icon/ happens to
+# hold 163 plain icons (70,987 bytes) beside its ten subdirectories, so this
+# one line ships exactly the flat set and none of the 1.5 MB of animations.
+# ify(1)'s icon and mgrbiff's three mailboxes are in that flat set.
+t	/usr/mgr/icon		src=mgr/icon
+#
+# mclock is the one dock client whose bitmaps are NOT flat: it downloads
+# mclock/mickface and the 48 hand-and-mask frames under it by that relative
+# name, which down_load.c resolves against icon_dir.  Without this directory
+# mclock draws an empty window, so the second `t' is what makes the clock in
+# /.mgrc's icon column a clock.  25,480 bytes for the 49 files.  A `t' makes
+# its own directory, so there is no `d' line for it.
+t	/usr/mgr/icon/mclock	src=mgr/icon/mclock
+#
+# Client-side menu definitions for vi, mail and more, plus the m4 script that
+# turns a .menu file into the escape sequence that installs it.  Read by the
+# user, never by the server.  The .menu files are menu(1)'s tab-separated
+# source form and need that client (lists/mgr-clients.list) to load them.
+t	/usr/mgr/menus		src=mgr/menus
+#
+# default.esc is the same idea with the tooling already run: the finished escape
+# stream that downloads two menus and binds them to the middle and right mouse
+# buttons, so `cat' installs them and no client, awk or m4 is needed.  .mgrc
+# types that cat into every window it opens.  Menus are per-window state in the
+# server (new_window.c:168 sets both buttons to -1) and no startup-file
+# directive sets one, which is why this is a file to be sent and not a config
+# line.  It is not a .menu file: those are menu(1)'s tab-separated source, this
+# is its output.  (A 14-character name, because that is a directory entry.)
+f	/usr/mgr/menus/default.esc	644 0 1

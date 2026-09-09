@@ -1,0 +1,26 @@
+umask 022
+rm -f /tmp/*
+>/etc/mnttab
+>/etc/utmp
+@MOUNTS@
+chmod 777 /tmp
+: 'The system log, before anything that logs to it.  A record written to'
+: '/dev/log while no daemon holds the read end is discarded, so syslogd'
+: 'starts ahead of rc.net -- smtpd and inetd both log -- and'
+: 'ahead of the getty logins that call it through su.  It makes /dev/log'
+: 'itself, so there is no mknod line here.  The mounts above have already'
+: 'run: the log files live in /usr/adm.'
+if /bin/test -r /etc/syslogd
+then
+	/etc/syslogd &
+fi
+if /bin/test -r /etc/rc.net
+then
+	/bin/sh /etc/rc.net >/tmp/rc.net.log 2>&1 &
+fi
+if /bin/test -r /etc/rc.local
+then
+	/bin/sh /etc/rc.local >/tmp/rc.local.log 2>&1 &
+fi
+/etc/update&
+date >/dev/console

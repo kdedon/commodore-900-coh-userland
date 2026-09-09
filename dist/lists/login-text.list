@@ -1,0 +1,25 @@
+# login-text.list -- character login: init(1M) runs a getty on the console.
+#
+# This is the historical arrangement and the default.  /etc/ttys enables
+# /dev/console and leaves the five serial lines off; init spawns /etc/getty on
+# every enabled line, and getty execs /bin/login.
+#
+# init has no per-tty program field -- cmd/init.c:522 spawns "/etc/getty"
+# literally, and readtty() parses a line as <flag><linetype><baud><name> and
+# nothing else -- so WHICH program logs a machine in cannot be expressed in
+# /etc/ttys.  That is why this is a list fragment: the choice is made by
+# including this file or lists/login-graphical.list, exactly as a console
+# driver is chosen by including one of the console-*.list fragments.
+#
+# Every dist must include exactly one of the two.  Two would be a duplicate
+# /etc/ttys, which dist.py refuses.
+# PACKAGE.  The two login fronts are mutually exclusive -- both stage
+# /etc/ttys, and installing both leaves whichever went second, silently.
+# PACKAGE-FORMAT's role table has named this pair as `alternative' since it
+# was written; the `package' lines were what was missing.  No `kinds': this
+# list is configuration and installs no program of its own.
+package  login-text
+role     alternative
+conflict lists/login-graphical.list
+
+f	/etc/ttys

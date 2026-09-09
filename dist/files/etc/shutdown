@@ -1,0 +1,145 @@
+: '/etc/shutdown -- take the machine down.'
+: ''
+: '	/etc/shutdown halt|single|reboot minutes'
+: ''
+: 'THIS SHELL HAS NO COMMENT LEXER.  A # line is EXECUTED and one carrying'
+: 'shell metacharacters is a syntax error that kills the script, so the'
+: 'explanation is carried in : builtin arguments (cmd/sh/exec3.c:41), the'
+: 'same as /etc/rc.net.'
+: ''
+: 'WHAT IT DOES IS WARN AND THEN HAND OVER.  The level is written to'
+: '/etc/shutdown.lvl, users are warned once a minute for the requested'
+: 'number of minutes, and the last act is kill -1 1: init answers SIGHUP by'
+: 'killing every process and spawning the single-user shell, which reads'
+: '/.profile.  /.profile is the other half of this program -- it reads'
+: '/etc/shutdown.lvl, unmounts what /etc/rc mounted, and for the halt level'
+: 'runs /etc/halt.  Neither half is any use without the other.'
+: ''
+: 'THE LEVEL IS WRITTEN FOR single TOO, which the 4.2 original did not do:'
+: 'it removed the file instead and had /etc/.profile unmount'
+: 'unconditionally.  Here the single-user shell profile is /.profile, which'
+: 'is ALSO read by a root login on any terminal in multi-user, so an'
+: 'unconditional unmount there would detach /usr under a running system.'
+: 'Writing the level for every case makes the file the only thing that'
+: 'authorises /.profile to act, and a login that never ran shutdown finds'
+: 'no file and does nothing.'
+: ''
+: 'NO /etc/nologin.  The 4.2 script creates it to lock out logins during'
+: 'the countdown, and the Lexicon page for it is shipped, but THIS login(1)'
+: 'does not read it (cmd/login/login.c) -- so creating it would refuse'
+: 'nobody while looking as though it had.  Logins are still possible during'
+: 'the countdown; they are killed with everything else at the end.'
+: ''
+: 'DELIBERATELY ABSENT from the 4.2 original: the powerfail level, which'
+: 'wants a UPS this machine has no interface to; the X-is-running check,'
+: 'since the window system here is MGR and rc.local owns it; lpshut, since'
+: 'there is no lp spooler; and shell_lib.sh, whose val/is_numeric this'
+: 'shell cannot source (it has no functions and no $(( )) arithmetic).'
+
+USAGE='usage: /etc/shutdown halt|single|reboot minutes(0-30)'
+WARN='The system remains multi-user.  DO NOT SWITCH THE POWER OFF!'
+
+: 'Root only.  Everything below needs it -- kill -1 1, and the unmounts and'
+: 'halt(2) that follow in /.profile -- so refuse here with a reason rather'
+: 'than half way through with an errno.'
+if /bin/test "`/bin/whoami`" != root
+then
+	echo 'shutdown: only root can shut the machine down'
+	exit 1
+fi
+
+: 'The working directory must be / .  A shell sitting on /usr holds it busy,'
+: 'so the unmount in /.profile would fail on exactly the filesystem this is'
+: 'meant to detach -- and this shell is the parent of that one.'
+if /bin/test "`/bin/pwd`" != /
+then
+	echo 'shutdown: run this from the root directory (cd / first)'
+	echo $WARN
+	/bin/sync
+	exit 1
+fi
+
+if /bin/test $# -ne 2
+then
+	echo 'shutdown: wrong number of arguments'
+	echo $USAGE
+	echo $WARN
+	/bin/sync
+	exit 1
+fi
+
+: 'THE TIME IS MATCHED, NOT MEASURED, and both of the obvious ways of'
+: 'measuring it are wrong on this system.  expr(1) exits on the VALUE of the'
+: 'expression, not on whether it could evaluate one -- `expr 0 + 0` prints 0'
+: 'and exits 1 -- so a status test rejects a shutdown at time 0, which is the'
+: 'commonest one there is.  test(1) here is the 3.x yacc test (cmd/test), and'
+: 'it takes a non-numeric operand of -lt as zero rather than complaining, so'
+: '`test xyz -lt 0 -o xyz -gt 30` is false and lets it through.  Listing the'
+: 'thirty-one acceptable words checks the digits and the range at once and'
+: 'depends on neither.'
+case $2 in
+0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30)
+	;;
+*)
+	echo 'shutdown: the time must be a whole number of minutes, 0 to 30'
+	echo $USAGE
+	echo $WARN
+	/bin/sync
+	exit 1
+	;;
+esac
+
+: 'Check the level before warning anybody, but do not RECORD it yet.  The'
+: 'level file is what tells /.profile to take the machine the rest of the'
+: 'way down, and it is written in the last breath before the handover'
+: 'instead of here -- a machine that lost power during a five-minute'
+: 'countdown would otherwise come up, find the file, and halt itself again.'
+: '/.profile also refuses a file older than /etc/boottime, so the two'
+: 'guards are independent; this one is what keeps the window at milliseconds'
+: 'rather than minutes.'
+: ''
+: 'reboot is accepted and is not a lie about a warm restart: it is recorded,'
+: '/.profile says the machine cannot restart itself, and then it halts.'
+case $1 in
+halt|reboot|single)
+	;;
+*)
+	echo "shutdown: no such level: $1"
+	echo $USAGE
+	echo $WARN
+	/bin/sync
+	exit 1
+	;;
+esac
+
+trap 'echo "shutdown: aborted"; exit 1' 1 2 3
+
+left=$2
+while /bin/test $left -gt 0
+do
+	if /bin/test $left -eq 1
+	then
+		msg="The system is going down in 1 minute!"
+	else
+		msg="The system is going down in $left minutes!"
+	fi
+	echo "$msg"
+	echo "$msg" | /etc/wall
+	/bin/sleep 60
+	left=`/bin/expr $left - 1`
+done
+
+trap '' 1 2 3
+msg='The system is going down NOW!'
+echo "$msg"
+echo "$msg" | /etc/wall
+/bin/sleep 10
+
+: 'Record the level, then hand over to init, which kills everything and runs'
+: 'the single-user shell.  exec so that this shell is not one of the'
+: 'processes it has to kill on its way there.  SIGHUP is 1 here as it is'
+: 'everywhere, but note that SIGTERM on this system is 5 and not 15: nothing'
+: 'in this path uses it, and nothing added to this path should assume it.'
+echo $1 >/etc/shutdown.lvl
+/bin/sync
+exec /bin/kill -1 1

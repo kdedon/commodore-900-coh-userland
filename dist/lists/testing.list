@@ -1,0 +1,330 @@
+# testing.list -- the guest-side test and probe programs.
+#
+# Everything here exists to ANSWER A QUESTION ABOUT THE PORT, not to be used by
+# somebody running the system: does select() wake on a fifo, does sbrk() return
+# zeroed memory, is the printer driver in drvl[], how many ticks is a guest
+# second.  Each is the guest half of a check whose other half is a host harness
+# (hostbuild/*.py, hostbuild/*.sh) or a hand run at the console.
+#
+# A RELEASE IMAGE MUST NOT INCLUDE THIS LIST.  Only a dist used for development
+# and testing does -- that is coherent3-full-test, the dist every harness
+# defaults to (hostbuild/sim-run.sh, emu-run.sh, tcp-test.py, udploop-test.py,
+# serial-rx-probe.py and the rest all take `DIST' with it as the default).  The
+# shipped dists -- coherent3, coherent3-full, coherent3-full-gfx, coherent3-dev,
+# dual -- do not include it and carry a /bin of real commands only.
+#
+# THE PATHS ARE PART OF THE INTERFACE.  The harnesses type these as absolute
+# paths into a guest shell (`/bin/psipping 2 echo', `/bin/tickrate 30',
+# `/bin/serialbytes in /dev/tty51 N'), so moving a program between /bin and
+# anywhere else breaks every caller silently -- the shell says "not found" on a
+# console nobody is reading.  Adding and removing entries here is cheap;
+# renaming one is not.
+#
+# The binaries come from four builds: os/tests (hostbuild/build-tests.sh),
+# os/net (hostbuild/build-net.sh), the MGR tree (mgr/Makefile.c900, the
+# hostbuild `mgr' target) and the hr tree.  A program with no source under those
+# trees does not belong here.
+
+# --- the TCP/IP stack's exercisers ------------------------------------------
+# Their production counterparts -- inet, inetd, slip, ifconfig, telnet, ftp, host,
+# telnetd -- ship from net.list, which is where a real network tool goes.
+f	/bin/echoclient	755 0 1	src=net/echoclient
+# The other end of the same test, so TCP can be exercised with both ends on this
+# machine -- no serial line, no slip, no host peer.  That separates "TCP is
+# wrong" from "the packet never reached it", which from outside look identical.
+f	/bin/echoserver	755 0 1	src=net/echoserver
+# A client that LOSES its connections: it holds them open while a `ps' is
+# taken, then exits with every socket still open, so the far end sees a
+# connection that went away rather than one that was ended.  That is the case
+# every service under the switchboard has to end on, and a service that does not
+# is one process per dropped connection.
+f	/bin/dropclient	755 0 1	src=net/dropclient
+# The same ports, called properly: one caller at a time, each connection closed
+# before the next is opened, ten rounds.  What it measures is the listening
+# socket a service still has after it has served somebody -- a port that answers
+# once and refuses afterwards is invisible to anything that connects once.
+f	/bin/repeatclient	755 0 1	src=net/repeatclient
+# The scarcity a server's accept() path is written for, made on purpose: it
+# fills its own descriptor table, leaves exactly as many free as it was asked
+# to, and execs the program under test into what is left.  Descriptors are per
+# process, so pressure on a server can only be inherited from its parent.
+f	/bin/fdhog	755 0 1	src=net/fdhog
+# And the something else that holds a port: an EXCL claim through /dev/tcp,
+# which the stack will not place beside another descriptor on that port and
+# will not let one be placed beside.  It is what says a server's rebinding
+# stops as well as works -- a port somebody else has does not come back.
+f	/bin/portholder	755 0 1	src=net/portholder
+# UDP round trip, both ends on this machine: checks that recvfrom()
+# reports the right sender, which is what per-datagram addressing buys.
+f	/bin/udpecho	755 0 1	src=net/udpecho
+# The same thing across the wire: it serves rather than initiates, because UDP
+# has no retransmission and only the host end can say a lost datagram again.
+f	/bin/udpserver	755 0 1	src=net/udpserver
+# poll() on a socket: does waiting-before-reading work?  That is the order every
+# select-driven network program uses, and the one a request/reply channel does
+# not naturally support.
+f	/bin/udppoll	755 0 1	src=net/udppoll
+# The ntalk service, asked for something it can only answer out of the invitation
+# table: an id minted while a DIFFERENT datagram was being served.  That is the
+# assertion no per-datagram service can pass, and it is what says the switchboard
+# is holding talk's state (net/talkserv.c).  Loops back internally.
+f	/bin/talkping	755 0 1	src=net/talkping
+# gethostbyname/getservbyname/getsockname/setsockopt -- what a BSD net program
+# calls before it sends anything.  Two of its checks are that a call FAILS:
+# getsockname(0) is how a daemon detects being inetd-spawned, and an option
+# this stack does not have must not answer "done".
+f	/bin/netdbtest	755 0 1	src=net/netdbtest
+# Accept TWICE on one listening descriptor.  One descriptor is one connection
+# in the device model, so this is the difference between a test client and a
+# daemon; it forks its own clients and loops back internally.
+f	/bin/acceptmany	755 0 1	src=net/acceptmany
+# The ceiling on open connections.  Every one is two FIFOs the inet daemon
+# holds open, so its NOFILE -- not the channel table -- is what limits this
+# machine to N sockets at once, and that number is what decides whether a
+# client started from inside a login session can get a connection at all.
+f	/bin/chanmax	755 0 1	src=net/chanmax
+# Does a socket give its memory back?  libsocket keeps a socket's state -- 624
+# bytes, mostly the channel's hold buffer -- on the heap while the socket is
+# open, so a closed socket must free its block or a daemon grows by that much a
+# connection.  Opens and closes repeatedly and watches the break address, which
+# is the only place the difference shows.
+f	/bin/sockcycle	755 0 1	src=net/sockcycle
+# The far end of an rlogin session, without a login on it: answers the
+# rcmd(3) handshake and echoes what follows.  There is no rlogind on this
+# machine, so this is what makes rlogin(1) testable -- and what it tests is
+# that one process carries both directions over a whole session.
+f	/bin/rlecho	755 0 1	src=net/rlecho
+# bind(port 0) + listen + getsockname: how a daemon that wants no fixed port
+# publishes the one the stack gave it.  hunt's driver does it twice, and while
+# getsockname answered from our own record of the bind it advertised port 0 --
+# which the client reads as the end of its list of drivers.
+f	/bin/ephport	755 0 1	src=net/ephport
+# The /dev/tcp shim: open the device and drive it with NWIO* ioctls, no socket()
+# call anywhere.  That is how the Minix net clients (telnet, ftp, the resolver)
+# reach the stack, so this is what says they will work before any of them is
+# ported.  Needs an echo server on the peer.
+f	/bin/devtcp	755 0 1	src=net/devtcp
+# How long does hunt's driver discovery take here?  hunt sends one datagram and
+# waits ONE second; on this machine that datagram crosses a fifo to the inet
+# daemon and the reply makes the trip back, twice over.  Whether that fits tells
+# a slow machine from a broken driver -- and the same binary runs under the
+# emulator and the simulator, so the two numbers compare directly.
+f	/bin/discotime	755 0 1	src=net/discotime
+# Handshake bisector: reports rc+errno for each syscall of the control-channel
+# open.  Ships while the channel is under bring-up; drop it once that closes.
+f	/bin/ichanprobe	755 0 1	src=net/ichanprobe
+# IP traffic test: injects an ICMP echo on the psip channel and checks the
+# stack's reply.  Needs no serial line, so it runs under the emulator too.
+f	/bin/psipping	755 0 1	src=net/psipping
+# The other end for /etc/sntp: an SNTP server that always answers the SAME
+# timestamp, 2026-07-25 18:08:00 UTC.  Against a real server the only check
+# available is that the year looks plausible, which would pass with the seconds
+# half misread by a fortnight; against this one the answer is a number stated in
+# net/test/sntpsrv.c, so a wrong reading is a wrong DATE and shows.  Loops back
+# through the stack's own interface, so it needs no wire and runs under the
+# emulator.
+f	/bin/sntpsrv	755 0 1	src=net/sntpsrv
+
+# --- kernel and runtime probes ----------------------------------------------
+# The pty round trip, with no TCP involved: it is the right first gate when
+# telnetd cannot get a terminal.  The master must be opened BEFORE the slave --
+# the master is the pty's carrier.
+f	/bin/ptytest	755 0 1	src=test/pty/pty
+# Does sbrk() return zeroed memory?  The whole inet stack assumes it does
+# (alloc() is an sbrk wrapper and the #if ZERO blocks skip initialisation).
+f	/bin/sbrkzero	755 0 1	src=test/sbrkzero/sbrkzero
+# Do the varargs printers agree with the ones that walk their own arguments?
+# printf.c was split so printf, sprintf, vsprintf and vsnprintf share one
+# conversion loop; every case is asked once each way and the two must match.
+# syslog(3) is built on vsnprintf, so this is the check under the log.
+f	/bin/vprintf	755 0 1	src=test/vprintf/vprintf
+# Does select() wake for a write to an anonymous pipe that arrives while it
+# is already blocked?  That is the mechanism slip's reader child depends on,
+# isolated from the daemon, the stack and the serial line.
+f	/bin/pollpipe	755 0 1	src=test/pollpipe/pollpipe
+# Does select() wait as long as it was asked to?  Its timeval holds a long
+# count of seconds but poll(2)'s timeout is an int of milliseconds, which only
+# reaches 32.767 s, so a longer wait has to be served as several poll(2) calls.
+# The verdict is elapsed guest time, not the return value: a select() that
+# answers "timed out" early is indistinguishable at the call site from one
+# that waited.
+f	/bin/selectlong	755 0 1	src=test/selectlong/selectlong
+# Does select() on a NAMED fifo block and then wake?  That is the inet
+# daemon's rendezvous exactly: it selects on /dev/inet while a client opens the
+# same path O_WRONLY and writes.  A select that returns before the child wrote
+# fails the test as surely as one that never returns.
+f	/bin/pollfifo	755 0 1	src=test/pollfifo/pollfifo
+# Does a CAUGHT signal during a blocking FIFO read corrupt the kernel's
+# reader/writer counts?  psleep() hands the caller from the awake count to the
+# sleeping count and back, but sleep() answers a pending caught signal with a
+# longjmp and the restoring half never runs -- so the close panics.  A panic is
+# how this one reports; see tests/fifosig/fifosig.c.
+f	/bin/fifosig	755 0 1	src=test/fifosig/fifosig
+f	/bin/pollexit	755 0 1	src=test/pollexit/pollexit
+# Does poll(2) report EOF on a pipe nobody can write to?  pollpipe and pollfifo
+# never close a write end, so neither can see it.  Two cases, deliberately
+# apart: the write end already closed when poll() is entered (a level check in
+# ppoll), and the last write end closed by a child that exits while the parent
+# is already blocked (a wakeup from pclose).  Without both, every program that
+# multiplexes a pipe hangs at the point its child exits.
+f	/bin/pollhup	755 0 1	src=test/pollhup/pollhup
+# Does O_EXCL exclude only while the file is open?  The mark lives on the
+# IN-CORE inode, so a mark that is never cleared refuses every later open of a
+# file that is perfectly good on disk -- and a reboot hides it.  Checks both
+# directions: closed and killed creators must release it, a held one and a
+# create over an existing file must still be refused.
+f	/bin/openexcl	755 0 1	src=test/openexcl/openexcl
+# How deep can a program recurse before the stack gives out?  The kernel grows
+# the stack on a limit violation, and whether that actually works decides
+# whether recursive algorithms are usable here -- hunt's maze generator carves
+# by recursing once per cell.
+f	/bin/deepstack	755 0 1	src=test/deepstack/deepstack
+# How much CPU work fits in one of the GUEST's own seconds?  Needs no host
+# clock: both quantities come from inside the guest, so on a machine whose
+# 100 Hz tick and CPU are in their correct proportion the answer is a property
+# of the port and the emulator and the simulator must agree.  Where they
+# disagree the difference is the emulation.  A wall-clock measurement cannot
+# separate those -- a container running the guest at 10-22% of real speed
+# already accounts for most of a "28x slow tick".
+f	/bin/tickrate	755 0 1	src=test/tickrate/tickrate
+# Does an indexed reference to a static array reach the right segment?  huntd
+# faults on exactly that form (Maze[y][x]); this reproduces the shape small,
+# next to the same access through a pointer, so a disagreement is visible.
+f	/bin/segindex	755 0 1	src=test/segindex/segindex
+# 3- and 4-text-segment probes: cross-segment calls in both directions, a
+# 3->4->5->6->3 chain, and function pointers taken in one segment and called
+# from another.  Each check duplicates its computation in main's own module, so
+# a mis-linked target names a FAIL rather than passing quietly.
+f	/bin/t3	755 0 1	src=test/bigtext/t3
+f	/bin/t4	755 0 1	src=test/bigtext/t4
+# Can the in-kernel debugger be entered and left?  Only meaningful on a kernel
+# built KDDT=1; on one without it, halt(2) stops the machine instead.
+f	/bin/ddtentry	755 0 1	src=test/ddtentry/ddtentry
+# swaptest(8) forces demand past core: eight sleepers sign 60,000 bytes of data
+# plus 2,000 of live stack held across a sleep, then eight hogs claim 996 KB
+# against ~870 KB of core.  Each sleeper re-reads its signature on wake, so a
+# segment that came back at a new base with a stale MMU prototype fails loudly
+# rather than returning wrong bytes.
+f	/bin/swaptest	755 0 1	src=test/swap/swap
+
+# strnlong exercises strncpy/strncat/strncmp at the two boundaries the Z8000
+# block instructions impose.  A count of 0 reaches LDIRB/CPSIRB, which transfer
+# before they decrement and test, so the counter wraps and the loop runs 65536
+# times (Z8000 Technical Manual p.6-81 defines the range as 1..65536).  A length
+# above 32767 reads negative to the signed compare that clamps it to n.  Both
+# forms wrote past the destination, and the test is checked against the unfixed
+# routines: it fails 12/21 there, printing `Bad pointer in free.'
+f	/bin/strnlong	755 0 1	src=test/strnlong/strnlong
+
+# stdiobound exercises stdio's counted calls at the boundary a 16-bit int
+# imposes.  fread and fwrite count in ITEMS, so a count above 32767 has the
+# high bit set and is only the right number when it is read as `unsigned';
+# fread's own return divides a byte count by the item size, and both operands
+# of that division have to be unsigned or a partial read reports a count larger
+# than the number of items asked for.  tests/stdiobound/run.sh runs it under the
+# emulator's process runner and carries the mutations that prove each case.
+f	/bin/stdiobound	755 0 1	src=test/stdiobound/stdiobound
+
+# --- terminal, printer and display probes -----------------------------------
+# Can poll(2) wait on a TERMINAL?  Without a c_poll in the SCC driver every tty
+# answered POLLNVAL, so a program waiting on the keyboard and a socket together
+# quit outright.  Checks that it is accepted AND that an idle terminal times
+# out -- "always readable" passes the first and spins a game at 100% cpu.
+f	/bin/polltty	755 0 1	src=test/polltty/polltty
+# Does the 4.x termio tty (KTTY=termio) keep what a termios set hands it, and
+# does VMIN/VTIME time out?  The sgttyb view cannot express VMIN/VTIME, so a
+# driver that stores termio as a converted sgttyb loses them, and a read in
+# non-canonical mode either blocks forever or returns at once.  On the sgtty
+# kernel the first TCGETA fails and it says so.
+f	/bin/termio	755 0 1	src=test/termio/termio
+# Serial byte-exactness probe: writes/reads all 256 values on a line.  Pairs
+# with hostbuild/serial-bytes-test.py to check the sim's serial API.
+f	/bin/serialbytes	755 0 1	src=test/serialbytes/serialbytes
+# Is the Centronics printer driver dispatched on major 3?  It was left out of
+# the link during the 64K diet, and an empty drvl[] slot fails opens with ENXIO
+# rather than saying anything.  Tells ENXIO (still dieted) apart from EDATTN
+# (driver there, no printer on the cable).  It prints one line and says what the
+# open returned; lpr(1) is the printer command a user wants, and that ships from
+# base.list.
+f	/bin/lptest	755 0 1	src=test/lptest/lptest
+# hrglyph exercises the loadable high bank (HRIOCSFONT/GFONT/RFONT): it installs
+# five shapes at 0xa0-0xa4 chosen so the framebuffer dump identifies them and no
+# font matcher can, then prints ASCII verdicts.  `hrglyph -r' restores.  HR
+# console only, and inert on a machine that has none.
+f	/bin/hrglyph	755 0 1	src=test/hrglyph/hrglyph
+# hrlight -- first light on the HR bitmap.  Paints a test card straight into
+# virtual segments 0x3a/0x3b from user mode and holds it until a key is typed,
+# so one run answers whether an unprivileged process reaches the board and
+# whether a shape drawn across the row-512 segment seam arrives in one piece.
+# Only meaningful on an HR machine; on serial or LR it draws into nothing.
+f	/bin/hrlight	755 0 1	src=hostbuild/build/mgr/bin/hrlight
+# Is the HR pointing device dispatched on major 7, and does it report motion?
+# Same shape as lptest above and for the same reason: drvl[7] was empty until
+# the kernel was built KMOUSE=1, and an empty slot fails opens with ENXIO
+# instead of saying anything.  Phase 0 is arithmetic and needs no hardware;
+# phase A checks the interface with nothing moving (exclusive open, short read,
+# raw-state ioctl, non-blocking read, and a poll that must TIME OUT rather than
+# claim the mouse is always readable); phase B needs motion injected from
+# outside and has no verdict of its own without -e/-x/-y, so a run that saw
+# nothing exits 2 (INCONCLUSIVE) rather than looking like a working mouse.
+# `mousetest -s' reads /dev/mousems and decodes it as MGR does.
+f	/bin/mousetest	755 0 1	src=test/mouse/mouse
+
+# --- MGR's own acceptance tests for the window protocol ----------------------
+# These came from lists/mgr-clients.list, where they shipped to users in every
+# graphical dist.  They are upstream's tests, not upstream's clients: each
+# answers a question about whether the SERVER is correct, and none of them is
+# something a person running a window system would open.  They stay valuable
+# for exactly that -- they are the cheapest way to tell a broken server from a
+# broken client -- which is why they moved here rather than being dropped.
+#
+# They need a running MGR to talk to, so unlike the rest of this file they are
+# not driven from a host harness; a person runs them inside a window.
+# event reads one event and reports it: the minimum proof that the event path
+# from server to client works at all.
+f	/usr/mgr/bin/event	755 0 1	src=hostbuild/build/mgr/bin/cl/event
+# many opens n windows, which is how the server's window table and its memory
+# discipline get exercised without writing a client that does it by accident.
+f	/usr/mgr/bin/many	755 0 1	src=hostbuild/build/mgr/bin/cl/many
+# spot reports the pointer position, so it separates "the mouse driver is
+# silent" from "the server is not forwarding motion" -- two faults that look
+# identical from inside a client.
+f	/usr/mgr/bin/spot	755 0 1	src=hostbuild/build/mgr/bin/cl/spot
+# test_menu installs a pop-up.  menu(1) in mgr-clients.list does the same thing
+# from a shell script; when the two disagree the fault is in the escape
+# sequence rather than in either program.
+f	/usr/mgr/bin/test_menu	755 0 1	src=hostbuild/build/mgr/bin/cl/test_menu
+# trans exercises transparent drawing, the one drawing mode whose result
+# depends on what was already on the screen.
+f	/usr/mgr/bin/trans	755 0 1	src=hostbuild/build/mgr/bin/cl/trans
+# half opens a half-window pty: the case where a client's idea of its own size
+# and the server's have to agree, and the one that breaks first when they do
+# not.
+f	/usr/mgr/bin/half	755 0 1	src=hostbuild/build/mgr/bin/cl/half
+# test_rop draws all sixteen raster operations, each labelled with the boolean
+# it computes, so a wrong entry in the blitter's op table shows as a picture
+# rather than as a number.  It is the only on-target check of bit_blit.c's
+# function selection, and it closes a loop that was otherwise only ever shut on
+# the host against a reference implementation.
+f	/usr/mgr/bin/test_rop	755 0 1	src=hostbuild/build/mgr/bin/cl/test_rop
+
+# --- the ZView window system's exercisers ------------------------------------
+# The other window system's three, from the hr tree.  They ship into
+# /usr/hr/bin beside the server and its clients (lists/hr.list,
+# lists/hr-clients.list) and are here for the reason MGR's seven are: each
+# answers a question about the port rather than doing anything for the person
+# using the machine.
+#
+# gfxtest links the rendering engine ALONE -- no server, no IPC -- so it
+# separates "the blitters and the layer clipper are wrong" from "the server is
+# not driving them", and it proves the engine has no undefined message or job
+# symbols left in it.
+f	/usr/hr/bin/gfxtest	755 0 1
+# ptytest is a plain client with no graphics at all: it exercises the kernel pty
+# driver, which is what every zterm window is built on.
+f	/usr/hr/bin/ptytest	755 0 1
+# zdlg is the widget kit's reference consumer: one window whose settings dialog
+# drives every widget the kit has -- label, text field, checkboxes, a radio pair,
+# OK and Cancel -- and appends the outcome to /dlgtest.out and sync()s it, so a
+# scripted emulator run can assert on the result after the fact.
+f	/usr/hr/bin/zdlg	755 0 1

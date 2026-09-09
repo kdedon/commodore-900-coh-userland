@@ -1,0 +1,289 @@
+# base.list -- the minimum COHERENT: COHERENT 0.7.3's own root set, plus what
+# this system adds to it.
+#
+# WHAT DEFINES THE SET is the release itself rather than an opinion.  0.7.3 lays
+# its root filesystem from /kit/hdproto, the mkproto(1) prototype carried on
+# distribution volume 1, and that prototype IS the release's answer to what a
+# machine needs before the other volumes arrive: the /bin and /etc it can be
+# installed, checked and repaired with, the shell, and the console.  c900oses
+# PLAN.md finding F-24 establishes that set off the three surviving release
+# floppies, and F-24a maps it onto this list.  Everything hdproto names and this
+# repository builds is here.
+#
+# WHAT HDPROTO NAMES AND THIS LIST DOES NOT, each for its own reason.  The
+# console driver is a per-dist choice, so it comes from lists/console-*.list,
+# which every distribution includes; /etc/ttys and /etc/profile likewise belong
+# to the login and command components that read them.  db(1) is a deliberate
+# divergence and not an oversight: 0.7.3 carried the symbolic debugger in its
+# root set, and a component is named for what it IS, so a debugger ships with
+# the development tools -- lists/toolchain.list stages it, built from this
+# repository's base/cmd/db.  It is not missing and must not be restored here.
+# /etc/swap is the only program left out altogether: 0.7.3's is the userland
+# SWAPPER PROCESS init(8) execs through argv[1], and this system's init is
+# compiled NOSWAPPER (base/cmd/init.c), so nothing would exec it.  Kernel
+# swapping is a separate and live mechanism -- swapdev, swapio() and sdalloc()
+# in the kernel, and the media descriptors' swapbot/swaptop -- and does not
+# want a program here.  The rest of what hdproto creates and this list does not
+# -- /etc/boottime, /etc/cpsys, /etc/pro.def -- is install-time state, written
+# on the machine, not shipped.
+#
+# WHAT THIS SYSTEM ADDS is ten files 0.7.3 shipped on volumes 2 and 3 instead of
+# in the root: date, expr, make, test, time and wc, because this machine is
+# driven by a Makefile and a compile's cost has to be readable off the console,
+# and /etc/{logmsg,motd,termcap,update}, because login(1), rc and the console
+# read them.
+#
+# EVERY DISTRIBUTION STARTS HERE and adds to it.  Anything else -- the
+# general-purpose command set (lists/runtime.list), the further editors, the
+# networking, the window system, a compiler -- is a component a distribution
+# includes by name.  What is on the disk is what somebody asked for.
+#
+# THE COMPILER IS NOT HERE.  Producing a program is not part of a runtime, and
+# the two components that do it are the toolchain repository's artifacts:
+# lists/toolchain.list installs `ours', the cc0/cc1/cc2 self-host fixpoint, and
+# lists/toolchain-1985.list the recovered Mark Williams chain.  A guest that
+# compiles without either takes a compiler ENVIRONMENT mapped in from the host
+# as a mounted directory (the toolchain's docs/ENVIRONMENTS.md), and
+# os/tests/buildenv rests on the image itself having none -- a compiler here
+# would make that harness's negative control vacuous.
+#
+# NOR IS ANY OF THE HOSTFS MACHINERY.  Under the emulator a host directory is
+# reached with the ordinary mount(2) on the shipped /dev/fd1 node: the medium
+# is rendered on the host and attached with --floppy, and no guest driver is
+# involved.  lists/hostfs.list carries the paravirtual block driver the
+# SIMULATOR transport needs, and a dist that includes it takes on the standing
+# obligation to relink /drv/hostfs after every kernel relink.
+#
+# --- directory skeleton -----------------------------------------------------
+# /usr is a directory on a single-filesystem medium and a mount point on a
+# multi-filesystem one; either way an installed environment's headers stay
+# visible after /etc/rc runs.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; this is the one every distribution
+# has, which is what `role base' says.
+package  base
+role     base
+# KINDS -- see os/dist/PACKAGE-FORMAT.  `bin' is the list below; `src' is the
+# complete corresponding source for every executable it installs and `man' the
+# pages for those programs.  Both refuse to be cut from a guess.
+kinds    src man
+
+d	/bin
+d	/dev
+d	/drv
+d	/etc
+d	/lib
+d	/mnt
+d	/tmp	777 0 1
+d	/usr
+d	/usr/bin
+d	/usr/include
+d	/usr/lib
+d	/usr/src
+
+# --- /etc configuration -----------------------------------------------------
+# rc mounts what the media declares, clears /tmp, and starts update; it also
+# runs /bin/test and date, which is why both are in the command set.
+f	/etc/rc
+f	/etc/passwd
+f	/etc/group
+# login(1) prints /etc/logmsg and /etc/motd.
+f	/etc/logmsg
+f	/etc/motd
+# TERM for the console; .profile's probe of /etc/console needs grep.
+f	/.profile
+f	/etc/termcap
+e	/etc/mnttab	644 0 1
+e	/etc/utmp	666 0 1
+
+# --- coming up multi-user ---------------------------------------------------
+# init reads /etc/ttys (lists/login-text.list) and spawns /etc/getty, which
+# execs /bin/login, which execs the shell.  init also loads the console driver
+# vidsel named, with /etc/load.
+f	/etc/init
+f	/etc/getty
+f	/bin/login	4755 0 1
+# login locks the terminal it is about to hand over by creating an LCK.. file
+# in /usr/spool/uucp (base/cmd/login/lock.c), the same lock UUCP takes on a
+# line, so the directory is part of coming up multi-user and not part of the
+# spooler: without it login prints "cannot lock terminal" and refuses every
+# login, on every console.
+d	/usr/spool
+d	/usr/spool/uucp
+f	/bin/sh
+f	/etc/load
+# uload(1) is /etc/load's other half: it takes a loaded driver back out, which
+# is what makes swapping a console or a device driver on a running machine
+# possible without a reboot.
+f	/etc/uload
+f	/etc/update
+
+# --- reaching the host's directory ------------------------------------------
+# The whole transport, guest side: mount the rendered medium, umount it when the
+# build is done so the host can extract what was written.  sync(1) is what makes
+# a mid-run snapshot safe to extract.
+f	/etc/mount
+f	/etc/umount
+f	/bin/sync
+
+# --- building ---------------------------------------------------------------
+# make(1) is the point of the exercise; it forks the shell for every command,
+# so it needs the shell more than it needs anything else.
+f	/bin/make
+# ITS TWO LIBRARY FILES, WITHOUT WHICH IT DOES NOT START.  make(1) reads
+# makemacros (default macros) and makeactions (the built-in suffix rules) from
+# LIBPATH -- "/lib:/usr/lib" -- before it looks at a Makefile (cmd/make/make.c
+# inlib(), make.h MACROFILE/ACTIONFILE), and without makemacros it exits with
+# "make: cannot open makemacros" whatever the Makefile says.
+f	/usr/lib/makemacros	644 0 1	src=dist/files/usr/lib/makemacros
+f	/usr/lib/makeactions	644 0 1	src=dist/files/usr/lib/makeactions
+
+# --- filesystems: making one, checking one, repairing one -------------------
+# THIS IS WHY THE SET LOOKS LIKE THIS.  0.7.3's root filesystem is laid by
+# mkfs(1) from the /kit/hdproto prototype, so the release put the tools that
+# make and repair a filesystem in the root set: a machine that can only mount
+# what somebody else made cannot install itself, cannot answer for a disc that
+# came up FSDIRTY, and cannot bring a second volume into service.
+#
+#   mkfs     writes a filesystem, from a size or from a prototype.
+#   mkproto  writes such a prototype out of an existing directory tree, which
+#            is the other end of the same operation.
+#   mknod    makes the device nodes a filesystem is reached through; the kernel
+#            gives no unprivileged path to one (see the privileged file
+#            utilities below).
+#   check    the file-system check: the program that answers for a dirty disc
+#            and writes FSCLEAN back into the super block.
+#   icheck   the block-allocation half of it, dcheck the directory half; each
+#            is usable on its own when check's report needs narrowing.
+#   clri     clears an inode outright, which is the repair of last resort for
+#            damage check cannot describe.
+#   bad      maps out blocks the medium has lost, so a filesystem can be made
+#            that does not use them.
+#   dd       copies raw blocks with an explicit block size, which is how a
+#            filesystem, a boot block or a whole volume is moved at all.
+#   fdformat writes the sector headers a blank floppy has none of, which is the
+#            step before mkfs can touch one at all.
+f	/etc/fdformat
+f	/etc/mkfs
+f	/etc/mkproto
+f	/etc/mknod
+f	/bin/check
+f	/bin/icheck
+f	/bin/dcheck
+f	/etc/clri
+f	/bin/bad
+f	/bin/dd
+
+# --- the running system -----------------------------------------------------
+# What a person at the console asks and answers with: which processes exist,
+# which terminal this is, and how to stop something that will not stop.
+# ps IS setuid root, the same bit the reference disk carries at /bin/ps 4755.
+# The three files it opens -- /dev/kmem, /dev/mem and
+# /dev/swap (cmd-3.x/ps.c) -- are 600 root nodes in dist/devices/hd.devices, so
+# without the bit no ordinary user could run ps at all.
+#
+# THE TRADE, stated plainly, because it used to be made the other way: those
+# nodes were 666 and ps was left 755, and 666 on /dev/rhd0 means any shell
+# becomes root by writing /etc/passwd through the raw disk -- no su, no
+# password, no setuid program needed.  The nodes are shut and the programs
+# that legitimately read them carry the bit instead.  ps opens all
+# three descriptors in execute() and then does setuid(getuid()) -- the same
+# "Turn off setuid privileges" step cmd/write.c makes -- so the process-table
+# walk, fttys() and getpwuid() all run as the real user.  -c and -k, which let
+# the caller substitute the namelist and the memory file, drop it BEFORE the
+# first open instead, so ps cannot be made to read a file its caller may not.
+f	/bin/ps		4755 0 1
+f	/bin/kill
+f	/bin/tty
+
+# --- editors ----------------------------------------------------------------
+# 0.7.3's root set carried an editor, and this one carries three: a system that
+# cannot edit /etc/rc after it comes up single-user is a system somebody has to
+# rebuild the disc for.  All three read a termcap entry for $TERM, which is
+# /etc/termcap above.
+#
+#   ed     the line editor, which needs no terminal description to work at all
+#          and is therefore the one that always works.
+#   me     MicroEMACS (os/cmd/me), the screen editor COHERENT provides;
+#          lists/editors.list stages `emacs' as its second name.
+#   elvis  the vi implementation.
+f	/bin/ed
+f	/usr/bin/me
+f	/usr/bin/elvis
+# elvis dispatches on the last character of argv[0] (cmd/elvis/main.c): `x'
+# selects ex mode, `w' selects view (read-only), anything else -- `vi',
+# `elvis' -- selects vi.  `ex', `view' and `vi' are also the names the
+# Lexicon's own pages tell a user to type, and the ones everybody types
+# regardless.  No symbolic links exist on this filesystem, so these are hard
+# links to the one binary: one inode, link count 4.
+l	/usr/bin/ex	to=/usr/bin/elvis
+l	/usr/bin/view	to=/usr/bin/elvis
+l	/usr/bin/vi	to=/usr/bin/elvis
+
+# --- file utilities ---------------------------------------------------------
+# What a Makefile, a person driving one, and an administrator reading a disc
+# actually invoke.  Deliberately NOT here: sed, awk, sort, tr -- a Makefile
+# that needs them wants lists/tools.list, and adding it to a copy of the dist
+# is one line.
+f	/bin/ls
+f	/bin/lc
+f	/bin/cat
+f	/bin/cp
+# cpdir(1) copies a whole tree, which is how a system is installed from a
+# volume and how one is moved to another disc.
+f	/bin/cpdir
+# THE PRIVILEGED FILE UTILITIES -- mkdir, rmdir, rm and mv.  All four are setuid
+# root because this kernel gives a directory no unprivileged path in or out:
+# umknod() refuses any type but IFPIPE unless super() (sys/coh/sys2.c), so
+# mkdir(1) -- which has no mkdir(2) to call and builds the directory with
+# mknod(dir, IFDIR|0777, 0) plus two links -- cannot make one; iucheck() refuses
+# to unlink an IFDIR unless super() (sys/coh/fs1.c), so rmdir(1) and `rm -r'
+# cannot take one away; and ulink() refuses to link an IFDIR unless super()
+# (sys/coh/sys2.c), so `mv' cannot move one.  Each program polices itself with
+# access(2) on the REAL uid before it uses the privilege (cmd/mkdir.c's
+# access(parent, 03) and its chown to the caller, cmd/rm.c's ADEL walk,
+# cmd/rmdir.c, cmd/mv.c's myuid/ADEL checks), which is what the setuid bit was
+# designed around and why the reference disk carries it on all four.
+# Without the bit a non-root user gets mkdir(1) printing "not the super-user"
+# and rm/rmdir/mv failing on every directory.
+f	/bin/mv		4755 0 1
+f	/bin/rm		4755 0 1
+f	/bin/ln
+f	/bin/mkdir	4755 0 1
+f	/bin/rmdir	4755 0 1
+# The three that set what access(2) then tests.  chgrp and chown are here for
+# the same reason mknod is: ownership on a freshly made filesystem is whatever
+# made it, and nothing else can correct that.
+f	/bin/chmod
+f	/bin/chgrp
+f	/bin/chown
+f	/bin/pwd
+f	/bin/echo
+f	/bin/test
+# The Lexicon's test(1) page: "Under COHERENT, the command `[' is linked to
+# test.  If invoked as `[', test requires a closing `]'."  base/cmd/test.c
+# takes that name from argv[0], and cmd/sh/exec2.c:126 execve()s the resolved
+# path with the word as typed, so the second name reaches it intact.  The
+# sweep stages a second copy of the same bytes under the second name, not an
+# `l' hard link: the list format has no link type.
+f	/bin/[		755 0 1
+f	/bin/expr
+f	/bin/find
+f	/bin/grep
+f	/bin/egrep
+f	/bin/cmp
+f	/bin/diff
+# file(1) says what a thing is before anything tries to read it; od and scat
+# are how a file no program understands gets read anyway -- od dumps it in any
+# radix, scat prints it with the unprintable characters made visible.
+f	/bin/file
+f	/bin/od
+f	/bin/scat
+f	/bin/wc
+f	/bin/df
+f	/bin/du
+# date and time are the instruments: a guest compile's cost is a number
+# somebody has to be able to read off the console.
+f	/bin/date
+f	/bin/time
+# end of base.list

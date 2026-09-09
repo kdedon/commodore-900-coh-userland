@@ -1,0 +1,97 @@
+: build -- install OpenCoherent onto the hard disk of a Commodore 900.
+:
+: Run from the installation floppy, which is the running root filesystem.
+: The shape is the original: warn, scan the target for bad blocks, make a
+: filesystem, mount it, copy the medium onto it, and hand the machine back
+: to the user to reboot off the hard disk.
+:
+: WHICH DEVICES.  /dev/hd0 is the boot partition the ROM reads, /dev/hd4 the
+: root filesystem, /dev/hd1 is /usr, /dev/hd2 is /usr/man, /dev/hd3 is /tmp
+: and swap.  That is the partition table this floppy handed the kernel at
+: boot out of its own kboot.cfg, so these are the same partitions the
+: installed system will come up on.
+:
+: NOTE for anyone editing this file: this shell has no comment character.
+: Every line above begins with the null command, so none of them may contain
+: a shell metacharacter -- a parenthesis in a comment is a syntax error.
+echo 'This will destroy everything on the hard disk.'
+echo 'If you have files to save, interrupt now with the DEL key.'
+echo 'To build the hard disk system, press RETURN.'
+read j
+
+: THE BAD-BLOCK SCAN IS NOT RUN HERE, and it should be.  The original step
+: pipes a prototype through /etc/mkproto on the RAW root device, which reads
+: every block and puts a %b list of the ones that fail into the prototype it
+: writes out.  On this port it cannot: wd RAW transfers
+: require the user buffer to be 512-byte aligned, mkproto reads into an
+: ordinary static array, and the driver rejects the transfer -- so mkproto
+: fails on the first block and writes a truncated prototype.  Until raw
+: reads bounce an unaligned buffer, the filesystems below are made from the
+: generated prototypes as they stand, with no bad blocks named.  badscan is
+: on this medium and has the same limitation.
+echo 'Writing the root filesystem...'
+/etc/mkfs /dev/hd4 /kit/root.proto
+/etc/mount /dev/hd4 /mnt
+
+: The medium copies onto the new root wholesale, device nodes included --
+: cpdir recreates those with mknod.  /mnt is skipped because it is the mount
+: point this copy is going through, /tmp because it holds scratch for this
+: run, and /kit because the installer does not belong on the system it
+: installs.
+echo 'Copying the system to the hard disk...'
+/bin/cpdir -d -smnt -stmp -skit / /mnt
+
+: On the hard disk the kernel is /coherent and no loader sits beside it: the
+: loader lives on the boot partition, written below.  So the copy that the
+: medium made of its own /coherent -- kboot -- is replaced by the kernel.
+:
+: AND IT IS /hdcoherent, not the kernel this floppy is running.  They are one
+: kernel built once and staged twice: this one roots on the floppy, that one
+: on the hard disk.  Installing the floppy variant leaves a machine that
+: panics with  fsminit: no rootdev  as soon as the drive is empty.
+/bin/rm -f /mnt/coherent.sys /mnt/hdcoherent /mnt/kboot.cfg
+/bin/cp /hdcoherent /mnt/coherent
+
+: LATER VOLUMES ARE NOT READ HERE, and cannot be.  This medium is the mounted
+: root filesystem while the installer runs, so swapping it for volume 2 would
+: leave the kernel writing cached blocks of one disc onto another.  The
+: answer in the original -- and there is only one drive to answer with -- is to
+: finish the root filesystem, reset, and read the rest once the hard disk is
+: root and the drive is free.  /kit/cpsys is that second stage: it is
+: installed as /.profile on the new system, so the first login runs it, and it
+: replaces itself when the last volume is in.
+: The .profile belonging to root is parked as /etc/pro.def and cpsys takes
+: its place, and the last act of cpsys is to move it back.  The volume list
+: goes with it, because the second stage runs on a machine with no /kit -- the
+: installer does not belong on the system it installs.
+/bin/mv /mnt/.profile /mnt/etc/pro.def
+/bin/cp /kit/cpsys /mnt/.profile
+/bin/cp /kit/volumes /mnt/etc/volumes
+/bin/mkdir /mnt/f0
+
+: The other filesystems.  Their mount points are made whatever happens: the
+: /etc/rc of the installed system mounts /usr, and a mount point that does not
+: exist is a mount that does not happen.
+echo 'Writing the remaining filesystems...'
+/etc/mkfs /dev/hd1 /kit/usr.proto
+/etc/mkfs /dev/hd2 /kit/man.proto
+/etc/mkfs /dev/hd3 /kit/tmp.proto
+/bin/mkdir /mnt/usr
+/bin/mkdir /mnt/usr/man
+/bin/sync
+/etc/umount /dev/hd4
+
+echo 'Writing the boot partition...'
+/etc/mkfs /dev/hd0 /kit/boot.proto
+/etc/mount /dev/hd0 /mnt
+/bin/cp /coherent /mnt/coherent
+/bin/cp /kit/kboot.cfg /mnt/kboot.cfg
+/bin/sync
+/etc/umount /dev/hd0
+
+: The prototypes name the sizes, so nothing on this medium restates the
+: layout: /kit/NAME.proto is generated from the target media descriptor, one
+: per filesystem, by the same packer that generated /kit/kboot.cfg.
+echo 'The hard disk system is installed.'
+echo 'Remove the floppy and reset the machine.  With no floppy in the drive'
+echo 'the ROM boots the hard disk, and the system you just installed comes up.'

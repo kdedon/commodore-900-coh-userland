@@ -1,0 +1,383 @@
+# net.list -- the Minix-derived TCP/IP stack.
+#
+# THE DAEMONS, THE CONFIGURATION AND THE NETWORK COMMANDS ONLY.  The programs
+# that EXERCISE this stack -- echoclient/echoserver, the udp* pair, devtcp,
+# psipping, netdbtest and the rest -- live in testing.list, which a release dist
+# does not include.  A new entry here is a tool somebody runs; a new probe goes
+# there.
+#
+# Three processes that rendezvous through named pipes: /etc/inet holds the protocol
+# core and talks to a link layer (slip or ppp) over the psip pseudo-device, and
+# clients reach it through the well-known FIFO /dev/inet plus a per-socket FIFO
+# pair they mknod themselves (net/include/inet_ipc.h).
+#
+# /dev/inet is a named PIPE, which no /dev table can express -- mkimage writes
+# block and character nodes only -- so it is created at boot with
+# `mknod /dev/inet p'.  Named pipes were verified working on the target first.
+#
+# NEVER PUT A COMMENT IN /etc/rc OR /etc/rc.net.  This shell is V7-era and has no
+# `#' comments, so a comment line is parsed as a command -- and worse, a
+# backquote or apostrophe inside it is taken as quoting and SWALLOWS the
+# following lines.  A commented rc silently lost the mknod, and rc has no console
+# (init runs it on /dev/null) so nothing said why.  Explanations belong here.
+#
+# /etc/rc.net brings the stack up at boot: the rendezvous pipe, the daemon, the
+# interface address, and slip on the serial line if that line is a device.  It
+# ships from THIS list, and /etc/rc runs it only `if test -r' -- so a dist built
+# without networking has no rc.net and its boot is unchanged.
+#
+# rc runs it in the BACKGROUND, and that is not cosmetic.  ifconfig's first act
+# is open("/dev/inet", O_WRONLY), which blocks until /etc/inet opens the same pipe
+# for reading: a real rendezvous, and the reason rc.net needs no `sleep' between
+# starting the daemon and configuring the interface.  But it is also a wait with
+# no timeout, so a daemon that dies during startup would hang the boot forever
+# and the machine would never reach multi-user.  In the background it costs
+# nothing but the network.
+#
+# The address lives at the top of rc.net as a shell variable, which is where a
+# site edits it.  There is no DHCP and no hostname database in 3.x.  NTPSERVER
+# is edited in the same place and defaults to 10.0.0.1, the SLIP peer -- the only
+# host this machine can reach at all, so also the only one that can tell it what
+# time it is.
+#
+# The sntp call sits AFTER the slip block, not next to ifconfig: the clock is set
+# over the network, so the link has to exist first.  It is bounded on purpose
+# (-t 5 -r 2, so ten seconds at worst) because a server that does not answer must
+# cost a boot ten seconds and not a hang -- and because slip may still be coming
+# up when it runs, which the second try covers.  It is not backgrounded: it exits
+# either way, and anything after it in rc.net that timestamps a file wants the
+# clock already right.
+#
+# EVERY GUARD IN rc.net IS `test -r'.  This test(1) (cmd/test/test.y) has
+# exactly eight file operators -- -r -w -f -d -s -t -z -n -- and NOTHING ELSE.
+# There is no -c and no -x.  An unknown operator is not a false answer, it is a
+# parse error: test prints "Test expression syntax error" and exits non-zero, so
+# the if takes the ELSE branch and the guarded daemon never starts, while
+# everything before it comes up fine.  That is a working stack that answers no
+# packets, or a shipped telnetd nobody can reach, and neither says why.
+#
+# A `test -c' or `test -x' guard therefore silently skips the daemon it
+# guards.  -r is an access(2) call and is the operator rc itself already
+# relies on to find rc.net; -f (exists and is not a directory) is the only
+# other safe choice.
+#
+# rc.net's output goes to /tmp/rc.net.log.  init runs rc on /dev/null, so
+# anything the daemons say at boot -- inet's `ready', ifconfig's error, slip
+# refusing the line -- would otherwise be discarded, and a network that failed to
+# come up would leave no evidence of why.  The redirection is on rc's side
+# rather than an `exec' inside rc.net so it uses nothing beyond plain V7
+# redirection.
+#
+# Built by hostbuild/build-net.sh (`make net'), which is NOT part of the
+# userland sweep: the stack has its own Makefile and include tree.
+#
+# /etc/inet.conf is read by inet_config.c read_conf() before anything else; the
+# daemon exits if it is missing.  One psip interface, marked `default' because
+# read_conf() refuses to run without a default network.  The psip branch of the
+# parser takes no address -- an interface's IP address is a separate
+# NWIOSIPCONF ioctl, so a configuration utility is still owed.
+#
+# /dev/ip (in devices/hd.devices, major 10) must ALSO pre-exist: read_conf()
+# stat()s it purely to learn which major to reuse, and fatal()s if it is absent.
+# /etc/inet then mknod()s /dev/{ip,psip,tcp,udp}0 itself with that same major and
+# hard-links the unnumbered names to them.  Major 10 has NO driver in drvl[] on
+# purpose -- in this port every real transfer goes over the FIFO channel, so the
+# nodes are inode bookkeeping only, and umknod() does not validate the major.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  net
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man dev
+
+# THE LIBRARY THIS COMPONENT BUILDS.  libsocket.a is net's -- os/net/Makefile
+# builds it out of libsocket.c, the channel layer, netdb and the resolver -- and
+# its twenty-six Lexicon articles (accept(), bind(), socket(), select(), the
+# net/proto/serv database calls, and the libsocket overview itself) are the
+# manual for something this component ships.  They go in net-man for the same
+# reason the pages for its programs do; the manual says which pages they are,
+# because each one's class line names the library it documents.
+libraries libsocket
+
+# THE COMPILE-TIME INTERFACE -- net-dev, what somebody needs to build a program
+# that talks to this stack, as opposed to net-src, which is what they need to
+# rebuild the stack itself.
+#
+# inet_ipc.h is the interface in the strictest sense: it declares the request
+# and reply framing of the well-known FIFO /dev/inet and the per-socket FIFO
+# pair, which is the protocol between a client and /etc/inet, and a program
+# that speaks it needs nothing else of net's.  inet_chan.h declares the channel
+# library that speaks it for you -- ichan_open(), ichan_ioctl_rw() -- which is
+# what netstat and every libsocket call go through.
+#
+# netdb.h, arpa/inet.h and net/ are the Berkeley and Minix declarations the
+# socket calls take and return: struct servent and struct hostent, the
+# address-conversion functions, and net/gen/, whose structures are the payload
+# of the ioctls net/ioctl.h names.  A client compiles against these and against
+# the TOOLCHAIN's <sys/socket.h>, <sys/select.h> and <netinet/in.h>, which
+# c900-include publishes and this package does not duplicate.
+#
+# net/include/minix/ and netdb_priv.h are NOT here.  They are the daemon's own
+# internals -- kernel message types, the resolver's private state -- and a
+# header a client must not include is not part of an interface.
+dev	/usr/include/inet_ipc.h	net/include/inet_ipc.h
+dev	/usr/include/inet_chan.h	net/include/inet_chan.h
+dev	/usr/include/netdb.h	net/include/netdb.h
+dev	/usr/include/arpa/inet.h	net/include/arpa/inet.h
+dev	/usr/include/net	net/include/net
+# The library itself, which is the other half: the headers declare the calls and
+# this is what resolves them.  It installs where -lsocket looks.
+dev	/usr/lib/libsocket.a	net/libsocket.a
+
+f	/etc/inet.conf	644 0 1
+# The host and service databases.  gethostbyname() reads /etc/hosts BEFORE it
+# asks the network, so these files answer with no packet, and they have to: the
+# nameserver is the SLIP peer, so a machine that needed the DNS to find its peer
+# could never ask.  libsocket carries a built-in copy of the well-known services
+# so a machine missing that file can still reach them.
+f	/etc/hosts	644 0 1
+f	/etc/services	644 0 1
+# The resolver's configuration -- and the switch that turns the resolver on.
+# net/resolv/ is ported and linked into libsocket, and host(1), telnet and ftp
+# all carry it, but netdb.c asks the network only when this file EXISTS
+# (have_resolv() is an access(2) call on the path).  Without it a name that
+# /etc/hosts does not know is HOST_NOT_FOUND at once; with it, that name costs a
+# query and, if nothing answers, four rounds of a doubling timeout -- about a
+# minute, which reads as a hang.  So it ships from THIS list and not from
+# base.list: a dist built without networking should not pay for a nameserver it
+# cannot reach.  It names 10.0.0.1, the far end of the SLIP link, which is the
+# only host this machine can reach at all.
+f	/etc/resolv.conf	644 0 1
+# This machine's own name.  There is no uname(2) and no hostname in the kernel,
+# so gethostname() reads this file; without it every program that asks its own
+# name is told "localhost" and looks itself up as 127.0.0.1.  hunt's client
+# does exactly that to decide which network to search for a game driver on, so
+# a missing file here is not cosmetic -- it makes the machine unable to find a
+# server running on itself.  It holds the FULL name, c900.localnet, which is the
+# canonical name of 10.0.0.2 in /etc/hosts: gethostname() must resolve to this
+# machine's interface address, and the domain part is also what res_init() falls
+# back to for the search list.  Keep in step with IFADDR in rc.net, /etc/hosts
+# and the nameserver line in /etc/resolv.conf.
+f	/etc/hostname	644 0 1
+f	/etc/rc.net	755 0 1
+# /etc/inet is the TCP/IP STACK, and the name says so.  It shipped as
+# /etc/inetd for the whole port, which named it after a program it is not: BSD's
+# inetd(8) is a super-server that listens on a table of ports and execs a
+# program per connection, and this reads no such table and execs nothing.  It is
+# the Minix inet server (net/inet/, `replaces Minix inet.c'), and every
+# connection on this machine lives inside it.  The switchboard now ships under
+# the name it earned, three lines down.
+f	/etc/inet	755 0 1	src=net/inet/inet
+# /etc/inetd -- the switchboard, and now the only thing by that name.  It reads
+# /etc/inetd.conf, listens on each service's port, and runs a program per
+# connection.  An ordinary CLIENT of /etc/inet: it links libsocket like telnet
+# does and shares no code with the stack.
+#
+# It cannot hand a program the socket the way BSD's inetd does.  A connection
+# here is two FIFOs plus framing state inside the process holding them, and
+# exec(2) discards that state -- so the service is run on a PIPE with inetd
+# relaying between pipe and socket, which costs one extra process per connection
+# and buys a service that needs to know nothing about this stack.  The internal
+# services (echo, daytime, ...) pay neither: the forked child answers on the
+# socket itself.
+#
+# FOUR OF THIS MACHINE'S DAEMONS ARE SERVED FROM HERE.  telnetd, fingerd, remshd
+# and smtpd each have an inetd mode -- read the connection on standard input,
+# answer on standard output, one connection, exit -- and each finds the peer's
+# and this machine's addresses in INETD_REMADDR/INETD_REMPORT/INETD_LOCADDR/
+# INETD_LOCPORT, because a service on a pipe cannot ask the descriptor who is at
+# the other end.  One binary does both jobs; the variables' presence is what
+# selects the mode, and rc.net starts none of the four.
+# smtpd's line ships enabled even though the program comes from
+# lists/mail-light.list: inetd offers no service whose program is not installed,
+# so the line is conditional on the mail list with nothing commented out and
+# nothing to edit (see inetd.conf).
+#
+# AND ONE UDP SERVICE, WHICH inetd ANSWERS ITSELF: ntalk (518/udp), the daemon
+# that used to be /etc/talkd.  A datagram service is BSD's `wait' class -- the
+# program is given the listening socket rather than a connection -- and a
+# descriptor cannot be handed to an exec'd program here at all, so it is an
+# INTERNAL service: inetd binds the port and forks a child WITHOUT exec, which is
+# how the socket arrives with libsocket's framing state intact.  That child holds
+# the invitation table and retires when it holds nothing (net/talkserv.c), so
+# between calls the machine spends no process on it and no separate 41 KB image.
+# huntd is still the one thing not servable from here, and it needs no help: the
+# client starts it on demand.
+#
+# rc.net starts it only when BOTH the program and the conf file are readable;
+# deleting /etc/inetd.conf is how a site turns the switchboard off without
+# rebuilding an image.
+f	/etc/inetd	755 0 1	src=net/inetd
+# The service table.  Six lines ship enabled -- the internal echo, daytime and
+# ntalk, and telnet, finger and shell -- and every enabled line costs a stack
+# connection for as long as the machine is up, which is why the file's own
+# comments carry the arithmetic rather than leaving it to be rediscovered.
+f	/etc/inetd.conf	644 0 1
+f	/etc/slip	755 0 1	src=net/slip
+f	/etc/ifconfig	755 0 1	src=net/ifconfig
+f	/etc/ppp	755 0 1	src=net/ppp
+# sntp(8) -- the machine's only automatic clock source.  read_cmos() returns 0
+# (sys/z8001/src/mdstub.c) and the M58321 RTC has no driver, so the C900 boots at
+# the epoch EVERY time: without this, 1970 is the date on every file it writes,
+# make(1) cannot tell what is out of date, and find -newer answers nothing.  A
+# one-shot ntpdate(8)-shaped client, not a daemon -- the kernel's whole
+# time-setting interface is stime(2), which steps; there is no adjtime and no
+# settimeofday, so clock DISCIPLINE is not available to write.  Run again from
+# cron for a machine that stays right.
+#
+# It ships from net.list rather than testing.list because it is a tool somebody
+# runs, and it is in /etc rather than /bin for the same reason ifconfig is:
+# stime(2) is root-only, so a non-root invocation can only ever print the answer
+# (which -q does, and which needs no privilege at all).
+f	/etc/sntp	755 0 1	src=net/sntp
+# The routing table: pr_routes prints it, add_route/del_route change it.  Minix
+# 2.0.4's tools, unchanged in what they do.
+#
+# Reading the table is one _IORW ioctl -- an entry number out, that entry back --
+# which the channel library could not express until ichan_ioctl_rw(); before
+# that, nothing on this machine could SEE a route, only add one.
+#
+# add_route and del_route are the same program under two names (it decides from
+# argv[0]), staged twice because a list has no way to say `hard link'.
+f	/etc/pr_routes	755 0 1	src=hostbuild/build/bin/pr_routes
+# netstat(1) -- what this machine can say about its own network state.  WRITTEN
+# here, not ported: COHERENT 4.x had one (its Lexicon page survives, and its
+# option letters are the ones this takes), but 4.x read protocol control blocks
+# out of the KERNEL through /dev/kmem, and this stack's connection table is
+# inside a user process.  Nothing of that program's body could survive; only its
+# interface was worth keeping.
+#
+# It reports what the daemon answers and nothing else: the interfaces
+# /etc/inet.conf declares with the address NWIOGIPCONF gives back (-i), BOTH
+# routing tables (-r, the outgoing one being pr_routes' data), and the open
+# channels -- one per socket, filtered by kill(pid,0) so an abandoned FIFO pair
+# is counted as abandoned rather than listed as a socket (-a).  There is no -m
+# and no connection endpoint list, because the buffer pool and the connection
+# table are private to the daemon; -s exists because NWIOGETHSTAT is real, and
+# says so plainly when no ethernet interface is configured rather than printing
+# a screen of zeroes.  It starts working the day the LANCE driver lands.
+#
+# In /bin and not /etc: it needs no privilege, and the Lexicon page puts the
+# plain form in a user's path.
+#
+# CAUTION, and inherited: NWIOGIPCONF does not answer `unconfigured'.  ip_ioctl()
+# SUSPENDS the request until the interface has an address, so `netstat' run
+# before /etc/ifconfig hangs with no output instead of printing an empty table.
+# ifconfig has the same property; -a is the one form that needs no daemon at all.
+f	/bin/netstat	755 0 1	src=hostbuild/build/bin/netstat
+f	/etc/add_route	755 0 1	src=hostbuild/build/bin/add_route
+f	/etc/del_route	755 0 1	src=hostbuild/build/bin/add_route
+# telnet(1) -- Minix 2.0.4's ttn.c through libsocket's /dev/tcp shim.  It puts
+# the local line in raw mode with TCGETA/TCSETA, so it wants a kernel built
+# KTTY=termio; on the sgtty kernel the ioctls fail and the line stays cooked.
+# Escape is ~. (at the start of a line).
+f	/bin/telnet	755 0 1	src=hostbuild/build/bin/telnet
+# ftp(1) -- Michael Temari's client from the same Minix drop, same shim.  Its
+# `lmkdir'/`lrmdir' go through libc's mkdir()/rmdir(), which run /bin/mkdir and
+# /bin/rmdir: this kernel has no mkdir(2), and mknod(IFDIR) is root only.
+f	/bin/ftp	755 0 1	src=hostbuild/build/bin/ftp
+# host(1) is the DNS query tool -- Minix 2 has no nslookup.  Since
+# /etc/resolv.conf now ships, a name that /etc/hosts does not know goes to the
+# nameserver at 10.0.0.1; delete that file and the same lookup fails at once
+# instead of spending the full retry schedule.  This is the only program here
+# whose whole job is the network half, so it is what says whether DNS works --
+# telnet and ftp would answer from /etc/hosts and look identical either way.
+f	/bin/host	755 0 1	src=hostbuild/build/bin/host
+# ping(1) -- the one client whose whole job is IP itself.  It reaches the stack
+# through libsocket's /dev/ip shim rather than /dev/tcp, so it is also what says
+# the raw-IP half of that shim works; /bin/psipping tests the same ICMP path
+# from the LINK side, by injecting a packet the stack must answer, and needs no
+# peer.  This needs one: an address that answers, which over the SLIP line means
+# the machine at the far end.
+f	/bin/ping	755 0 1	src=hostbuild/build/bin/ping
+f	/bin/rlogin	755 0 1	src=hostbuild/build/bin/rlogin
+f	/bin/finger	755 0 1	src=hostbuild/build/bin/finger
+# fingerd answers what finger(1) asks.  Until now this machine shipped the
+# client alone, so it could question other hosts and none could question it.
+# The protocol body is Minix's in.fingerd.c.  It runs /bin/finger on a pipe and
+# needs no pty.
+#
+# IT IS AN /etc/inetd.conf SERVICE NOW, not an rc.net daemon, and so are telnetd
+# and remshd: each reads the connection on its standard input, answers on its
+# standard output and exits, and finds the peer's address in the environment
+# because a program on a pipe cannot ask the descriptor.  The same binary still
+# does the standalone job when the switchboard's variables are absent, which is
+# how a site that wants one of them resident runs it by hand.
+#
+# Both listeners cost the same, whoever holds them: a channel costs the DAEMON
+# two descriptors (request and reply FIFO) out of NUFILE = 20, of which its own
+# stdio and the rendezvous pipe already take four, so the machine has eight
+# channels in all.  Under the switchboard these three services spend three of
+# them waiting, one per port, and the rest stay free for a connection made from
+# this machine to itself.
+f	/etc/fingerd	755 0 1	src=hostbuild/build/bin/fingerd
+# The remote shell, client and daemon.  They are NOT called rsh/rshd: /usr/bin/rsh
+# on this system is COHERENT's restricted shell and has been since V7, so the
+# BSD program takes the name HP-UX gave it over the same collision.
+#
+# remshd serves the single-connection form of the protocol only: the optional
+# second connection for standard error, and with it signal forwarding, is not
+# implemented, so a command's stderr comes back merged into its stdout.  remsh
+# asks for that form; a stock BSD rsh asking for the back channel is refused
+# with a message saying so.
+f	/bin/remsh	755 0 1	src=hostbuild/build/bin/remsh
+f	/etc/remshd	755 0 1	src=hostbuild/build/bin/remshd
+# NO .rhosts IS SHIPPED, for root or for anybody, so out of the box remshd binds
+# the port and refuses every caller: iruserok() finds no ~luser/.rhosts and no
+# /etc/hosts.equiv, and a session is refused with "Permission denied."  A site
+# turns the daemon on by writing one.
+#
+# THAT FILE CANNOT BE ROOT'S.  remshd refuses uid 0 outright (cmd/remshd), for
+# the reason login(1) refuses it off the console: root's /etc/passwd field is
+# empty so the machine's own keyboard is never locked out of itself, and a
+# daemon that authenticates on an ADDRESS and asks for no password would turn
+# that into a root shell for whoever the address database names.  ~root/.rhosts
+# is therefore read by nothing.
+#
+# Mode 644 is not cosmetic on the one a site writes: iruserok() ignores a .rhosts
+# that group or other can write, because a file the world can append to grants
+# the account to the world.  The file must be owned by the account it lets into,
+# or by root.
+# talk needs an ntalk service at BOTH ends: the CALLER's daemon takes its
+# LEAVE_INVITE and the CALLEE's takes the ANNOUNCE and writes on the terminal, so
+# the client could not complete a call in either direction until one existed.  It
+# is /etc/inetd's now, and no longer a daemon of its own.
+f	/bin/talk	755 0 1	src=hostbuild/build/bin/talk
+# THERE IS NO /etc/talkd.  The daemon /bin/talk needs at both ends is the ntalk
+# line in /etc/inetd.conf, answered inside the switchboard (net/talkserv.c): the
+# invitation table lives in a child inetd forks without exec, and nothing is
+# resident between calls.  Root is still required, and not because 518 is
+# privileged -- it is not, here -- but because announcing a call means writing on
+# another user's terminal.
+# telnetd is an /etc/inetd.conf service: one login per connection, read on
+# standard input and answered on standard output.  Minix's model, where tcpd
+# listens and hands the connection to an exec'd program, still cannot work here
+# -- with the user-space /dev/tcp shim a connection is two FIFO fds plus the
+# channel's framing state, none of which survives exec -- so the switchboard
+# relays over a pipe instead, which is what an inetd mode had to be written
+# against.  Needs a KTTY=termio kernel for the pty driver.
+#
+# The standalone pre-forking server is still in the same binary and rc.net no
+# longer starts it: `/etc/telnetd -m 3 &' by hand is what a site that wants
+# resident listeners runs, with the telnet line commented out of inetd.conf.
+# Either way a session takes a pty when the connection arrives and not before;
+# the kernel has NUPTY=8 channels (sys/drv/pty.c), shared with screen(1) and
+# with local use, so that -- or inetd's child limit -- is the real bound on how
+# many logins at once.
+f	/etc/telnetd	755 0 1	src=hostbuild/build/bin/telnetd
+# screen(1) -- GNU screen 3.2 in MWC's own COHERENT port.
+# It needs the pty driver, so a KTTY=termio kernel; with NUPTY=8 channels shared
+# with telnetd it is a handful of windows, not ten.  setuid+setgid root
+# because a pty master is mode 600
+# root and screen has to open one; its lock/password, utmp and remote-detach code
+# is compiled OUT, which is what a setuid program here should carry least of.
+# /tmp/screens must exist and be sticky, or the first run cannot make its socket.
+f	/usr/bin/screen	6511 0 0	src=hostbuild/build/bin/screen
+f	/etc/screenrc	644 0 0	src=net/screen/etcscreenrc
+d	/tmp/screens	1777 0 0

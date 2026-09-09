@@ -1,0 +1,79 @@
+# vellum.list -- Vellum, the drawing suite: a vector editor, its stencil
+# libraries, and the tools that turn a drawing into something else.
+#
+# A SUITE OF SMALL TOOLS OVER ONE LIBRARY, not one program with a mode flag, and
+# it installs under its own prefix because /usr/vellum is the path its own data
+# files name -- the layout is the program's and not a packaging choice.
+#
+# Nine of the eleven commands are HEADLESS and run on a machine with no bitmap
+# card: velplot writes a drawing to a page (lp, PostScript or HPGL), velpic
+# writes troff pic source, veldxf crosses the DXF border both ways, velnet says
+# what a drawing is connected as, velcheck and veldiff and velinfo judge and
+# compare and report, velsym turns a drawing into a stencil and velgraph turns
+# x/y data into one.  The editor, the stencil-library editor symedit and the
+# print-preview helper velprev are window-system clients, which is why this list
+# requires lists/hr.list: the suite ships as one thing and its editor is half of
+# what it is for.
+#
+# It is a large optional set, like lists/games.list, and is named by the dists
+# that assume a hi-res display for that reason -- not because every tool in it
+# needs one.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  vellum
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+require	lists/hr.list
+
+d	/usr/vellum
+d	/usr/vellum/bin
+#
+# The editor, and nothing else: it draws.
+f	/usr/vellum/bin/vellum		755 0 1
+f	/usr/vellum/bin/symedit		755 0 1
+#
+# The headless tools, one per operation.
+f	/usr/vellum/bin/velplot		755 0 1
+f	/usr/vellum/bin/velpic		755 0 1
+f	/usr/vellum/bin/veldxf		755 0 1
+f	/usr/vellum/bin/velnet		755 0 1
+f	/usr/vellum/bin/velcheck	755 0 1
+f	/usr/vellum/bin/veldiff		755 0 1
+f	/usr/vellum/bin/velinfo		755 0 1
+f	/usr/vellum/bin/velsym		755 0 1
+f	/usr/vellum/bin/velgraph	755 0 1
+#
+d	/usr/vellum/lib
+# velprev draws the print preview on the window of the editor that exec'd it,
+# so it is a helper and not a command: a user does not run it, which is why it
+# is in lib and not in bin.
+f	/usr/vellum/lib/velprev		755 0 1
+# libvellum.a is what more than one tool needs -- the drawing model, the symbol
+# half, the geometry, the file formats and the connectivity.  Its member order
+# is the dependency order because COHERENT's ld makes one pass over an archive.
+f	/usr/vellum/lib/libvellum.a	644 0 1
+#
+# The stencil libraries the editor loads at start-up (/usr/vellum/etc/libs names
+# which), and the drawings the shop works from.  A `t' entry copies a
+# directory's files without descending into it, so the sketch gallery under eg/
+# takes a line of its own -- those nine drawings are what `vellum -mksym' builds
+# pid.sym from, driven by etc/library.mk, and a stencil library here is a build
+# product whose sources are ordinary drawings.
+t	/usr/vellum/sym
+t	/usr/vellum/eg
+t	/usr/vellum/eg/sk
+# Shop-standard details as ordinary drawings.  No code ships with them: `hrclip
+# < frag/x.d' and a middle click in the editor is the whole mechanism.
+t	/usr/vellum/frag
+# The start-up library list, the user's own scratch library, the title-block
+# frame, and the two Makefile skeletons a shop copies -- project.mk for a sheet
+# set, library.mk for a stencil library.
+t	/usr/vellum/etc

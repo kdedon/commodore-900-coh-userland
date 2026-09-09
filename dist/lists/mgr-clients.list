@@ -1,0 +1,208 @@
+# mgr-clients.list -- the MGR client programs.  Requires lists/mgr.list.
+#
+# A client is an ordinary program whose stdout is a window's pty: it draws by
+# writing escape sequences and reads events back from stdin.
+# Nothing here touches the frame buffer except the four noted below, and only
+# mgrload is setuid -- for one open(2) of /dev/kmem, given up before its first
+# window call -- so a client is exactly as privileged as the user who runs it.
+#
+# They are a separate fragment from mgr.list because they are ~967 KB against
+# the server's 220 KB, which is a different decision on a 21 MB medium.
+#
+# Built by mgr/Makefile.c900's `clients' target into build/mgr/bin/cl.  The
+# names are upstream's; the man pages are the .1 files beside each source and
+# are NOT shipped (nroff is, but 40 more man pages is another 200 KB).
+#
+# --- window management: what makes the server usable from inside a window ----
+# mnew runs any command line in a new window and is the one to reach for first;
+# mvi and mless are the two specialisations of it that upstream ships.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  mgr-clients
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+f	/usr/mgr/bin/mnew	755 0 1	src=hostbuild/build/mgr/bin/cl/mnew
+f	/usr/mgr/bin/mvi	755 0 1	src=hostbuild/build/mgr/bin/cl/mvi
+f	/usr/mgr/bin/mless	755 0 1	src=hostbuild/build/mgr/bin/cl/mless
+f	/usr/mgr/bin/close	755 0 1	src=hostbuild/build/mgr/bin/cl/close
+f	/usr/mgr/bin/oclose	755 0 1	src=hostbuild/build/mgr/bin/cl/oclose
+#
+# ify replaces close: it puts a window away WITHOUT killing what is running in
+# it.  It rewrites the window's NOTIFY string to CLOSED:<tty>:<label>, shrinks
+# the window to that one-line label, queues the escape codes that would undo
+# all of it, and only then stops output on the window's SLAVE tty with
+# tcflow(TCOOFF) -- so the queued codes sit in the pty until a click on the
+# icon restarts the line.  It is the one client that needs anything of the
+# kernel beyond a pty: TCXONC in sys/drv/tty.c, reached through libc's
+# tcflow().  /.mgrc runs it in the icon column.  setname writes the label ify
+# stamps on the icon and is no use without it, so the two ship together.
+f	/usr/mgr/bin/ify	755 0 1	src=hostbuild/build/mgr/bin/cl/ify
+f	/usr/mgr/bin/setname	755 0 1	src=hostbuild/build/mgr/bin/cl/setname
+f	/usr/mgr/bin/resetwin	755 0 1	src=hostbuild/build/mgr/bin/cl/resetwin
+f	/usr/mgr/bin/mgrmode	755 0 1	src=hostbuild/build/mgr/bin/cl/mgrmode
+f	/usr/mgr/bin/set_termcap 755 0 1 src=hostbuild/build/mgr/bin/cl/set_termcap
+f	/usr/mgr/bin/set_console 755 0 1 src=hostbuild/build/mgr/bin/cl/set_console
+f	/usr/mgr/bin/ismgrterm	755 0 1	src=hostbuild/build/mgr/bin/cl/ismgrterm
+f	/usr/mgr/bin/startup	755 0 1	src=hostbuild/build/mgr/bin/cl/startup
+f	/usr/mgr/bin/cut	755 0 1	src=hostbuild/build/mgr/bin/cl/cut
+f	/usr/mgr/bin/browse	755 0 1	src=hostbuild/build/mgr/bin/cl/browse
+f	/usr/mgr/bin/mgrbiff	755 0 1	src=hostbuild/build/mgr/bin/cl/mgrbiff
+# iconmsgs is mgrbiff for msgs(1) rather than mail: it sizes itself to
+# icon/msg_board, watches /usr/msgs/bounds against $HOME/.msgsrc -- the same
+# two files cmd-3.x/msgs.c uses -- and swaps between icon/msg_note and
+# icon/msg_none.  Clicking it opens an 80x24 window running `msgs -p'.
+# NOTE it draws "no messages" until /usr/msgs exists; msgs(1) ships in
+# lists/base.list but its spool directory is not created by any list.
+f	/usr/mgr/bin/iconmsgs	755 0 1	src=hostbuild/build/mgr/bin/cl/iconmsgs
+#
+# --- the load meter ---------------------------------------------------------
+# mgrload(1) is the histogram tile on the reference desktop: a scrolling bar
+# graph of the load average, one bar per 5 second sample, with the vertical
+# scale re-partitioned when the peak crosses a whole process.  It reads the
+# kernel's own one-minute average -- nlist(3) on /coherent for avenrun_, then
+# the value out of /dev/kmem -- so the decay is the kernel's rather than a
+# second one sampled from userland.  It does need /coherent to BE the running
+# kernel: against a stale one, or one that keeps no load average, it draws a
+# flat zero rather than a fabricated load.
+#
+# /dev/kmem is 600 root (dist/devices/hd.devices), so this carries the setuid
+# bit like ps and top and gives it up as fast: main() takes the first sample
+# before it sets the window up, and the backend (mgr/src/clients/portable/
+# mgrload/coherent.c) does setuid(getuid()) as soon as the open answers, either
+# way -- so every MGR call this client makes, and every file it touches, is
+# made as the real user.  The one word it needs is avenrun_; that is why it can
+# hold the privilege for the length of one open(2) and no longer.
+f	/usr/mgr/bin/mgrload	4755 0 1	src=hostbuild/build/mgr/bin/cl/mgrload
+#
+# --- clocks -----------------------------------------------------------------
+# clock is the analogue one in a window, mclock the icon-sized one, mgrsclock
+# the small digital one.
+f	/usr/mgr/bin/clock	755 0 1	src=hostbuild/build/mgr/bin/cl/clock
+f	/usr/mgr/bin/mclock	755 0 1	src=hostbuild/build/mgr/bin/cl/mclock
+f	/usr/mgr/bin/mgrsclock	755 0 1	src=hostbuild/build/mgr/bin/cl/mgrsclock
+#
+# --- fonts, bitmaps and capture ---------------------------------------------
+# screendump, snap, mgrmag and zoom are the four that link libbitblit/hr and so
+# read or write the frame buffer directly.  They therefore need /drv/hrtty
+# loaded, exactly as mgr itself does, and they do nothing useful on an LR or
+# serial console.
+f	/usr/mgr/bin/mgrshowfont 755 0 1 src=hostbuild/build/mgr/bin/cl/mgrshowfont
+f	/usr/mgr/bin/fontinfo	755 0 1	src=hostbuild/build/mgr/bin/cl/fontinfo
+f	/usr/mgr/bin/mgrview	755 0 1	src=hostbuild/build/mgr/bin/cl/mgrview
+f	/usr/mgr/bin/show	755 0 1	src=hostbuild/build/mgr/bin/cl/show
+f	/usr/mgr/bin/rotate	755 0 1	src=hostbuild/build/mgr/bin/cl/rotate
+f	/usr/mgr/bin/zoom	755 0 1	src=hostbuild/build/mgr/bin/cl/zoom
+f	/usr/mgr/bin/window_print 755 0 1 src=hostbuild/build/mgr/bin/cl/window_print
+f	/usr/mgr/bin/screendump	755 0 1	src=hostbuild/build/mgr/bin/cl/screendump
+f	/usr/mgr/bin/snap	755 0 1	src=hostbuild/build/mgr/bin/cl/snap
+f	/usr/mgr/bin/mgrmag	755 0 1	src=hostbuild/build/mgr/bin/cl/mgrmag
+#
+# Upstream's seven acceptance tests for the window protocol -- event, many,
+# spot, test_menu, trans, half and test_rop -- are NOT here.  They answer
+# questions about the server rather than doing anything for the person using
+# it, so they moved to lists/testing.list with the rest of the probes; a
+# release image carries a /usr/mgr/bin of real clients only.
+#
+# --- shell clients ----------------------------------------------------------
+# menu(1) turns a tab-separated .menu file into the escape sequence that
+# installs a pop-up menu in the current window; /usr/mgr/menus/README names it
+# as the way to load the four .menu files shipped beside it, so without it that
+# directory is unusable.  c_menu(1) is the same idea over cc(1) diagnostics.
+# Both are /bin/sh scripts driving awk, sed, expr and ismgrterm, so they stage
+# straight from the source tree rather than from the clients build.
+#
+# Their comments are `:' lines, not `#' lines.  cmd/sh has no comment lexer --
+# eval.c's only `#' is `$#' -- so a `#' line is a command, and the `(c)' in
+# both scripts' copyright header opened a subshell mid-line and killed the
+# script before its first real statement.  `:' is a builtin (exec3.c:41,
+# s_colon returns 0) and the single quotes keep the shell out of the text.
+# Anything else added here must follow the same rule, and so must the .menu
+# files' loader if one is ever written as a script.
+f	/usr/mgr/bin/menu	755 0 1	src=mgr/src/clients/portable/sh/menu
+f	/usr/mgr/bin/c_menu	755 0 1	src=mgr/src/clients/portable/sh/c_menu
+#
+# Four more from the same directory that do nothing but write one escape
+# sequence: font(1) selects a loaded font by number, shape(1) resizes the
+# current window in characters of it, cursor(1) picks the cursor shape and
+# bury(1) hides the current window behind the others -- it clears M_ACTIVATE,
+# which is what the server calls hiding.  Each is what a menu entry in a .menu
+# file would otherwise have to spell out by hand.
+f	/usr/mgr/bin/font	755 0 1	src=mgr/src/clients/portable/sh/font
+f	/usr/mgr/bin/shape	755 0 1	src=mgr/src/clients/portable/sh/shape
+f	/usr/mgr/bin/cursor	755 0 1	src=mgr/src/clients/portable/sh/cursor
+f	/usr/mgr/bin/bury	755 0 1	src=mgr/src/clients/portable/sh/bury
+#
+# loadfont(1) is the one that removes a restriction rather than shortening a
+# sequence.  The server has no opendir: a client asks for "font n", and n comes
+# from the `font' lines of /usr/mgr/font/.mgrc and from nothing else, so a font
+# on the disk but not named there cannot be selected.  loadfont downloads a
+# font FILE into a number at run time, which is the only other way in.  It
+# spells its conditions as test(1) rather than `[', and traps signal 5 because
+# that is SIGTERM here (include/signal.h takes the non-_I386 branch).
+f	/usr/mgr/bin/loadfont	755 0 1	src=mgr/src/clients/portable/sh/loadfont
+#
+# --- demos ------------------------------------------------------------------
+f	/usr/mgr/bin/bounce	755 0 1	src=hostbuild/build/mgr/bin/cl/bounce
+f	/usr/mgr/bin/cycle	755 0 1	src=hostbuild/build/mgr/bin/cl/cycle
+f	/usr/mgr/bin/grav	755 0 1	src=hostbuild/build/mgr/bin/cl/grav
+f	/usr/mgr/bin/grid	755 0 1	src=hostbuild/build/mgr/bin/cl/grid
+f	/usr/mgr/bin/hilbert	755 0 1	src=hostbuild/build/mgr/bin/cl/hilbert
+f	/usr/mgr/bin/walk	755 0 1	src=hostbuild/build/mgr/bin/cl/walk
+f	/usr/mgr/bin/mgreyes	755 0 1	src=hostbuild/build/mgr/bin/cl/mgreyes
+f	/usr/mgr/bin/stringart	755 0 1	src=hostbuild/build/mgr/bin/cl/stringart
+#
+# --- drawing and the third dimension ----------------------------------------
+# mgrsketch is the drawing pad: freehand, straight lines, boxes, circles and
+# text, all placed with the mouse, with the tool chosen from a pop-up menu and
+# the result written out with m_windowsave.  It is the only client that uses the
+# pointer to MAKE something rather than to select or reshape, so it is the one
+# that exercises the mouse driver end to end.
+#
+# ico bounces a rotating wire-frame polyhedron round its window with hidden
+# lines removed, drawing every edge with m_line under BIT_INVERT so it erases
+# itself on the next frame.  `ico -objhelp' lists the five solids it carries --
+# cube, octahedron, icosahedron, pyramid and plane; -obj names one and -sleep
+# slows it down.
+#
+# Both hold their geometry in `double' and are the only clients linked against
+# libm-z8001, for cos, sin and sqrt.
+f	/usr/mgr/bin/mgrsketch	755 0 1	src=hostbuild/build/mgr/bin/cl/mgrsketch
+f	/usr/mgr/bin/ico	755 0 1	src=hostbuild/build/mgr/bin/cl/ico
+#
+# --- the arcade game --------------------------------------------------------
+# xbd(6) is Boulder Dash: dig through the dirt for diamonds, drop boulders on
+# the monsters, and reach the exit before the clock runs out.  38 levels plus a
+# `default' used when a numbered one is missing; `xbd -l N' starts at level N,
+# `xbd -r' inverts the tiles.  ^D gives up on the level, ^R redraws, ^C quits.
+#
+# It reads two directories.  /usr/mgr/lib/xbd holds the levels and the
+# high-score file, and $XBDLIB overrides that path; the file is only written if
+# the directory is writable, and the game reports the failure and carries on
+# otherwise.  /usr/mgr/icon/mgrbd holds the 26 18x12 tiles it downloads by name
+# at start-up -- a `t' entry does not descend into a subdirectory, so that
+# directory needs a `t' line of its own or every tile comes back empty.
+f	/usr/mgr/bin/xbd	755 0 1	src=hostbuild/build/mgr/bin/cl/xbd
+t	/usr/mgr/lib/xbd	src=hostbuild/build/mgr/lib/xbd
+t	/usr/mgr/icon/mgrbd	src=mgr/icon/mgrbd
+#
+# --- the network game -------------------------------------------------------
+# maze(6) is the only client that drives the window protocol and the TCP/IP
+# stack at once: it draws the first-person view and the plan view through
+# libmgr, and finds its other players with UDP datagrams through libsocket.
+# It therefore needs lists/net.list as well -- the inet daemon must be running
+# (/etc/rc.net) or its socket() fails at start-up -- and it is the only client
+# linked against os/net/libsocket.a.
+#
+# With no argument it plays against other copies of itself ON THIS MACHINE:
+# the stack loops a datagram addressed to this machine's own interface back
+# internally, so two windows are two players.  With an argument (a dotted quad
+# or an /etc/hosts name) it plays against another machine over SLIP.
+f	/usr/mgr/bin/maze	755 0 1	src=hostbuild/build/mgr/bin/cl/maze

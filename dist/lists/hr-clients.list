@@ -1,0 +1,77 @@
+# hr-clients.list -- the ZView desktop applications.  Requires lists/hr.list.
+#
+# A client is an ordinary program: it declares its window to the server at
+# start-up (title, size, icon, whether it may be stretched -- inc/hrapp.h, not a
+# configuration file), then blits its own content straight into the shared VRAM
+# through the client draw library, taking the global drawing lock for the
+# duration.  So a client can be started from the server's menu, from the dock,
+# or by name from a shell, and none of them is privileged.
+#
+# They are a separate fragment from hr.list for the reason mgr's clients are:
+# the server, its driver, its fonts and its icons are what a hi-res machine
+# needs to have a desktop at all, and this is what it does with one.
+#
+# The three catalogs in lists/hr.list -- /usr/hr/etc/apps, /usr/hr/etc/dock and
+# /usr/hr/etc/rc -- name these programs by absolute path, so the two lists go
+# together in both directions and each says so with `require'.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  hr-clients
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+require	lists/hr.list
+
+# --- the terminal -----------------------------------------------------------
+# zterm runs a shell on a pty in a window.  hrpump is the byte shuffler it execs
+# rather than forking a second copy of itself for each direction; it links the
+# selection store and the drawing lock and no graphics at all, and it is no use
+# on its own, so the two ship together.
+f	/usr/hr/bin/zterm	755 0 1
+f	/usr/hr/bin/hrpump	755 0 1
+#
+# --- the desktop's own shell ------------------------------------------------
+# zdock draws the icon bar along the top of the screen from /usr/hr/etc/dock and
+# launches or switches to the apps in it.  /usr/hr/etc/rc starts it, and it is
+# the only program that file names, so without it the desktop still runs with
+# the server's right-click menu as its only launcher.
+f	/usr/hr/bin/zdock	755 0 1
+#
+# --- the applications -------------------------------------------------------
+# Each is one window over one job, in the order the launcher menu offers them.
+f	/usr/hr/bin/zfile	755 0 1
+f	/usr/hr/bin/zedit	755 0 1
+f	/usr/hr/bin/zmail	755 0 1
+f	/usr/hr/bin/zman	755 0 1
+f	/usr/hr/bin/zcalc	755 0 1
+f	/usr/hr/bin/zprint	755 0 1
+# zmon reads the live kernel through /dev/kmem, which is 600 root
+# (dist/devices/hd.devices), and does not drop privilege afterwards -- so unlike
+# mgrload(1) it is NOT setuid.  Run by a user who cannot open /dev/kmem it says
+# so in its window and shows the window list, which it reads from the server's
+# shared segment and not from the kernel.
+f	/usr/hr/bin/zmon	755 0 1
+f	/usr/hr/bin/zpuzzle	755 0 1
+f	/usr/hr/bin/zmaze	755 0 1
+f	/usr/hr/bin/zclock	755 0 1
+#
+# --- the dock widgets -------------------------------------------------------
+# A widget is not an application: it has no window, and the dock starts it
+# itself and draws it in an icon-sized cell at the right end of its own bar.  A
+# crashed one is restarted a few times and then given up on.  They are named by
+# the `@' lines of /usr/hr/etc/dock and are not meant to be run from a shell.
+f	/usr/hr/bin/zwclock	755 0 1
+f	/usr/hr/bin/zwmem	755 0 1
+f	/usr/hr/bin/zwwin	755 0 1
+#
+# zdlg, the dialog demo, and the two engine exercisers gfxtest and ptytest are
+# NOT here: they answer questions about the widget kit, the rendering engine and
+# the pty driver rather than doing anything for the person using the machine, so
+# they ship from lists/testing.list with the rest of the probes.

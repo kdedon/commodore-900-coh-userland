@@ -1,0 +1,49 @@
+su|dumb|un|unknown:co#80:os:am:
+
+dv|vt|vt52|dec vt52:\
+	:bs:cd=\EJ:ce=\EK:cl=\EH\EJ:cm=\EY%+ %+ :co#80:li#24:nd=\EC:\
+	:pt:sr=\EI:up=\EA:ku=\EA:kd=\EB:kr=\EC:kl=\ED:
+
+d1|vt100|vt-100|pt100|pt-100|dec vt100:\
+	:co#80:li#24:am:cl=50\E[;H\E[2J:bs:cm=5\E[%i%2;%2H:nd=2\E[C:up=2\E[A:\
+	:ce=3\E[K:cd=50\E[J:so=2\E[7m:se=2\E[m:us=2\E[4m:ue=2\E[m:\
+	:is=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h:ks=\E[?1h\E=:ke=\E[?1l\E>:\
+	:if=/usr/lib/tabset/vt100:ku=\EOA:kd=\EOB:kr=\EOC:kl=\EOD:\
+	:kh=\E[H:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:pt:sr=5\EM:
+
+d0|vt100n|vt100 w/no init:is@:if@:tc=vt100:
+
+dt|vt100w|vt-100w|pt100w|pt-100w|dec vt100 132 cols:\
+	:co#128:li#24:is=\E>\E[?3h\E[?4l\E[?5l\E[?7h\E[?8h:tc=vt100:
+
+ds|vt100s|vt-100s|pt100s|pt-100s|dec vt100 132 cols 14 lines:\
+	:li#14:tc=vt100w:
+
+ansi|ansi/pc-term compatible with color:\
+	:am:bs:mi:ms:\
+	:co#80:it#8:li#24:\
+	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
+	:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:\
+	:al=\E[L:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[J:cm=\E[%i%d;%dH:\
+	:cr=^M:dc=\E[P:dl=\E[M:do=\E[B:ho=\E[H:kb=^H:le=^H:\
+	:nd=\E[C:up=\E[A:so=\E[7m:se=\E[m:us=\E[4m:ue=\E[m:\
+	:cs=\E[%i%d;%dr:sf=\n:ic=\E[@:
+
+hr|c900hr|Commodore 900 hi-res console:\
+	:co#85:li#32:bs:\
+	:cl=\E[E:ce=\E[K:cd=\E[J:cm=\E[%i%d;%dH:ho=\E[H:\
+	:up=\E[A:do=\E[B:nd=\E[C:le=\E[D:\
+	:al=\E[L:dl=\E[M:ic=\E[@:dc=\E[P:
+
+lr|c900lr|Commodore 900 lo-res console:\
+	:am:bs:mi:ms:co#80:li#24:\
+	:al=\EL:cd=\EJ:ce=\EK:cl=\EE:cm=\EY%+ %+ :dc=\EN:dl=\EM:ei=\EO:\
+	:ho=\EH:im=\E@:nd=\EC:se=\Eq:so=\Ep:sr=\EI:ue=\Ei:up=\EA:us=\Eh:\
+	:vs=\Ex4:ve=\Ey4:\
+	:kb=^H:kd=\EB:kl=\ED:kr=\EC:ku=\EA:
+
+px|mgr|General Bellcore window manager teminal emulation:\
+	:am:bs:li#24:co#80:\
+	:al=\Ea:AL=\E%da:cd=\EC:ce=\Ec:cl=^L:cm=\E%r%d,%dM:cs=\E%d,%dt:\
+	:dc=\EE:dl=\Ed:DL=\E%dd:do=\Ef:ic=\EA:md=\E2n:me=\E0n:mr=\E1n:\
+	:nd=\Er:se=\E0n:so=\E1n:ta=^I:ue=\E0n:up=\Eu:us=\E4n:ve=\Ev:vs=\EV:

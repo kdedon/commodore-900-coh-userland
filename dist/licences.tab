@@ -1,0 +1,252 @@
+# licences.tab -- WHAT EACH SHIPPED COMPONENT IS DISTRIBUTED UNDER, and what
+#	         that obliges this project to do about it.
+#
+# A LICENCE OBLIGATION ATTACHES TO WHAT IS HANDED OVER, not to what the tree
+# holds.  This tree holds material under twenty-odd sets of terms, and which of
+# them anybody actually receives is decided by dist/lists/*.list: games/ttycity
+# is GPLv3-plus-additional-terms and is built by nothing and staged by nothing,
+# so it obliges us to nothing; net/screen is GPLv1 and ships setuid in `net', so
+# it obliges us to source.  So this is a register of WHAT WE SHIP, keyed on the
+# component, and it sits beside the lists that decide it.
+#
+#	dist/licences.tab		this file: the recorded judgement
+#	dist/licences.py		collects the texts beside the release
+#	dist/pack-component.sh		cuts the packages they travel with
+#	LICENSE				the repository's own statement
+#
+# NOTHING HERE IS LEGAL ADVICE, and nothing here was decided by guessing.  Where
+# a question could not be settled by reading the notices in the tree, the column
+# says `?': a RECORDED judgement, "unsettled, and treated conservatively until a
+# human settles it", which travels into the package as it stands.
+#
+# FORMAT.  Whitespace columns, `#' to end of line is a comment, two record
+# kinds, so awk and sh can read this and no second parser is needed:
+#
+#   lic  <id> <src> <notice> <ship> <text> <marker> <what...>
+#
+#	<id>	 the licence regime, and the name of the collected text file
+#	<src>	 must the corresponding source be shipped or offered?
+#		 y | n | ?   `?' is treated as `y': the component must publish a
+#		             -src package that cuts clean, and the question stays
+#		             open.
+#	<notice> must the notice travel with the BINARIES?
+#		 y | n | ?   `?' is treated as `y'.
+#	<ship>	 is our redistribution settled under these terms at all?
+#		 y | ?       `?' is reported every run and never goes green
+#		             silently.  It is not treated as `n', because the
+#		             material is on an image today and pretending
+#		             otherwise would be the more dishonest of the two.
+#	<text>	 the licence text, a path relative to os/ resolved on
+#		 $C900_OSPATH exactly as the source map's paths are, so the
+#		 words that travel are the producer's own file and not a
+#		 transcription of it.  `LICENSE' with no slash means THIS
+#		 repository's own LICENSE, which every package already carries.
+#		 `-' means no text was found -- which is itself a finding, and
+#		 is only allowed where <ship> is `?'.
+#	<marker> a regexp the text must contain, `.' standing for a space.  The
+#		 path alone is not enough: os/-relative paths resolve against
+#		 the first root of $C900_OSPATH that has them, three repositories
+#		 have a LICENSE, and a gate that only checked existence would
+#		 happily pack the wrong one.
+#
+#   use  <component> <id> [<why...>]
+#
+#	one component under one regime.  A component is a lists/*.list with a
+#	`package' line (PACKAGE-FORMAT, LIST PACKAGES); the gate refuses one
+#	with no row at all, and refuses a row naming a component that is not one.
+#
+# HOW THE ROWS WERE ARRIVED AT, so a reader can redo it rather than trust it:
+# `component.py component <c> bin' names the files the component installs and
+# `component.py component <c> src' names the sources they are cut from, and every
+# row below is a regime one of those two sets touches.  Where the -src set
+# reaches material the -bin set does not, the `why' says so -- that is the
+# source map's object-search over-reach (PACKAGE-FORMAT, THE SOURCE MAP), it
+# makes a -src package carry MORE than it owes, and it is recorded rather than
+# trimmed because trimming a source package to a guess is the failure this
+# whole mechanism exists to avoid.
+
+# ---- THE REGIMES ----------------------------------------------------------
+
+# The backbone.  Robert Swartz released the Mark Williams COHERENT source in
+# 2015 under BSD 3-Clause; its second condition is why `notice' is `y' for
+# nearly every component here -- a binary redistribution must reproduce the
+# notice "in the documentation and/or other materials provided with the
+# distribution", and the licences collected beside the release are those
+# materials.  The
+# per-file "may not be copied without permission" headers predate the release
+# and are kept as found; they do not narrow it.
+lic mwc-bsd3       n y y LICENSE                        Swartz          MWC COHERENT, BSD-3-Clause (Swartz, 2015)
+
+# This repository's own new work, under the MIT licence its LICENSE states for
+# code written for this project: the ZView window server, its driver, its
+# desktop applications, the Vellum drawing suite, and the distribution's own
+# scripts and /etc files, which are the whole of what login-text and
+# login-graphical install.  MIT obliges no source and does oblige the notice --
+# "the above copyright notice and this permission notice shall be included in
+# all copies" -- which every package carries as its own LICENSE.
+lic mit-oc         n y y LICENSE                        MIT.License     this repository's own work (ZView, Vellum, the distribution's /etc files), MIT
+
+# GPL.  THE VERSION IS NOT BOILERPLATE AND WAS CHECKED PER TREE.  All three
+# oblige source; two of them are version ONE, which is not what this project
+# said about them until the files themselves were read.
+lic gpl2-gzip      y y y tools/gzip/COPYING               Version.2       gzip, GPL v2 or later
+lic gpl1-rcs       y y y tools/rcs/COPYING                Version.1       RCS 4.3, GPL v1 or later (19 files say "either version 1"; "version 2" is nowhere in the directory)
+lic gpl1-screen    y y y net/screen/COPYING             Version.1       GNU screen, GPL v1 or later -- COPYING is the v1 text and all 11 sources say "either version 1"; the GPLv2 this project previously recorded was wrong
+
+# Bellcore's grant for MGR.  It obliges no source and it does oblige the notice:
+# "the copyright notice must be reproduced on copies".  That sentence is the
+# reason the collected texts sit beside the binaries and not only in the source,
+# where mgr/COPYRIGHT already travels with the code.
+lic bellcore-mgr   n y y mgr/COPYRIGHT                  Bellcore        MGR, Bellcore 1988: not for sale for profit, notice must be reproduced on copies, credit to Bellcore
+
+# Berkeley, in its three materially different forms.  They are separate rows
+# because they are separate obligations, not separate years.
+lic ucb-bsd3       n y y games/bsd/COPYING              Regents         Regents of the University of California, 3-clause
+lic ucb-adv        n y y base/lib/libcurses/curses.h               Berkeley        Regents, with the ACKNOWLEDGEMENT requirement: documentation, advertising and other materials must acknowledge Berkeley
+lic ucb-bsd4       n y y net/include/net/gen/netdb.h    advertising     Regents, 4-clause: all advertising materials must display the acknowledgement
+
+# Everything else that ships, each with its own text.
+lic minix-ph       n y y net/inet/COPYING               Prentice        Minix 2.0.4 TCP/IP stack; Prentice Hall BSD-3-form at the top of the donor tree, per-file Homburg authorship lines
+lic tetris         n y y games/bsd/tetris/COPYRIGHT     monetary        tetris: no fee or other monetary gain, and the statement of authorship must be reproduced on all copies
+lic atc-james      n y y games/bsd/atc/def.h            Ed.James        atc, Ed James / UC Berkeley 1987
+lic ckermit        n y y comms/ckermit/COPYING          Columbia        C-Kermit, Trustees of Columbia University: not sold for profit, notice retained
+lic zoo            n y y archive/zoo/COPYING            Dhesi           zoo 2.1, Dhesi 1991: copying for any purpose, commercial or not, notices preserved
+lic lharc          n y y archive/lharc/COPYING          FREEWARE        C-LHarc, Tagawa: "This is FREEWARE"
+lic zmodem         n y y comms/zmodem/COPYING           Satchell        rz/sz: Satchell's and Brown's grants; Forsberg's public-domain statement cited second-hand
+lic less           n y y tools/less/version.c             Nudelman        less: free use and modification, notice intact, not sold for profit without the author's consent
+lic patch          n y y tools/patch/patch.c              Larry.Wall      patch, Wall 1986: copy freely, do not make money off it, do not claim authorship
+lic elvis          n y y base/cmd/elvis/COPYING              redistributable elvis 1.4, Kirkendall: freely redistributable in source or executable form, no restrictions stated
+lic pico           n y y editors/pico/pico.h                Washington      pico, University of Washington: any purpose without fee, notice retained, name-use restriction
+lic spencer        n y y base/lib/regexp/regexp.c   Toronto         Spencer's regexp, University of Toronto 1986
+lic top            n y y base/cmd/top/COPYING                LeFebvre        top 3.3, LeFebvre: freely redistributable, "this entire comment MUST remain intact"
+lic nawk           n y y base/cmd/nawk/awk.h                 Hirabayashi     nawk, Hirabayashi 1989: any purpose without fee, notice and disclaimer retained
+
+# ---- REGIMES WITH AN UNSETTLED COLUMN -------------------------------------
+# Each of these is on an image today.  Read the `what' before changing a `?'.
+
+# UnZip 4.1 as held forbids commercial use outright and forbids redistributing a
+# MODIFIED copy -- and unzip.c and unzip.h here ARE modified.  Info-ZIP's own
+# COPYING.OLD records Smith saying in 1994 that he had no objection to Info-ZIP
+# carrying his code and wanted it to stay freely distributable, while noting the
+# commercial stipulation still binds a company.  That is a statement of intent
+# recorded by a third party, not a grant, and it does not reach a modified copy.
+# The settled answer is the port nobody has done: UnZip 5.41 and later is under
+# the Info-ZIP licence, which permits both.  SHIP IS `?' FOR A HUMAN.
+lic unzip          n y ? archive/unzip/COPYING          commercial      UnZip 4.1, Smith 1989: no commercial use, no modified redistribution -- and our copy is modified
+
+# 25 of 25 rogue sources carry the same restriction, so its scope is not in
+# doubt; what is in doubt is who granted it and on what basis, because no
+# upstream distribution has been matched to this tree.
+lic rogue          n y ? base/cmd/rogue/main.c               traded          rogue: "not to be traded, sold, or used for personal gain or profit", uniform across all 25 sources, upstream unidentified
+
+# Two files inside the GPLv1 RCS tree that carry neither the GPL boilerplate
+# the other nineteen carry nor any grant compatible with it: partime.c and
+# maketime.c are Harrenstien's, "not to be sold, nor used in licensed software
+# without permission of the author".  build-rcs.sh compiles both into every RCS
+# binary this project ships.  Whether the FSF's distribution of RCS 4.3 settles
+# that, and whether the GPL's own terms can be met over a file whose author
+# restricted it, is a question about two documents and is not resolvable by
+# reading this tree.  SHIP IS `?' FOR A HUMAN.
+lic sri-harrenstien n y ? tools/rcs/partime.c             Harrenstien     RCS partime.c and maketime.c, Harrenstien/SRI 1980-81: not to be sold nor used in licensed software without permission -- inside a GPLv1 tree
+
+# A public-domain claim in a comment is a claim and not a dedication
+# instrument.  Recorded as found, which is all anybody here can do.
+lic pd-emacs       n n ? editors/me/main.c                  public.domain   MicroEmacs lineage, "public domain" claimed in the files themselves
+
+# The class that has no text at all.  It is not one licence and it is not
+# grouped for convenience: it is the answer "we looked and there is nothing",
+# and it is on this table so that the programs it covers cannot be read as
+# covered by the row above them.  See `use' rows for which programs.
+lic no-grant       n n ? -                              -               copyright asserted or nothing at all, and NO permission statement found in the tree
+
+# ---- THE COMPONENTS -------------------------------------------------------
+
+use archive        zoo
+use archive        lharc
+use archive        unzip
+use archive        zmodem
+use archive        ckermit
+use archive        mwc-bsd3         csu and libc, which every component links
+
+use base           mwc-bsd3
+use base           ucb-adv          libcurses, linked by the shell and by make
+
+use runtime        mwc-bsd3
+use runtime        ucb-adv          /usr/bin/cut, /usr/bin/more, and libcurses/libterm which most of runtime links
+use runtime        ucb-bsd3
+use runtime        spencer          /usr/bin/more links usr.bin-3.x/regexp
+use runtime        top              /bin/top
+use runtime        nawk             /bin/awk and /bin/nawk
+use runtime        elvis            /usr/bin/{vi,ex,elvis}
+use runtime        no-grant         /bin/{enroll,xencode,xdecode} from cmd/knapsack, which carries no notice of any kind
+use runtime        bellcore-mgr     -src only: the source map's object search reaches mgr/src, so runtime-src carries MGR source that no runtime binary contains
+
+use cpm            mwc-bsd3
+use cpm            ucb-adv          libcurses
+
+use editors        pd-emacs         /usr/bin/me and /usr/bin/emacs
+use editors        pico             /usr/bin/pico
+use editors        mwc-bsd3
+use editors        ucb-adv          libcurses
+
+use games          ucb-bsd3
+use games          ucb-bsd4         /usr/games/adventure carries the 4-clause form
+use games          ucb-adv          libcurses
+use games          atc-james        /usr/games/atc
+use games          tetris           /usr/games/tetris
+use games          rogue            /usr/games/rogue
+use games          mwc-bsd3         /usr/games/fortune and its database are MWC's own
+use net-games      ucb-bsd3         hunt and huntd, 4.4BSD games
+use net-games      ucb-adv          libcurses, which hunt links
+use games          gpl1-screen      -src only: object-search over-reach onto cmd/screen; no games binary is screen
+use games          bellcore-mgr     -src only: object-search over-reach onto mgr/src
+
+use hr             mit-oc           the ZView server, its driver, the desktop catalogs and the icons
+use hr             mwc-bsd3         the rendering engine the server links, the 16 raw FM fonts the .hf faces are generated from (they carry no notice of their own and their origin is unestablished; they are byte-identical to the COHERENT 0.7.3 Z8001 holding, which is the material this row covers), csu and libc
+
+use hr-clients     mit-oc
+use hr-clients     mwc-bsd3         csu, libc, libm and the rendering engine every client links
+
+use hostfs         mwc-bsd3
+
+use login-graphical mit-oc           /etc/ttys.mgr and /etc/rc.local
+use login-text     mit-oc           /etc/ttys
+
+
+use mail-light     mwc-bsd3
+use mail-light     minix-ph         smtpd and smtpsend come from the Minix networking lineage
+use mail-light     ucb-adv          libcurses
+use mail-light     gpl1-screen      -src only: object-search over-reach onto cmd/screen
+use mail-light     bellcore-mgr     -src only: object-search over-reach onto mgr/src
+
+use mgr            bellcore-mgr     the server, the fonts, the icons and the menus
+use mgr            mwc-bsd3         csu and libc
+
+use mgr-clients    bellcore-mgr
+use mgr-clients    mwc-bsd3
+use mgr-clients    ucb-adv          libcurses
+use mgr-clients    no-grant         /usr/mgr/bin/{maze,ico}: an IBM 1985 block and a DEC/MIT-lineage client inside the Bellcore tree, neither carrying a grant of its own
+
+use net            gpl1-screen      /usr/bin/screen, which ships setuid
+use net            minix-ph         /etc/inet, the stack itself
+use net            ucb-bsd4         /bin/rlogin and the resolver headers carry the 4-clause form
+use net            ucb-adv          libcurses
+use net            ucb-bsd3         /bin/finger, /bin/host
+use net            mwc-bsd3
+use net            bellcore-mgr     -src only: object-search over-reach onto mgr/src
+
+use toolchain      mwc-bsd3         the Z8001 compiler, assembler, linker and libraries, all MWC-derived
+
+use toolchain-1985 no-grant         the twelve June 1985 Mark Williams binaries the reference disk shipped with -- cc, ccx, db, l, nld, cpp, cc0, cc1, cc2, cc3, scrts0.o, slibc.a -- for which no repository here holds source or terms.  Predating the 2015 COHERENT source release, so mwc-bsd3 does not reach them; this is why the component publishes no `src' kind.
+
+use tools          gpl2-gzip        /usr/bin/{gzip,gunzip,gzcat}
+use tools          gpl1-rcs         /usr/bin/{ci,co,rcs,rlog,ident,rcsdiff,rcsclean,rcsmerge,merge}
+use tools          sri-harrenstien  partime.c and maketime.c, compiled into every RCS binary by build-rcs.sh
+use tools          less             /usr/bin/less and /usr/bin/lesskey
+use tools          patch            /usr/bin/patch
+use tools          spencer          usr.bin-3.x/regexp, linked by less
+use tools          ucb-adv          libcurses
+use tools          mwc-bsd3
+
+use vellum         mit-oc           the suite, its library and the stencil and example drawings
+use vellum         mwc-bsd3         csu and libc

@@ -1,0 +1,45 @@
+# games.list -- the BSD/V7 game set and its data files: 33 programs that need a
+# terminal and nothing else.  hunt(6), the one game that needs the network, is
+# lists/net-games.list.
+#
+# Binaries come from the games sweep (build/bin/games), data from build/root.
+# /usr/games is deliberately NOT on the default PATH (files/.profile).  Run a game
+# by its full path, or add the directory yourself.
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  games
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+t	/usr/games		src=hostbuild/build/bin/games
+t	/usr/games/lib		src=hostbuild/build/root/usr/games/lib
+# atc(6)'s scenario files live one level deeper, and a `t' directive copies a
+# directory's FILES without descending into it -- verified on the target, where
+# /usr/games/lib existed and /usr/games/lib/atc did not.  atc opens
+# lib/atc/Game_List to offer a game, so without this entry it starts and finds
+# nothing to play.
+t	/usr/games/lib/atc	src=hostbuild/build/root/usr/games/lib/atc
+# quiz(6)'s 33 category files, one directory deeper for the same reason, plus the
+# `index' build-games.sh generates from index.in (the categories are named there
+# through a @quiz_dir@ placeholder, so the shipped index has to be the substituted
+# one).  Without this row quiz has no database at all and cannot start a round.
+t	/usr/games/lib/quiz.db	src=hostbuild/build/root/usr/games/lib/quiz.db
+#
+# ttycity -- Micropolis (SimCity) for the terminal.  GPL v3+; EA/Maxis.
+# Unlike upstream the resources are NOT baked into the binary;
+# w_resrc.c RESDIR and $SIMRES both name /usr/games/lib/ttycity, and a
+# missing file degrades to an empty string rather than crashing.  Two lines
+# because a `t' copies a directory's files without descending into it.
+#
+# HELD BACK: the game is not shipped at present.  hostbuild/build-curses-games.sh
+# builds and stages it only under TTYCITY=1; restore these two lines together
+# with that variable.
+# t	/usr/games/lib/ttycity		src=hostbuild/build/root/usr/games/lib/ttycity
+# t	/usr/games/lib/ttycity/cities	src=hostbuild/build/root/usr/games/lib/ttycity/cities

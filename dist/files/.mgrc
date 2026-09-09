@@ -1,0 +1,142 @@
+# .mgrc -- MGR's startup file, read at server start.  This is root's copy;
+# root's home is `/' (etc/passwd), and root is the only account with a shell,
+# so this is the file that builds the desktop.  $FONTDIR/.mgrc
+# (/usr/mgr/font/.mgrc) is read first and names the fonts by number.
+#
+# The parser is src/mgr/startup.c.  It ignores any line whose first word is not
+# a directive it knows -- which is what makes these `#' comments safe, and also
+# what makes a typo silent.  The complete directive set THIS server understands:
+#
+#   window x y dx dy [font]  declare a window; a `c' suffix on dx/dy counts
+#                            characters of that font instead of pixels.  A
+#                            negative x or y means "place me automatically".
+#   done                     end the last window.  A window is not created
+#                            until the NEXT `window' or `done' line is read,
+#                            so a file with no `done' loses its last window.
+#   shell cmd [args]         program to run in it, instead of $SHELL
+#   font n name              font n comes from FONTDIR/name (n = 1..100)
+#   init  text               text fed to the WINDOW (escape sequences)
+#   start text               text fed to the SHELL (as if typed)
+#   flags expose|background|nokill
+#   active                   this window keeps the keyboard
+#   windowsetid n            tag this window with set id n
+#   newwindow                make this window the template ALT-n copies (ALT
+#                            sets bit 7, sys/z8001/rec/kb.c:248, which is what
+#                            MGR calls a `buckey' key)
+#   colors n...              fixed colour indices (mono board: no effect)
+#   map c0 c1 ... c7         rewrite each raw button state 0..7 as another
+#                            (1 = right, 2 = middle, 4 = left)
+#   slide x y                offset of a sliding sub-menu from its parent
+#   page x y                 offset of the next page of a long menu
+#   initcmd/suspendcmd/resumecmd/quitcmd cmd  run by the server at those events
+#
+# Escapes in init/start: \E \n \r \b \f \g \s (space) \M (set bit 7) \\.
+# There is no \t and no octal, and the parser collapses runs of whitespace, so
+# a string that must contain spaces is written as one word using \s.
+#
+# HOW MANY WINDOWS.  Sixteen, and do not sit at sixteen.  Each window costs one
+# pty channel, sys/drv/pty.c has NPTY 16 with NUPTY = NPTY, and
+# dist/devices/hd.devices carries /dev/ptyp0../dev/ptypf to match.  Descriptors
+# bind at the same number rather than above it: NOFILE is 20
+# (include/sys/param.h), the server holds fds 0, 1, 2 and the mouse -- the HR
+# screen is memory, not a descriptor -- and one master per window, which is 16.
+# That leaves NO free descriptor at full occupancy, and the server opens a font
+# file transiently in get_font(), so a client asking for a font it has not
+# loaded yet fails with EMFILE on the sixteenth window.  Five are opened here.
+#
+# Windows are not ptys, though.  A client may ask for extra windows on the tty
+# it already has (m_selectwin), and those cost no channel and no descriptor;
+# the server's own ceiling on the total is MAXWIN 24 (src/mgr/defs.h:18),
+# enforced in new_window().
+#
+# --- the desktop ------------------------------------------------------------
+# 1024x800.  Fonts: 1 = cmr-9x16, 5 = Xfixed-7x13, 7 = gacha-6x8 (see
+# /usr/mgr/font/.mgrc).  80x24 in cmr-9x16 is 730x394 with its borders, so two
+# of them stack in the left 738 columns; the icons take the right edge and the
+# 200 columns between are where windows opened by hand and windows put away by
+# ify(1) go.  x starts at 8 and not 0 because the leftmost STRIPE pixels belong
+# to the root window (defs.h:61), and the origins are multiples of 8 because
+# this server is built -DMGR_ALIGN: subs.c alignwin() slides a window left onto
+# a byte boundary for the fast monochrome scroller, and one already on it does
+# not move.  Nothing here is clipped -- check_window() shrinks a window that
+# runs off the screen rather than refusing it, which hides an arithmetic slip.
+#
+# Every window is handed the same two pop-up menus, by typing a `cat' of a
+# preformatted menu-download stream into its shell -- see
+# /usr/mgr/menus/default.esc.  The server has no menu directive: a menu
+# belongs to a window and arrives as an escape sequence from the program
+# running in it, so a startup file can only arrange for something to send one.
+
+window 8 0 80c 24c 1
+start /bin/cat\s/usr/mgr/menus/default.esc\n
+active
+
+window 8 400 80c 24c 1
+start /bin/cat\s/usr/mgr/menus/default.esc\n
+
+# --- the dock ---------------------------------------------------------------
+# The icon column, flush with the right edge, as on the reference desktop.
+# Each of these is a window running one client instead of a shell: `shell'
+# names the program, so they have no prompt and are handed no menu -- a menu
+# arrives on a window's tty from the program running in it, and these programs
+# do not send one.
+#
+# Every one of them shapes ITSELF, with m_shapewindow, to the bitmap it draws
+# plus a border on each side: ify to icon/ify (68x55), mclock to
+# icon/mclock/mickface and mgrbiff to icon/mbox_full (64x64 each).  The sizes
+# declared here are those results -- SUM_BDR is 5 (src/mgr/defs.h:59), so 10
+# goes on each dimension -- and are written out only so that nothing jumps at
+# start-up; the position is what a `window' line really settles, because the
+# reshape keeps it.  x = 944 puts the 78-pixel widest of them 2 pixels from the
+# right edge and is a multiple of 8, so MGR_ALIGN's alignwin() leaves it alone.
+#
+# WHAT IS BELOW y=306 IS DELIBERATELY EMPTY.  ify(1) turns a window into a real
+# icon -- one line high, labelled with the window's NOTIFY string -- and picks
+# the spot itself with find_spot(), which scans for free screen from the bottom
+# right corner leftwards and then upwards.  The two shells occupy x 8..738, so
+# the first free rectangle it finds is at the bottom of this column, and closed
+# windows accumulate up it.  Anything parked down here would push them into the
+# middle of the screen; the four tiles below stop at y=306, leaving 494 pixels
+# of column, which is more one-line icons than sixteen windows can produce.
+#
+# mgreyes is deliberately left out.  walk is built and installed but not started
+# here: it wants a tile of its own, and this column is the icons' now.  ico and
+# mgrsketch are run by hand from a shell -- each costs a pty channel, and the
+# sketch pad wants a window large enough to draw in.
+
+window 944 0 78 65 7
+shell /usr/mgr/bin/ify
+
+window 944 72 74 74 7
+shell /usr/mgr/bin/mclock
+
+window 944 152 74 74 7
+shell /usr/mgr/bin/mgrbiff
+
+# mgrload draws one bar per 5 second sample across the width it is given, so
+# these 74 columns are six minutes of history.  It takes the window as declared
+# -- m_getwindowsize then m_shapewindow at the same size -- rather than sizing
+# itself from a bitmap the way the three above do.
+window 944 232 74 74 7
+shell /usr/mgr/bin/mgrload
+
+# USING IT.  Point at the ify icon so that its window is the active one, then
+# click the RIGHT button on any window to put it away, and on the icon it
+# leaves behind to bring it back; ify's MIDDLE button lists the windows it has
+# closed, and quits.  The program in a closed window keeps running -- ify stops
+# the tty's output rather than killing anything, which is the whole difference
+# between it and close(1) -- so a make(1) left in one carries on and its output
+# appears when the window comes back.  setname(1) sets the label ify writes on
+# the icon: `setname %m:%p' from a shell names that window after the host and
+# where it sits.
+#
+# --- the template for new windows -------------------------------------------
+# ALT-n (a `buckey' key, do_buckey.c) opens a copy of this one; -1 -1 lets the
+# server step each new window down and across from the last.  It is never
+# opened itself -- `newwindow' hands the pending window to the template instead
+# -- and the `done' below is what ends the file.
+
+window -1 -1 80c 24c 1
+start /bin/cat\s/usr/mgr/menus/default.esc\n
+newwindow
+done

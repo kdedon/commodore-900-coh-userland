@@ -1,0 +1,78 @@
+: 'This sh has no comment lexer: a # line is executed, and one carrying'
+: 'shell metacharacters is a syntax error that kills the script.  See'
+: 'cmd/sh/exec3.c:41 for the : builtin used here instead.'
+
+: 'The daemon says how many connections it has when it starts -- inet:'
+: 'ready, NN connections -- and it is fifteen on a machine with the'
+: 'standard twenty descriptors.  A listening port is an open channel'
+: 'whoever holds it, and the switchboard holds one per service.'
+: 'What is started here spends seven of them: slip 1, and the services'
+: 'enabled in /etc/inetd.conf -- echo, daytime, ntalk, telnet, finger,'
+: 'shell, and smtp where a mail transport is installed.  Telnet costs one'
+: 'of the seven and not three, so the switchboard serves as many logins at'
+: 'once as it has children and free ptys, and ntalk costs one where the'
+: 'standalone talkd cost two.'
+: 'The mail transport takes one, through the smtp line in inetd.conf where'
+: 'lists/mail-light.list put /etc/smtpd.  The eight left are what a game,'
+: 'an ftp or an outgoing telnet has to draw on.'
+
+IFADDR=10.0.0.2
+IFMASK=255.255.255.0
+SLIPLINE=/dev/tty51
+NTPSERVER=10.0.0.1
+
+/etc/mknod /dev/inet p
+/etc/inet &
+/etc/ifconfig $IFADDR $IFMASK
+if /bin/test -r $SLIPLINE
+then
+	echo rc.net: starting slip on $SLIPLINE
+	/etc/slip $SLIPLINE &
+else
+	echo rc.net: no $SLIPLINE, skipping slip
+fi
+
+if /bin/test -r /etc/sntp
+then
+	echo rc.net: setting the clock from $NTPSERVER
+	/etc/sntp -t 5 -r 2 $NTPSERVER
+fi
+
+if /bin/test -r /etc/inetd
+then
+	if /bin/test -r /etc/inetd.conf
+	then
+		echo rc.net: starting inetd, the services in /etc/inetd.conf
+		/etc/inetd &
+	else
+		echo rc.net: no /etc/inetd.conf, skipping inetd
+	fi
+fi
+
+: 'telnetd, fingerd and remshd are not started here.  Each has an inetd'
+: 'mode -- read the connection on standard input, answer on standard'
+: 'output, one connection, exit -- so each is one line in /etc/inetd.conf'
+: 'and nothing of it is resident between callers.'
+: 'A site that wants one of them standalone runs it by hand'
+: '(/etc/telnetd -m 3 &) and comments its line out of inetd.conf: the'
+: 'same binary does both, and which it does is decided by whether the'
+: 'switchboard put INETD_REMADDR in its environment.  Running both at'
+: 'once is what must not happen -- the second passive open on the port is'
+: 'refused and the port then answers whichever got there first.'
+
+: 'talkd is not started here and no longer exists: ntalk is the switchboard'"'"'s'
+: 'own ntalk line in /etc/inetd.conf.  A datagram service cannot be handed'
+: 'to an exec'"'"'d program, so inetd answers it internally -- it binds 518 and'
+: 'forks a child WITHOUT exec on the first datagram, and that child holds the'
+: 'invitation table until it holds nothing.  So the state between datagrams'
+: 'that made the old daemon resident is kept for as long as the protocol can'
+: 'ask about it, and nothing is resident between calls.'
+
+: 'smtpd is not started here: it is an inetd service, and its line in'
+: '/etc/inetd.conf ships enabled.  The line is conditional even so --'
+: 'smtpd comes from lists/mail-light.list while inetd.conf comes from'
+: 'lists/net.list, and inetd does not offer a service whose program is'
+: 'not installed -- so a machine with no mail transport binds no port 25'
+: 'and nothing has to edit a file.  A site that wants the daemon'
+: 'standalone runs /etc/smtpd -m 1 & here and comments that line out:'
+: 'one holder of port 25, never two.'

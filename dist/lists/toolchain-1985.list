@@ -1,0 +1,71 @@
+# toolchain-1985.list -- the Mark Williams C chain as the machine shipped with
+# it, in June 1985.
+#
+# TWO COMPILERS EXIST IN THIS PROJECT AND THEY ARE NOT THE SAME COMPONENT.
+# lists/toolchain.list installs `ours' -- the cc0/cc1/cc2 self-host fixpoint
+# built from source in the toolchain repository, on /usr, for a machine that is
+# meant to compile its own sources.  This list installs the ORIGINAL: twelve
+# Mark Williams binaries, on /bin and /lib.  Nothing here is built from source
+# anywhere; they are the bytes the machine shipped with and they exist in
+# exactly one place, commodore-900-toolchain's vendor/mwc-1985, which is where
+# every src= below reaches them.
+#
+# BOTH COMPILERS COME FROM THE TOOLCHAIN REPOSITORY, and that is the whole of
+# the arrangement: a compiler is the toolchain's artifact whether it was built
+# from source or recovered, so a distribution names one and stages it, and no
+# other repository holds a copy to go stale.
+#
+# A COMPILER IS SOMETHING A DISTRIBUTION ADDS.  Base is a runtime -- the
+# commands, the headers and the data of a system that runs -- and nothing whose
+# purpose is to produce a program.  So this is `role optional' and an `include'
+# line, the same shape lists/toolchain.list has: ask for a system and you get a
+# runtime; ask for a compiler as well and you say so.
+#
+# WHAT IS NOT HERE.  The 1985 `as', `ld', `ar', `nm' and `size' sit beside
+# these twelve in vendor/mwc-1985 and no image installs them.  An assembler and
+# a linker reach an image only through lists/toolchain.list, which stages ours
+# at /usr/bin; nothing puts either at /bin.
+#
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not.
+package  toolchain-1985
+role     optional
+# KINDS -- `man' AND NOT `src'.  These are vendor binaries and no repository of
+# this project holds their source, so declaring `src' would make the component
+# refuse for ever, and a permanent refusal reads as a defect somebody should
+# fix rather than as the fact that it is.  The Lexicon documents eight of the
+# eleven -- cc, cpp, the four passes, db and l; ccx and nld have no page, and
+# slibc.a is counted a program only because the archive is installed 755.
+kinds    man
+# `require', not `include': this list stages twelve files and creates no
+# dependency of its own, but the chain cc drives is unusable without the
+# assembler, the linker, the runtime and /usr/include that base carries.
+require  lists/base.list
+
+# --- the driver and the tools around it --------------------------------------
+# ccx IS the driver: it execs cpp, the passes, crts0.o and the loader by
+# absolute /lib and /bin paths.  cc is a 54-byte shell script in front of it,
+# supplying the four -V options this machine's default model wants.  db is the
+# debugger, l the l.out lister and nld the loader for the 32-bit object format
+# cc2 emits (l_flag carries LF_32).
+f /bin/cc                      755 0 1	src=vendor/mwc-1985/cc
+f /bin/ccx                     755 0 1	src=vendor/mwc-1985/ccx
+f /bin/db                      755 0 1	src=vendor/mwc-1985/db
+f /bin/l                       755 0 1	src=vendor/mwc-1985/l
+f /bin/nld                     755 0 1	src=vendor/mwc-1985/nld
+
+# --- the passes --------------------------------------------------------------
+# cpp is the preprocessor and cc0-cc3 the four compiler passes, on /lib because
+# that is where the driver looks for them and not on anybody's $PATH.
+f /lib/cc0                     755 0 1	src=vendor/mwc-1985/cc0
+f /lib/cc1                     755 0 1	src=vendor/mwc-1985/cc1
+f /lib/cc2                     755 0 1	src=vendor/mwc-1985/cc2
+f /lib/cc3                     755 0 1	src=vendor/mwc-1985/cc3
+f /lib/cpp                     755 0 1	src=vendor/mwc-1985/cpp
+
+# --- the small-model runtime -------------------------------------------------
+# What ccx links against: the startoff and C library of the small model, which
+# has no source and no build wiring in any repository here.
+f /lib/scrts0.o                644 0 1	src=vendor/mwc-1985/scrts0.o
+f /lib/slibc.a                 644 0 1	src=vendor/mwc-1985/slibc.a
+# end of toolchain-1985.list

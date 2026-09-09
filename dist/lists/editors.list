@@ -1,0 +1,27 @@
+# editors.list -- the editors beyond the base system's ed(1), me(1) and elvis.
+#
+# emacs  a second name for MicroEMACS, the MWC-provided COHERENT editor
+#        (os/cmd/me), which base.list installs as /usr/bin/me.  COHERENT ships
+#        both names and the Lexicon page `emacs' documents it as "a link to the
+#        COHERENT screen editor", so it is one: an `l' entry onto the inode
+#        base.list places, one copy of the bytes.
+# pico   the modeless, nano-style editor (os/cmd/pico).
+#
+# Both sit in /usr/bin beside me and elvis, and both need a termcap entry for
+# $TERM, which base.list stages as /etc/termcap.
+
+# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
+# addressable unit of a release channel; one without is not, and that is how
+# testing.list stays out of one.
+package  editors
+role     optional
+# KINDS -- the packages this component publishes besides its runtime half.
+# `bin' is the list below and is not written down; `src' is the complete
+# corresponding source for every executable it installs, and `man' is the pages
+# for those programs.  os/dist/PACKAGE-FORMAT argues both, and neither can be
+# cut from a guess: -src refuses without the producer's source map, -man refuses
+# when not one of these programs has a page.
+kinds    src man
+
+l	/usr/bin/emacs	to=/usr/bin/me
+f	/usr/bin/pico
