@@ -1,0 +1,41 @@
+Elvis 1.4, by Steve Kirkendall.
+
+The grant is Kirkendall's own and has always been in this directory; it was
+not added by this port.  It is in README, lines 9-10, reproduced here verbatim:
+
+    Elvis is freely redistributable, in either source form or executable form.
+    There are no restrictions on how you may use it.
+
+The program states the same thing about itself at run time.  vi.h line 14:
+
+    #define COPYING	"This version of ELVIS is freely redistributable."
+
+and doc/intro.doc repeats it in the manual.
+
+The version is Elvis 1.4 (vi.h line 13, `#define VERSION "ELVIS 1.4, by Steve
+Kirkendall"'; corroborated by doc/versions.doc).  This matters, because
+Kirkendall's terms changed over the life of elvis: his later releases are
+narrower ("freely redistributable, subject to the restrictions noted in the
+documentation"), and later still the Artistic/GPL line.  The unrestricted
+wording above is 1.4's, and 1.4 is what this is.
+
+
+ONE FILE IS NOT COVERED BY THE ABOVE
+------------------------------------
+
+osk.c carries a different and narrower notice, at lines 8-15:
+
+    |     Copyright (c) 1988 by Wolfgang Ocker, Puchheim,
+    |                           Ulli Dessauer, Germering and
+    |                           Reimer Mellin, Muenchen
+    |                           (W-Germany)
+    |
+    |  This  programm can  be  copied and  distributed freely  for any
+    |  non-commercial  purposes.   It can only  be  incorporated  into
+    |  commercial software with the written permission of the authors.
+
+osk.c is the OS-9/68000 port layer.  Nothing in this project uses it -- the
+Makefile's only reference to it is commented out (`#EXTRA2=	osk$O') -- and it
+is the sole non-commercial restriction in 169 elvis files.  It is retained
+here only because this audit removes nothing; deleting it would end the
+restriction outright.

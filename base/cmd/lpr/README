@@ -1,0 +1,24 @@
+
+
+CHANGES:
+	(a) When line printer can't be opened: changed simple message to
+		use system message `sys_errlist'.
+	(b) Writing file to printer: rewrote `print' routine to handle
+		underlining.  New routine in file "print.c".
+	(c) Identity of `lpd': changed run file to make `lpd' set-uid
+		to "daemon" rather than "root", per comment in "lpd1.c".
+	(d) Banner lines and the underline pass end with '\r' as well as
+		'\n', so a head printer (e.g. Spinwriter) prints them.
+	(e) `lpr -B' suppresses the banner page: it writes a `B' line into
+		the control file, which is `lpd's flag for it.
+	(f) The formfeed follows a file rather than preceding it, so a
+		banner-less job carries no leading blank page.
+
+THE PROGRAMS HERE:
+	lpr	queues a job into /usr/spool/lpd and execs the daemon
+	lpd	the daemon (lpd1.c + lpd2.c + print.c), /usr/lib/lpd
+	lpskip	aborts (-r restarts) the listing now printing
+	opr	selects a spooler by -lp/-vp and execs it
+	The `#ifdef LASER' arms compile the same sources as hpr/hpd/hpskip
+	against /usr/spool/hpd and /dev/rhp for an HP LaserJet.  Nothing
+	here builds them: this machine's printer is the Centronics port.

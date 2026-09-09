@@ -1,0 +1,68 @@
+top -- terms
+=============
+
+This directory is William LeFebvre's `top', release 3.3 of 1995-03-02, with a
+COHERENT/Z8001 machine module (m_coherent.c) written for this system.  The
+portable core -- top.c, display.c, screen.c, commands.c, utils.c, username.c,
+version.c and their headers -- is his.
+
+WHERE IT CAME FROM.  ftp://ftp.groupsys.com/pub/top was the author's own
+distribution point; the file 01PLACES in every release says so.  That host is
+long gone.  The copy taken here is the mirror at
+
+    https://ftp.funet.fi/pub/unix/tools/top/top-3.3.tar.gz
+    sha256 478185210e667cad3b44cd50659f40deffb40509dccd127d3cc49849fb8756ed
+
+which is an author-built tarball: its member ownership is `lefebvre/sane'.
+3.3 was taken rather than 3.4 (1996) because it is the last release
+contemporary with a living COHERENT -- Mark Williams Company folded in 1995 --
+and the first to carry the DISCLAIMER file below.
+
+It is NOT a COHERENT holding.  No archive in this project has it, and the
+userland inventory's verdict for `top' is none-found; the version above was
+fetched from outside the project because nothing inside it has one.
+
+THE GRANT.  Every source file carries this header, and it is the grant:
+
+    Top users/processes display for Unix
+    Version 3
+
+    This program may be freely redistributed,
+    but this entire comment MUST remain intact.
+
+    Copyright (c) 1984, 1989, William LeFebvre, Rice University
+    Copyright (c) 1989, 1990, 1992, William LeFebvre, Northwestern University
+
+top.c additionally opens with
+
+    char *copyright =
+        "Copyright (c) 1984 through 1993, William LeFebvre";
+
+which is compiled in and printed by the `h' command, so it travels with the
+binary as well as with the source.
+
+EVERY ONE OF THOSE HEADERS IS INTACT in the files here, which is what the
+grant asks for.  Nothing was removed from them and nothing was added inside
+them; the port's changes are in the code below them.
+
+`freely redistributed' is the whole of the permission.  It says nothing about
+modification, and this tree modifies the program: the K&R and 16-bit-int work
+the Z8001 needs, the removal of floating point, and the machine module.  Two
+things bear on that.  The distribution is built to be modified -- `Porting'
+and `m-template' exist for exactly the module written here, and Configure
+rewrites top.local.H and Makefile.X in place -- and the author invites the
+result back ("please send me a copy", README).  And the same header sits on
+every m_*.c in machine/, most of which were contributed by other people, so
+the header is what a modified copy is expected to carry, not a bar to making
+one.  Recorded as a reading, not as a licence text that says it.
+
+The DISCLAIMER file beside this one is vendored verbatim from the 3.3
+distribution and is part of what travels with the code.
+
+THE MACHINE MODULE.  m_coherent.c is new work for this system.  It is not a
+port of any m_*.c in the distribution: what it does -- walk procq_ through
+/dev/kmem, copy the alloc arena, map chain pointers into this process's own
+address space, sum s_size over p_segp[], and read a command line out of the
+process's u-area -- was already written and audited here as base/cmd/top.c
+before top was adopted, and that file became this one.  It carries the same
+BSD-3-Clause position as the rest of the extended system.

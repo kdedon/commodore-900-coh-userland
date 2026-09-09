@@ -1,0 +1,739 @@
+/*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * Copyright (c) 2026 Michal Pleban.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
+ * Icheck - check i-list consistency of
+ * filesystems and (optionally) repair
+ * filesystems.
+ */
+#include <stdio.h>
+extern char *calloc();
+#include <sys/filsys.h>
+#include <sys/fblk.h>
+#include <sys/dir.h>
+#include <sys/ino.h>
+#include <check.h>
+#include <canon.h>
+#include <fs.h>		/* shared FS access + inode->pathname engine (libfs) */
+
+#define	ROOTINO	2		/* I-number of root */
+#define	NBLOCK	20		/* Maximum number of blocks to check */
+#define	NBPC	8		/* Bits per character */
+#define	BOOTB	0		/* Boot block # */
+#define	SUPERB	1		/* Super block */
+#define	INOORG	2		/* Inodes begin here */
+#define	IBLK	12		/* I-node read blocking factor */
+#define	BSIZE	512
+#define	ND	10		/* Number of direct block */
+#undef	NI
+#define	NI	1
+#define	NII	1
+#define	NIII	1
+#undef	NADDR
+#define	NADDR	(ND+NI+NII+NIII)
+
+/*
+ * Flags for crawldown.
+ */
+#define	PLAIN	0
+#define	ISDIR	1
+#define	BAD	2
+
+/* struct defect (the bad-block run list) now lives in <fs.h>. */
+
+#define	test(bn) (bitmap[((unsigned)bn)/NBPC] & 1<<(((unsigned)bn)%NBPC))
+#define	mark(bn) (bitmap[((unsigned)bn)/NBPC] |= 1<<(((unsigned)bn)%NBPC))
+
+char	tmb[] = "Too many block numbers specified\n";
+
+int	nblock;
+daddr_t	blocks[NBLOCK];
+ino_t	freei[NICFREE];		/* Free i-nodes to put into superblock */
+ino_t	*freeip;
+char	superb[BSIZE];
+char	ibuf[IBLK*BSIZE];
+char	fbuf[BSIZE];
+char	idbuf[3][BSIZE];		/* One for each indirect level */
+
+/*
+ * Offsets of levels of indirection
+ * into the i-node addresses.
+ */
+char	offsets[] = {
+	0, ND, ND+NI, ND+NI+NII, ND+NI+NII+NIII,
+};
+
+/*
+ * Types of indirect and direct blocks
+ * by name.
+ */
+char	*btypes[] = {
+	"direct",
+	"indirect",
+	"double indirect",
+	"triple indirect",
+};
+
+int	sflag;			/* Repair filesystem */
+int	vflag;			/* More verbose information */
+int	exstat;			/* Final exit status -- bits from <check.h> */
+FS	*fsp;			/* Open file system (libfs) */
+char	*bitmap;		/* Bit map for blocks */
+daddr_t	fsize	= SUPERB+1;	/* Allow read of super-block */
+unsigned	isize;
+
+/* Various counters */
+unsigned nfiles;
+unsigned nreg;
+unsigned ndir;
+unsigned nbad;			/* # of bad blocks */
+unsigned nibad;			/* # of bad blocks that were in ilist */
+unsigned nbsp;
+unsigned ncsp;
+unsigned nmpx;
+unsigned npipe;
+long	nblk;
+long	nfblk[4];	/* # of direct, single, double, and triple indirects */
+long	ndirb;
+long	nfreeb;
+long	nmissing;
+long	nfdup;
+ino_t	nifree;
+
+long	atol();
+
+main(argc, argv)
+char *argv[];
+{
+
+	while (argc>1 && *argv[1]=='-') {
+		switch (argv[1][1]) {
+		case 'b':
+			nblock = 0;
+			while (blocks[nblock] = atol(argv[2])) {
+				if (nblock++ >= NBLOCK) {
+					fprintf(stderr, tmb);
+					exstat |= IC_MISC;
+					break;
+				}
+				argv++;
+				argc--;
+			}
+			break;
+
+		case 's':
+			sflag = 1;
+			break;
+
+		case 'v':
+			vflag = 1;
+			break;
+
+
+		default:
+			usage();
+		}
+		argc--;
+		argv++;
+	}
+	if (argc > 1)
+		allcheck(argv+1);
+	else
+		usage();
+	exit(exstat);
+}
+
+/*
+ * Check the given list of filesystems
+ */
+allcheck(fsl)
+register char **fsl;
+{
+	while (*fsl != NULL)
+		if (icheck(*fsl++))
+			return;
+}
+
+/*
+ * Check one filesystem
+ */
+icheck(fsname)
+char *fsname;
+{
+	struct filsys *sbp;
+	register struct dinode *ip;
+	register int i;
+	register ino_t inum;
+	int thischunk;
+	daddr_t seek, limit;
+	struct defect *cdsp;
+
+	nfiles = 0;
+	nreg = 0;
+	ndir = 0;
+	ndirb = 0;
+	npipe = 0;
+	nbsp = 0;
+	ncsp = 0;
+	nmpx = 0;
+	nblk = 0;
+	nbad = 0;
+	nibad = 0;
+	for (i=0; i<4; i++)
+		nfblk[i] = 0;
+	nmissing = 0;
+	nfdup = 0;
+	nfreeb = 0;
+	nifree = 0;
+	freeip = freei;
+	if ((fsp = fsopen(fsname, sflag, &exstat, IC_HARD)) == NULL) {
+		fprintf(stderr, "%s: cannot open\n", fsname);
+		exstat |= IC_MISC;
+		return;
+	}
+	printf("%s:\n", fsname);
+	if (!sflag)
+		sync();
+	bread((daddr_t)SUPERB, superb);
+	sbp = superb;
+	canint(sbp->s_isize);
+	candaddr(sbp->s_fsize);
+	canshort(sbp->s_nfree);
+	for (i=0; i<NICFREE; ++i)
+		candaddr(sbp->s_free[i]);
+	canshort(sbp->s_ninode);
+	for (i=0; i<NICINOD; ++i)
+		canino(sbp->s_inode[i]);
+	cantime(sbp->s_time);
+	candaddr(sbp->s_tfree);
+	canino(sbp->s_tinode);
+	canshort(sbp->s_m);
+	canshort(sbp->s_n);
+	canlong(sbp->s_unique);
+	fsize = sbp->s_fsize;
+	isize = sbp->s_isize;
+	if (isize<INOORG+1 || isize>=fsize || fsize<INOORG+1)
+		cerr("Ridiculous fsize/isize");
+	fsp->fsize = fsize;
+	fsp->isize = isize;
+	/*
+	 * Build the inode->pathname map so the diagnostics below can name the
+	 * file that owns a duplicate/bad block or has a bad type.  This is an
+	 * independent read pass; failure is non-fatal (names just come back as
+	 * "??").
+	 */
+	if (fsnames(fsp, 0) < 0)
+		fprintf(stderr, "icheck: no space for names -- i-numbers only\n");
+	if ((bitmap=calloc((int)((fsize+NBPC-1)/NBPC), sizeof(char))) == NULL)
+		cerr("No space for bitmap");
+	bmark((daddr_t)BOOTB, "bootstrap", 0);
+	bmark((daddr_t)SUPERB, "super block", 0);
+	finddefective();
+	nblk = isize;
+	inum = 1;
+	seek = INOORG;
+	cdsp = fsp->deflist;
+	while (seek < isize) {
+		if (cdsp!=NULL && cdsp->d_start==seek) {
+			nibad += cdsp->d_length;
+			seek  += cdsp->d_length;
+			inum  += cdsp->d_length*INOPB;
+			cdsp   = cdsp->d_next;
+			continue;
+		}
+		limit = seek+IBLK;
+		if (cdsp!=NULL && limit>cdsp->d_start)
+			limit = cdsp->d_start;
+		if (limit > isize)
+			limit = isize;
+		thischunk = limit-seek;
+		lseek(fsp->fd, seek*BSIZE, 0);
+		for (i=0; i<thischunk; ++i)
+			bmark((daddr_t)seek++, "inodes", 0);
+		thischunk *= BSIZE;
+		if (read(fsp->fd, ibuf, thischunk) != thischunk) {
+			fprintf(stderr, "I-node read error\n");
+			exstat |= IC_HARD;
+			break;
+		}
+		ip = (struct dinode *) &ibuf[0];
+		while (ip < (struct dinode *) &ibuf[thischunk]) {
+			if (inum != BADFIN) {
+				canshort(ip->di_mode);
+				canshort(ip->di_nlink);
+				canshort(ip->di_uid);
+				canshort(ip->di_gid);
+				cansize(ip->di_size);
+				cantime(ip->di_atime);
+				cantime(ip->di_mtime);
+				cantime(ip->di_ctime);
+				ilook(ip, inum);
+			}
+			++inum;
+			++ip;
+		}
+	}
+	freecount();
+	free(bitmap);
+	fsfreedefective(fsp);
+	if (nmissing != 0)
+		exstat |= IC_MISS;
+	if (nfdup != 0)
+		exstat |= IC_DUPF;
+	if (!sflag && vflag) {
+		printf("f=%u,r=%u,d=%u,b=%u,c=%u,m=%u,p=%u\n", nfiles, nreg,
+		    ndir, nbsp, ncsp, nmpx, npipe);
+		printf("blks=%D, dirb=%D, d=%D, i=%D, ii=%D, iii=%D\n",
+		    nblk, ndirb, nfblk[0], nfblk[1], nfblk[2], nfblk[3]);
+		printf("free = %D\n", nfreeb);
+		printf("bad=%u (%u in I-list)\n", nbad, nibad);
+	}
+	if (!sflag) {
+		if (nmissing != 0)
+			printf("missing = %D\n", nmissing);
+		if (nfdup != 0)
+			printf("%D dups in free\n", nfdup);
+		if (sbp->s_tinode != nifree) {
+			printf("Bad ifree list\n");
+			exstat |= IC_BFB;
+		}
+	}
+	if (sflag)
+		makesuper();
+	fsclose(fsp);
+	fsp = NULL;
+	return (0);
+}
+
+/*
+ * Look at each inode marking used blocks
+ * and checking consistency.
+ */
+ilook(ip, inum)
+register struct dinode *ip;
+ino_t inum;
+{
+	daddr_t addrs[NADDR];
+	register i, l;
+	int flag;
+
+	if (ip->di_mode == 0) {
+		if (freeip < &freei[NICFREE])
+			*freeip++ = inum;
+		nifree++;
+		return;
+	}
+	nfiles++;
+	flag = PLAIN;
+	switch (ip->di_mode & IFMT) {
+	case IFREG:
+		nreg++;
+		break;
+
+	case IFDIR:
+		ndir++;
+		flag = ISDIR;
+		break;
+
+	case IFBLK:
+		nbsp++;
+		return;
+
+	case IFCHR:
+		ncsp++;
+		return;
+
+	case IFPIPE:
+		npipe++;
+		return;
+
+	case IFMPB:
+	case IFMPC:
+		nmpx++;
+		return;
+
+	default:
+		printf("%u (%s): Bad filetype %o\n", inum, fspath(fsp, inum),
+		    ip->di_mode&IFMT);
+		return;
+	}
+	l3tol(addrs, ip->di_addr, NADDR);
+	for (i = NADDR-1; i >= 0; i--)
+		for (l=1; l<=4; l++)
+			if (i < offsets[l]) {
+				crawldown(addrs[i], l-1, flag, inum);
+				break;
+			}
+}
+
+/*
+ * Crawl down through `lev' levels
+ * of indirect blocks, starting at block
+ * `bn'. The `ino' argument is the inumber that
+ * started this all off; is just gets passed
+ * to `bmark'. The `flag' tells you what kind
+ * of blocks you have at level 0 (in can be BAD,
+ * ISDIR or PLAIN).
+ */
+crawldown(bn, lev, flag, ino)
+daddr_t bn;
+int lev;
+ino_t ino;
+{
+	register char *bp;
+	register char *type;
+	register int i;
+
+	if (bn == 0)
+		return;
+	nblk++;
+	if (lev==0 && flag==ISDIR) {
+		type = "dir";
+		ndirb++;
+	} else if (lev==0 && flag==BAD) {
+		type = "bad";
+		nbad++;
+	} else {
+		type = btypes[lev];
+		nfblk[lev]++;
+	}
+	if (bmark(bn, type, ino))
+		return;
+	if (lev==0 && flag==BAD)
+		fssavedefective(fsp, bn);
+	if (lev-- > 0) {
+		bread(bn, bp = idbuf[lev]);
+		for (i=0; i<NBN; i++) {
+			bn = ((long *)bp)[i];
+			candaddr(bn);
+			crawldown(bn, lev, flag, ino);
+		}
+	}
+}
+
+/*
+ * This routine finds all of the
+ * defective space on the filsystem by reading
+ * the bad block file and marking all the blocks.
+ * The defective space list, used by the I-list
+ * scanner and other guys, is constructued.
+ */
+finddefective()
+{
+	register struct dinode *ip;
+	register i, level;
+	daddr_t	 addrs[NADDR];
+
+	++nfiles;
+	lseek(fsp->fd, (long)iblockn(BADFIN)*BSIZE, 0);
+	if (read(fsp->fd, ibuf, BSIZE) != BSIZE) {
+		printf("I/O error reading bad block inode\n");
+		exstat |= IC_HARD;
+		return;
+	}
+	ip = (struct dinode *) &ibuf[0] + iblocko(BADFIN);
+	canshort(ip->di_mode);
+	if (ip->di_mode == 0)
+		return;
+	if ((ip->di_mode&IFMT) != IFREG) {
+		printf("Bad block file has bad mode\n");
+		exstat |= IC_HARD;
+		return;
+	}
+	l3tol(addrs, ip->di_addr, NADDR);
+	for (i=NADDR-1; i>=0; --i) {
+		for (level=1; level<=4; ++level) {
+			if (i < offsets[level]) {
+				crawldown(addrs[i], level-1, BAD, BADFIN);
+				break;
+			}
+		}
+	}
+}
+
+/*
+ * The defective-block list (savedefective/freedefective) now lives in libfs;
+ * see fssavedefective()/fsfreedefective() in <fs.h>.
+ */
+
+/*
+ * Look at the free count for a filesystem
+ * by chasing down the free-list.
+ */
+freecount()
+{
+	register char *bmp;
+	register struct fblk *fbp;
+	struct filsys *sbp;
+	register unsigned i;
+	daddr_t bn;
+	long ntfree;
+
+	sbp = superb;
+	fbp = &sbp->s_nfree;
+	ntfree = sbp->s_tfree;
+	while ((i = fbp->df_nfree) != 0) {
+		if ((unsigned)(fbp->df_nfree) > NICFREE) {
+			badfreelist();
+			return;
+		}
+		for (i=0; i<fbp->df_nfree; i++) {
+			bn = fbp->df_free[i];
+			bmark(bn, "free", 0);
+			nfreeb++;
+		}
+		bread(fbp->df_free[0], fbuf);
+		fbp = fbuf;
+		canint(fbp->df_nfree);
+		for (i=0; i<NICFREE; ++i)
+			candaddr(fbp->df_free[i]);
+	}
+	/*
+	 * Count number of blocks not in bitmap
+	 */
+	i = 1;
+	for (bn=0, bmp=bitmap; bn < fsize; bn++) {
+		if (i == 1<<NBPC) {
+			i = 1;
+			bmp++;
+		}
+		if ((*bmp & i) == 0)
+			nmissing++;
+		i <<= 1;
+	}
+	if (sflag)
+		nmissing -= isize + nfreeb;
+	if (nfreeb != ntfree) {
+		if (!sflag)
+			printf("Free list/tfree counts differ\n");
+		exstat |= IC_MISS;
+	}
+}
+
+/*
+ * Remake the superblock - reconstructing
+ * the free-list if sflag is set.
+ */
+makesuper()
+{
+	register struct filsys *sbp;
+	register ino_t	*fip;
+	register	i;
+	daddr_t		bn;
+
+	sbp = superb;
+	/*
+	 * Remake list of free i-numbers.
+	 */
+	fip = sbp->s_inode;
+	sbp->s_ninode = freeip-freei;
+	while (freeip > freei)
+		*fip++ = *--freeip;
+	while (fip < &sbp->s_inode[NICFREE])
+		*fip++ = 0;
+	sbp->s_tinode = nifree;
+	/*
+	 * Free all remaining blocks
+	 * and write last one as tail of free-list
+	 */
+	sbp->s_nfree = 0;
+	sbp->s_tfree = 0;
+	bn = fsize;
+	for (bn=fsize-1; bn>=isize; --bn)
+		if (!test(bn))
+			bfree(bn);
+	canint(sbp->s_isize);
+	candaddr(sbp->s_fsize);
+	canshort(sbp->s_nfree);
+	for (i=0; i<NICFREE; ++i)
+		candaddr(sbp->s_free[i]);
+	canshort(sbp->s_ninode);
+	for (i=0; i<NICINOD; ++i)
+		canino(sbp->s_inode[i]);
+	cantime(sbp->s_time);
+	candaddr(sbp->s_tfree);
+	canino(sbp->s_tinode);
+	canshort(sbp->s_m);
+	canshort(sbp->s_n);
+	canlong(sbp->s_unique);
+	bwrite((daddr_t)SUPERB, sbp);
+}
+
+/*
+ * Free a block and, in so doing, construct
+ * the free list chain.
+ */
+bfree(bn)
+daddr_t bn;
+{
+	register struct filsys	*sbp;
+	register struct fblk	*fbp;
+	register		i;
+
+	sbp = superb;
+	if (sbp->s_tfree == 0) {
+		bclear(fbuf, BSIZE);
+		bwrite(bn, fbuf);
+	}
+	if (sbp->s_nfree == NICFREE) {
+		bclear(fbp = fbuf, BSIZE);
+		fbp->df_nfree = sbp->s_nfree;
+		canint(fbp->df_nfree);
+		for (i=0; i<sbp->s_nfree; ++i) {
+			fbp->df_free[i] = sbp->s_free[i];
+			candaddr(fbp->df_free[i]);
+		}
+		bwrite(bn, fbuf);
+		sbp->s_nfree = 0;
+	}
+	sbp->s_free[sbp->s_nfree++] = bn;
+	sbp->s_tfree++;
+}
+
+/*
+ * Read the specified block number
+ * into `buf'.
+ */
+bread(bn, buf)
+daddr_t bn;
+char *buf;
+{
+	fsbread(fsp, bn, buf);
+}
+
+/*
+ * Write block `bn' from `buf'.
+ */
+bwrite(bn, buf)
+daddr_t bn;
+char *buf;
+{
+	fsbwrite(fsp, bn, buf);
+}
+
+/*
+ * Mark block # `bn' as
+ * seen before an check for
+ * duplicates.
+ * Bmark only marks file blocks if `sflag' is
+ * set so that the free list can be constructed
+ * again.
+ * Return 1 when something is wrong.
+ */
+bmark(bn, type, inum)
+daddr_t bn;
+char *type;
+ino_t inum;
+{
+	register nb;
+
+	if (bn<0 || bn>=fsize) {
+		badblock(bn, type, inum);
+		return (1);
+	}
+	if (nb = nblock) {
+		register i;
+
+		for (i=0; i<nb; i++)
+			if (blocks[i] == bn)
+				printf("%D arg, class=%s, inode=%u %s\n",
+				    (long)bn, type, inum,
+				    inum ? fspath(fsp, inum) : "");
+	}
+	{
+		register char *bp;
+		register int mask;
+
+		mask = 1 << ((unsigned)bn)%NBPC;
+		bp = bitmap + ((unsigned)bn)/NBPC;
+		if (*bp & mask)			/* if (test(bn)) */
+			dupblock(bn, type, inum);
+		else if (!sflag  || inum!=0)
+			*bp |= mask;		/* mark(bn) */
+	}
+	return (0);
+}
+
+/*
+ * Clear a block of memory
+ * pointed to by `bp' for size
+ * `nb' bytes.
+ */
+bclear(bp, nb)
+char *bp;
+unsigned nb;
+{
+	fsbclear(bp, nb);
+}
+
+/*
+ * Error routines
+ */
+badblock(bn, type, inum)
+daddr_t bn;
+char *type;
+ino_t inum;
+{
+	register int perr = 0;
+
+	if (strcmp(type, "free") != 0) {
+		perr++;
+		exstat |= IC_HARD;
+	} else {
+		exstat |= IC_BADF;
+		if (!sflag)
+			perr++;
+	}
+	if (perr)
+		printf("%D bad, class=%s, inode=%u %s\n", (long)bn, type, inum,
+		    inum ? fspath(fsp, inum) : "");
+}
+
+dupblock(bn, type, inum)
+daddr_t bn;
+char *type;
+ino_t inum;
+{
+	if (inum != 0)
+		exstat |= IC_HARD;
+	else
+		nfdup++;
+	if (vflag || inum!=0)
+		printf("%D dup, class=%s, inode=%u %s\n", (long)bn, type, inum,
+		    inum ? fspath(fsp, inum) : "");
+}
+
+badfreelist()
+{
+	if (!sflag) {
+		printf("Bad freelist\n");
+		exstat |= IC_BFB;
+	}
+}
+
+/*
+ * Unrecoverable errors
+ */
+cerr(x)
+{
+	printf("%r", &x);
+	putchar('\n');
+	exit(IC_MISC);
+}
+
+usage()
+{
+	cerr("Usage: icheck [-sv] [-b bn ...] filesystem ...");
+}
+
+/*
+ * Block copy routine
+ */
+bcopy(in, out, nb)
+char *in, *out;
+unsigned nb;
+{
+	fsbcopy(in, out, nb);
+}
