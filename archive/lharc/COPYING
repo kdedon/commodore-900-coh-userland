@@ -1,0 +1,80 @@
+C-LHarc for UNIX -- authors' terms
+==================================
+
+The source in this directory is C-LHarc for UNIX V1.00, the branch Kai Uwe
+Rommel took from Yooichi Tagawa's V0.03a.  The version history at the head of
+lharc.c is the authority on that lineage:
+
+    /*  V0.00  Original                          1988.05.23  Y.Tagawa    */
+    /*  V0.01  Alpha Version (for 4.2BSD)        1989.05.28  Y.Tagawa    */
+    /*  V0.02  Alpha Version Rel.2               1989.05.29  Y.Tagawa    */
+    /*  V0.03  Release #3  Beta Version          1989.07.02  Y.Tagawa    */
+    /*  V0.03a Fix few bug                       1989.07.03  Y.Tagawa    */
+    /*  V0.04  A lot of bugs fixed, strict mode  1990.01.13  Kai Uwe Rommel */
+    /*  V1.00  f and t commands, v option added  1990.01.27  Kai Uwe Rommel */
+
+Note that Tagawa's own line reached a DIFFERENT V1.00 (1989.09.22, continuing
+to V1.01 on 1989.12.25).  Both statements below are reproduced because the two
+V1.00s are not the same program: the first covers the V0.03 base this source is
+built on, the second covers Tagawa's own V1.00.
+
+The compression engine, lzhuf.c, credits the LZSS algorithm to Haruhiko Okumura
+and the adaptive Huffman coding to Haruyasu Yoshizaki (1989.05.27).
+
+
+Yooichi Tagawa's statement for V0.03, verbatim
+----------------------------------------------
+
+From `read.me' in the archive this source was taken from
+(mwcbbs/lharc/lharc.tar.Z), under the heading "The text of the original
+Read.me file follows":
+
+                                    -*- Text -*-
+
+    LHarc UNIX V0.03 Release #3  Beta Version
+
+        This is FREEWARE.  But it's BETA-VERSION.
+
+        Please reply to me.
+
+        Sorry, lharc.doc file are written in JAPANESE (Shift-JIS KANJI)
+
+                        Thank you.
+
+                        Yooichi.Tagawa
+                        Nikkei-MIX ID: y.tagawa
+
+
+Yooichi Tagawa's statement for V1.00, verbatim
+----------------------------------------------
+
+From `READ.ME' in mwcbbs/386/lharc.zip, which carries Tagawa's V1.01 source:
+
+                                    -*- Text -*-
+
+    LHarc UNIX V1.00
+
+        This is FREEWARE.
+
+        Please send problems to me.
+
+        Sorry, lharc.doc file are written in JAPANESE (Shift-JIS KANJI)
+
+                            Thank you.
+
+                        1989.09.19  Yooichi.Tagawa
+                            Nikkei-MIX ID: y.tagawa
+
+
+Copyright notice carried in the source
+--------------------------------------
+
+Every file in this directory carries:
+
+        Copyright(C) MCMLXXXIX  Yooichi.Tagawa
+
+Kai Uwe Rommel's V0.04 and V1.00 changes are recorded in the version history
+above and are not accompanied by any statement of terms of their own.
+
+What "FREEWARE" does and does not settle is unresolved; the word is the
+author's, and it is stated without a list of conditions.

@@ -1,0 +1,79 @@
+Info-ZIP UnZip 4.1 -- authors' terms
+====================================
+
+The source in this directory is Info-ZIP UnZip 4.1, taken from
+mwcbbs/386/zip/unzip.tar.Z.  Seven of its nine files are byte-identical to that
+archive; unzip.c and unzip.h carry this port's changes, which are the Z8001
+segmented-pointer and 16-bit int corrections, not changes to the algorithms.
+
+
+Samuel H. Smith's notice, verbatim
+----------------------------------
+
+Reproduced in unzip.c under the heading "Copyright, originally from version
+1.2 (?)":
+
+     * Copyright 1989 Samuel H. Smith;  All rights reserved
+     *
+     * Do not distribute modified versions without my permission.
+     * Do not remove or alter this notice or any other copyright notice.
+     * If you use this in your own program you must distribute source code.
+     * Do not use any of this in a commercial product.
+
+UnZip 4.1 also carries "Copyright 1985 System Enhancement Associates" in the
+implode/reduce headers.
+
+
+How Info-ZIP distributed 4.1
+----------------------------
+
+unzip41.des, the release description shipped in the same archive:
+
+    UNZIP41.ZIP     Generic Unix unzip v4.1 for free public distribution
+    ...
+    A public distribution version of the Info-ZIP project's generic
+    Unix unzip utility.
+    ...
+    Information on commercial usage, licensing, etc. is NOT available.
+    We at Info-ZIP are currently researching how to best handle this
+    problem.  (There are potential copyright problems.)
+
+
+Info-ZIP's own record of what Smith intended
+--------------------------------------------
+
+Info-ZIP later resolved the question and wrote down both Smith's position and
+their reading of it.  From COPYING.OLD in the UnZip distribution (the file is
+dated 17 Jul 2000; the enquiry it reports was made in mid-May 1994):
+
+    Regarding the first stipulation, Mr. Smith was tracked down in southern
+    California some years back [...]:
+
+    "He says that he thought that whoever contacted him understood that
+     he has no objection to the Info-ZIP group's inclusion of his code.
+     His primary concern is that it remain freely distributable, he said."
+
+    Despite the fact that our "normal" code has been entirely rewritten
+    and by default no longer contains any of Mr. Smith's code, Info-ZIP
+    remains indebted and grateful to him.  [...]
+
+    Note that the third and fourth stipulations still apply to any com-
+    pany that wishes to incorporate the unreduce code into its products;
+    if you wish to do so, you must contact Mr. Smith directly regarding
+    licensing.
+
+The same file records where the Smith-derived code ends:
+
+    All remaining code is now (starting with UnZip version 5.41) covered
+    by the new Info-ZIP license.
+    [...]
+    As far as we can tell, only the core code of the unreduce method
+    remained substantially similar to Mr. Smith's original source.  As of
+    UnZip 5.42, the complete core code is now covered by the Info-ZIP
+    Licence.  Therefore, support for the reduce method has been removed.
+
+So the clean version of this program exists and its terms are settled: any
+UnZip from 5.41 onward is under the Info-ZIP licence, which permits commercial
+use and modification.  4.1 is still what ships because the later sources assume
+a 32-bit int and an ANSI compiler, which this target has neither of; the upgrade
+is a port of its own rather than a newer tarball.
