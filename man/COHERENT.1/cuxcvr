@@ -1,0 +1,62 @@
+cuxcvr -- Command
+
+The file-transfer half of cu, run on the remote system
+/etc/cuxcvr r file ...
+/etc/cuxcvr s file ...
+
+cuxcvr is not a command anybody types.  It is the program cu(1) types for you
+on the machine at the far end of the line, to move a file between the two.
+
+When you give cu the escape ~g, cu sends the line
+
+    /etc/cuxcvr r name
+
+down the serial port, so that the remote shell runs it, and then reads the
+packets it sends back into a local file.  The escape ~p sends
+
+    /etc/cuxcvr s name
+
+instead, and cuxcvr on the remote system reads the packets cu sends and
+writes them into a file there.  The letter is the direction as seen from the
+remote end: r sends a file back to you, s receives one from you.
+
+More than one file name may follow.  They are taken in turn, and the first
+one that fails ends the transfer.
+
+The Transfer
+Both ends speak the same packet protocol, from the same source cu is built
+from.  A transfer opens with an F packet carrying the base name of the file --
+the directory part is dropped, so the file lands in the working directory of
+whichever end is receiving -- and continues with numbered I packets of up to
+NPKT data bytes each.  The receiver acknowledges each one, and asks for a
+retransmission of any packet that arrives damaged or out of sequence.  A
+second F packet ends the transfer.
+
+cuxcvr talks over its own standard input and output, which the remote shell
+has connected to the serial line.  It puts that terminal into raw mode with
+echo and carriage-return mapping off for the duration, and restores the
+settings it found before it exits -- including on the error paths, so a failed
+transfer does not leave the far end of the line in raw mode.
+
+Diagnostics
+A failure is reported to the local cu, which prints it, rather than to the
+remote terminal you cannot see:
+
+    file name too long		the base name does not fit in one packet
+    cannot open file		r: the file is not there or is unreadable
+    cannot create file		s: the file could not be made
+
+Exit status is the number of files that failed, and 1 for a usage error.
+
+Notes
+This page has no COHERENT Lexicon article behind it.  The Lexicon documents
+cu and mentions /etc/cuxcvr in passing as the helper the ~g and ~p escapes
+invoke, but never describes it, and this system installs it as a program of
+its own.  The page was written here, from the source in base/cmd/cu; none
+of Mark Williams Company's text is in it.
+
+The protocol is cu's own and is not the one uucp or kermit speaks, so both
+ends of a transfer must be COHERENT machines running this cu.
+
+See Also
+commands, cu

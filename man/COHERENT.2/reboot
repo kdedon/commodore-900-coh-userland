@@ -1,0 +1,62 @@
+reboot -- Command
+
+Halt the system; this machine has no warm restart
+/etc/reboot [ -p ]
+
+/etc/reboot exists under the name an operator will type, and the first thing
+it does is tell the truth about it: THE COMMODORE 900 CANNOT RESTART ITSELF IN
+SOFTWARE.  It prints
+
+    reboot: this machine cannot restart itself in software.
+    reboot: halting instead -- press reset to restart.
+
+and execs /etc/halt, which unmounts what it can, syncs every filesystem so
+that none of them comes back up dirty, and stops the machine.  You then press
+the reset button, or switch the power off and on again.  With -p it first
+prompts and lets you interrupt; without it, it goes.
+
+Only root can halt the machine, so only root can usefully run this.
+
+Why there is no warm restart
+There are four reasons and they are all hardware or kernel, not a missing
+option to look for:
+
+    There is no reset port.  The boot ROM is fixed read-only at physical
+    address 0 and there is no overlay or bank register that could switch it
+    back in over the running system; nothing in the ROM's I/O map is a reset
+    line.
+
+    Z8001 reset is a PIN EVENT, not an instruction.  It also resets the Z8010
+    MMU and the peripherals, which a jump into the ROM would not, so the ROM
+    would start executing with the running system's segment mapping still in
+    force and would not survive its first memory reference.
+
+    The one restart interface the ROM declares is never filled in.  struct
+    romconf has an `int *rom_restart', but configure() assigns only rom_bram,
+    rom_eram and rom_ctype and leaves the rest zero -- so calling through it
+    would be a call to segment 0, offset 0.
+
+    Neither donor reboot works here.  The COHERENT 3.x /etc/reboot pulses the
+    8042 keyboard controller's reset line (ATrebootas.s), which is
+    PC/AT hardware this machine does not have, and it is not built.  The 4.x
+    one asks the kernel with cohcall(COH_REBOOT), and this kernel has no such
+    system call.
+
+So a `reboot' that appeared to work would only be a halt that did not say so,
+and the failure mode of that is an operator who walks away from a machine that
+is not coming back.
+
+Notes
+This page REPLACES the COHERENT 4.2 Lexicon article of the same name, which
+describes a machine that can restart itself.  On this hardware that article
+documents a command that cannot exist, so it is not shipped; nothing of Mark
+Williams Company's text remains in what you are reading.
+
+/etc/reboot is the single-user shortcut and warns nobody.  For an orderly
+shutdown with a countdown and a message to every logged-in user, use
+/etc/shutdown.  `shutdown reboot' is accepted and is not a lie about a warm
+restart: it records the level, and /.profile then says the machine cannot
+restart itself and halts it.
+
+See Also
+commands, halt, shutdown

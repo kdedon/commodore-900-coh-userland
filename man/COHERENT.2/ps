@@ -1,0 +1,136 @@
+ps -- Command
+
+Print process status
+ps [-] [-acdDfgklmnrtwx] [-c namelist] [-k memory]
+
+ps prints one line per process: the fields, and then the command name and
+arguments as the process itself holds them.  With no options it prints the TTY
+and PID fields of the processes attached to the caller's own terminal.
+
+It reads the process table out of kernel memory, so it needs a namelist to find
+the table in -- /coherent, the running kernel -- and the memory devices listed
+below.  It is not setuid: those devices are readable by everybody here.
+
+Fields
+    TTY	The controlling terminal, THREE COLUMNS WIDE.  ps reads /dev at
+	startup and abbreviates the name of the matching device to fit:
+	`console' becomes `con', a numbered line ttyNN becomes its number,
+	a pseudo-terminal ttypN becomes pN, and any other name keeps its
+	first three characters.  A process with no controlling terminal
+	prints a single dash.  A device with no name in /dev prints its
+	major and minor numbers in decimal, separated by a colon and
+	truncated to the three columns, which is what a terminal whose node
+	was removed or never made looks like.
+
+    PID	Process id, and what kill(1) takes.
+
+    GROUP  Process group: the pid of the group leader, which for a login
+	session is the shell login(1) started.  Printed by -g, with or
+	without -l.
+
+    PPID   Pid of the parent.
+
+    UID	Login name of the process's real uid, from /etc/passwd, or the uid
+	itself in decimal when no entry has it.
+
+    K	Size of the process in kilobytes: its text, data and stack
+	segments, and with -r the user and auxiliary segments too.  Blank
+	when it comes to zero, as it does for a kernel process, or a dash
+	under -f.  A process whose segment table cannot be read prints ?K.
+
+    F	Process flag bits, octal:
+
+	    00001  in core
+	    00002  locked in core
+	    00004  swap I/O in progress
+	    00010  swapped out
+	    00020  stopped, not yet waited for
+	    00040  stopped and waited on
+	    00100  being traced
+	    00200  kernel process
+	    00400  auxiliary segments in memory
+	    01000  dispatch at the earliest convenience
+	    02000  command mode forbids a dump
+	    04000  wakeup requested; only a kernel built with QWAKEUP
+		   ever sets it
+
+    S	State: R ready to run, S asleep, T stopped while asleep, W waiting
+	for a child, Z a zombie whose parent has not waited, ? none of
+	these.
+
+    EVENT  What a sleeping process is waiting for: the address it will be
+	woken on, eight hexadecimal digits, printed only for state S.
+	It is the whole 32-bit address, segment and offset -- processes
+	sleeping on the same channel show the same value and that is the
+	only reading it supports.  There are no symbolic event names on
+	this system.  Blank for any other state, or a dash under -f.
+
+    CVAL SVAL IVAL RVAL
+	Scheduling values; larger is better.  Printed by -m.
+
+    UTIME STIME
+	Time in the program and time in the system, as minutes:seconds, or
+	as minutes alone once it passes 99 minutes.  Blank when the time
+	rounds to zero, or a dash under -f.  Printed by -t.
+
+Options
+An option letter this ps does not know prints the usage line above and exits,
+and so does a -c or -k with nothing after it.  A leading `-' is optional and
+letters may be bundled.
+
+    -a	Every process with a controlling terminal, not just the caller's.
+    -c namelist
+	Read the kernel namelist from this file instead of /coherent.  A
+	file with no procq_ symbol in it is refused -- `Bad namelist
+	file' -- but one that has the symbol and is not the kernel now
+	running is not detected, and the listing is then nonsense.
+    -d	Include kernel processes, which are otherwise never listed
+	whatever -a and -x say.  Their command column shows the name the
+	kernel gave them, in angle brackets.
+    -D	Print the address of each process's table entry, eight
+	hexadecimal digits, ahead of the TTY column.  ps's own usage line
+	does not list it.
+    -f	Put a dash in the K, EVENT, UTIME and STIME fields where they
+	would be blank, so that awk(1) and sort(1) see a column there.
+    -g	Print the GROUP field.
+    -k memory
+	Read process memory from this file instead of /dev/mem.
+    -l	Long format: the PPID, UID, K, F, S and EVENT fields as well.
+    -m	Print the scheduling fields.
+    -n	No header line.
+    -r	Count the user and auxiliary segments in K as well, which is
+	every segment the process has.
+    -t	Print the UTIME and STIME fields.
+    -w	Wide output: 132 columns for the command and its arguments instead
+	of 80.
+    -x	Include processes with no controlling terminal.
+
+Files
+/coherent -- the running kernel, read for the namelist
+/dev/kmem -- kernel memory, where the process table is read from
+/dev/mem -- process memory, for the command name and arguments
+/dev/swap -- opened when it exists, for a swapped-out process
+/dev -- read at startup for the terminal names in the TTY column
+/etc/passwd -- for the UID field
+
+/dev/kmem, /dev/mem and /dev/swap are mode 600 and owned by root, so ps is
+set-uid root.  It opens the three of them and then drops back to the real user,
+so the listing itself is unprivileged.  -c and -k name files of the caller's
+own, and ps drops the privilege before opening anything when either is given:
+`ps -k file' can therefore read only what the user running it could read.
+
+See Also
+commands, kill, mem, size, wait
+
+Notes
+This page REPLACES the COHERENT 4.2 Lexicon article of the same name.  Nothing
+of Mark Williams Company's text remains in what you are reading.  The article
+describes a ps that reads /dev/ps, prints the controlling terminal as `tty44:',
+lists symbolic sleep events, and takes -e and -p; this one reads the process
+table through /dev/kmem, has a three-column TTY field, prints event addresses,
+and has no -e and no -p.  The fields themselves are the article's, and are
+named here as it names them.
+
+Each process can overwrite its own command name and arguments, so the command
+column is what the process says it is.  The system also keeps running while ps
+walks the table: two lines of one listing need not describe the same instant.

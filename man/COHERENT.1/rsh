@@ -1,0 +1,161 @@
+rsh -- Command
+
+Restricted command interpreter
+/usr/bin/rsh [-ceiknpstuvx] [file [argument ...]]
+sh -r [-ceiknpstuvx] [file [argument ...]]
+
+rsh is the restricted Bourne shell.  It is the same program as sh -- the
+same file, built from the same source -- and behaves in every way like sh
+except that, once the profiles have run, it refuses five things:
+
+	cd, with or without an argument.
+
+	Setting PATH or SHELL, by any means: a plain assignment, an
+	assignment prefixed to a command, export NAME=value, read NAME,
+	or a for loop over that name.
+
+	Any command name that contains a `/'.
+
+	Output redirection: `>' and `>>', on a command or on exec.
+
+	newgrp.  This one is not part of the historical restricted shell
+	and is here because of what COHERENT's newgrp ends by doing: on
+	SUCCESS it execs /bin/sh as a LOGIN shell, which reads the profiles
+	again and is therefore a fresh, unrestricted shell -- and it is a
+	builtin that runs /bin/newgrp by absolute pathname, so no PATH
+	could keep it out of reach.  A failure no longer gets one: every
+	error path in newgrp now reports and exits non-zero, so a group
+	that does not exist, an access list that does not name you or a
+	wrong group password leaves you where you were.  That narrows the
+	hole, it does not close it -- a group you ARE entitled to is still
+	a one-word way out -- so the refusal stays.  login is NOT refused:
+	it asks for credentials, and it is how a confined user ends the
+	session.
+
+A refusal prints `Restricted: ' followed by what was refused, sets a
+non-zero status, and executes nothing.  Everything else -- input
+redirection, here documents, `>&' and `<&' descriptor duplication, pipes,
+background commands, all other variables and all other builtins -- works
+exactly as it does in sh.
+
+rsh restricts itself because of the NAME it was invoked under: an argv[0]
+of `rsh', with any leading `-' and any directory prefix removed.  Invoking
+sh with the -r option does the same thing.  There is no way to turn the
+restriction off from inside: `set' refuses every flag past -x at run time,
+and it has no `+' form, so a restricted shell stays restricted, and so does
+every subshell it forks.
+
+WHEN THE RESTRICTIONS BEGIN
+The restrictions take effect only AFTER /etc/profile and $HOME/.profile
+have run.  That ordering is the point of the feature.  The administrator's
+profile builds the environment the user is to be confined to -- above all
+the PATH -- and it could not do that under a shell that already refused to
+set PATH or to cd.  Commands in those two files therefore run unrestricted;
+they are the last unrestricted commands the session executes.  A shell that
+is not a login shell has no profile to run and restricts from its first
+command.
+
+Because .profile runs unrestricted, it must not be writable by the user it
+confines.  A user who can edit their own .profile is not restricted at all.
+The same goes for the home directory that holds it, and for /etc/profile.
+
+WHAT THIS DOES NOT PROTECT AGAINST
+A restricted shell is a fence, not a cell.  It confines a cooperative user
+to a menu; it does not contain a hostile one.  Read this list before giving
+anyone rsh as a login shell.
+
+PATH is the whole mechanism.  Refusing `/' in a command name means the user
+can run only what PATH names, so a PATH left pointing at /bin and /usr/bin
+restricts nothing worth restricting.  A restricted account's profile must
+set PATH to a directory holding only commands chosen for it, and that
+directory must not be writable by the user.
+
+sh itself must not be on that PATH.  `sh' is a command name with no `/' in
+it; if PATH can find it, the user types it and gets an unrestricted shell,
+because a new sh is not invoked as `rsh' and has no -r.  For the same
+reason do not put rsh's own directory on the PATH under a second name.
+
+Any command that runs another command hands the user an unrestricted shell.
+Every one of these was checked in this distribution and does:
+
+	ed		`!command'
+	elvis (vi)	`:!command' and `:shell'
+	less		`!command'
+	awk		`print | "command"'
+	mail		`!command' and `~!command'
+	find		-exec command
+
+and so does anything that starts $SHELL or $EDITOR.  None of them can be
+made safe by rsh; they must be kept off the restricted PATH.  An editor is
+the one people forget.  This is not a list of bugs in those commands: a
+restricted shell restricts the SHELL, and has never claimed otherwise.
+
+Commands that write files defeat the redirection rule.  Refusing `>' stops
+the shell from creating a file; it does not stop cp, cat, tee, dd, ed, or
+any editor from doing the same thing.  Redirection is refused so that a
+confined user cannot overwrite a file by accident or by shell syntax alone,
+not because writing has been made impossible.
+
+Commands that change directory defeat the cd rule the same way, and a
+command run with a relative pathname argument can still reach anywhere the
+user has permission to go: rsh restricts the command NAME, never its
+arguments.  `cat ../../etc/passwd' is not refused and is not meant to be.
+
+`. file' is not restricted, and its argument may contain a `/'.  Sourcing a
+file is not an escape -- the commands in it run under the same restrictions
+-- but it does let a user run a script they wrote elsewhere.
+
+The restrictions are the shell's, so they end where the shell ends.  Any
+program the user starts is an ordinary process with the user's own
+privileges; it can chdir, write files, and exec anything on the disk.  File
+permissions, not rsh, are what stop that.
+
+The historical restricted shell has always had these limits.  They are
+listed here because a restricted shell is worth using only when someone has
+read them and chosen the PATH accordingly.
+
+SETTING UP A RESTRICTED ACCOUNT
+Name rsh in the last field of the account's /etc/passwd entry:
+
+	guest::100:1:Guest:/usr/guest:/usr/bin/rsh
+
+Make a directory holding only the commands that account may run, and read
+WHAT THIS DOES NOT PROTECT AGAINST before deciding what goes in it:
+
+	mkdir /usr/restricted
+	cp /bin/echo /bin/cat /bin/ls /bin/date /usr/restricted
+	chmod 755 /usr/restricted
+
+Point the account's profile at it, and at nothing else:
+
+	echo PATH=/usr/restricted > /usr/guest/.profile
+
+Then take the profile, the home directory, and the command directory away
+from the user, because a user who can write any of the three is not
+restricted at all:
+
+	chown root /usr/guest /usr/guest/.profile /usr/restricted
+	chmod 755 /usr/guest /usr/restricted
+	chmod 644 /usr/guest/.profile
+
+FILES
+/usr/bin/rsh		the restricted shell (the same file as /bin/sh)
+/etc/profile		run unrestricted at login
+$HOME/.profile		run unrestricted at login
+
+SEE ALSO
+commands, login, passwd, sh
+
+DIAGNOSTICS
+`Restricted: X' -- the shell refused X.  The command did not run and the
+exit status is non-zero.
+
+NOTES
+Earlier releases of this system shipped /usr/bin/rsh as a byte-identical
+copy of /bin/sh built from a duplicate of the shell sources.  It accepted
+-r, recorded it, and restricted nothing: an account given that rsh as its
+login shell had a fully unrestricted shell.  There is now one set of shell
+sources and two names for one binary.
+
+This is not the BSD remote shell, which post-dates it and collides with the
+name.  The remote shell is remsh on this system.

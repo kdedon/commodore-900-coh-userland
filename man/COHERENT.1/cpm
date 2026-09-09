@@ -1,0 +1,97 @@
+cpm -- Command
+
+Move files between COHERENT and a CP/M-8000 drive
+cpm [-f image] function [argument ...]
+
+cpm reads and writes the files on a CP/M-8000 drive from COHERENT, much as
+dos(1) does for an MS-DOS file system.  The drive is not mounted and the
+kernel is never told its format: cpm walks the CP/M 2.2 directory itself.  By
+default it works on /dev/cpma, the raw partition holding drive A: of the
+CP/M-8000 system that shares the disk; -f names an image to work on instead,
+either another special file or an ordinary file holding a copy of such a
+partition.
+
+Drive A:'s layout is compiled in: records of 128 bytes, allocation blocks of
+4096 bytes, 2560 blocks, and 512 directory entries filling the first four
+blocks.  It is the layout the CP/M-8000 BIOS builds for that drive, so a file
+cpm writes is a file CP/M reads.
+
+A CP/M name has eight characters and an extension of three.  cpm folds the
+name given to it to upper case and splits it at the first `.'.  It refuses a
+name that will not fit those fields, one that is empty, and one holding a
+character CP/M forbids: a space, a character outside printable ASCII, or one
+of <>.,;:=?*[]" -- every file cpm reads, writes or removes belongs to CP/M
+user 0.
+
+Functions
+Exactly one of these is given, and it must come after any -f.
+    ls		List the drive.  For each file: its user number, name, size in
+		bytes, blocks, directory entries, and, where the drive keeps
+		them, its creation and update stamps.  Ahead of the files come
+		the directory label, any password entry, any entry of a kind
+		cpm does not recognise, and the number of date-stamp entries;
+		after them, the file count and the total bytes.
+
+    read	Copy cpmfile off the drive into file, or to the standard
+		output when no file is named.  CP/M measures a file in whole
+		128-byte records, so what comes back is padded out to a record
+		boundary and cpm does not strip the padding: nothing on the
+		drive records where the file ended.  A 32-kilobyte span a
+		sparse file never wrote reads back as NUL bytes.
+
+    write	Copy file onto the drive as cpmfile, replacing any file of
+		that name.  A file whose extension is TXT, C, H, SUB, PD, 8KN,
+		S, ASM, DOC or MAN is treated as text and its last partial
+		record is padded with ^Z, the CP/M end of file; any other file
+		is padded with NUL bytes.  The directory is written back only
+		once the data and the new entries are complete, so a copy that
+		fails part way leaves the drive as it was.
+
+    rm		Remove cpmfile from the drive, with the date stamps kept for
+		it.
+
+Examples
+The first copies a COHERENT file onto drive A: under a name CP/M can hold,
+lists the drive to see that it arrived, and copies it back:
+    cpm write /etc/motd MOTD.TXT
+    cpm ls
+    cpm read MOTD.TXT /tmp/motd
+
+The second reads a file out of an ordinary file holding a copy of the
+partition, and writes it to the standard output:
+    cpm -f /tmp/cpma.img read HELLO.C
+
+Directory extensions
+A drive may carry entries CP/M 2.2 itself knows nothing of: a directory label,
+passwords, and date stamps.  The CP/M-8000 BDOS allocates nothing from them
+and claims no slot they occupy, so a drive carrying them still runs unmodified
+CP/M.  cpm keeps every such entry it finds, including kinds it does not
+understand, and when the directory label asks for stamping it stamps the file
+it has just written.
+
+Diagnostics
+A diagnostic goes to the standard error and the exit status is 1 when the
+drive or the file cannot be opened, when the name is not one CP/M can hold,
+when a file named for reading or removal is not on the drive, and when the
+drive has no room left for the data or for the directory entries a copy needs.
+Otherwise the status is 0.
+
+Files
+/dev/cpma	drive A: of the CP/M-8000 system on the same disk
+
+Notes
+This page has no COHERENT Lexicon article behind it: cpm was written for this
+port, and this page was written here from its source; none of Mark Williams
+Company's text is in it.
+
+The size CP/M keeps is a count of records, so a file written to the drive and
+read back is longer than the original unless its length is a multiple of 128
+bytes.
+
+The layout is compiled in, so -f is worth using only on an image of a drive
+laid out like /dev/cpma.
+
+There is no way to name a CP/M user number other than 0.
+
+See Also
+commands, dos

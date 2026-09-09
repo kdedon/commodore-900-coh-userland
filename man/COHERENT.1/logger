@@ -1,0 +1,57 @@
+logger -- Command
+
+Make an entry in the system log
+logger [-i] [-t tag] [-p priority] [message ...]
+
+logger hands a message to syslog(3), which writes it into the /dev/log FIFO,
+where syslogd files it according to /etc/syslog.conf.  It is the way a shell
+script says something the system log should keep, and it is also the way to
+find out whether the logging path is working at all: it does nothing else, so
+a message that reaches /usr/adm/syslog proves every stage between.
+
+With one or more message arguments, they are joined with single spaces and
+logged as one record.  With none, the standard input is read and each line is
+logged as a record of its own; empty lines are dropped.  So
+
+    logger -t backup "level 0 started"
+    make 2>&1 | logger -t make -p user.err
+
+both work, the second filing one record per line of output.
+
+Options
+    -i		Include the process id in the tag, as `tag[pid]'.
+    -t tag	Tag the records with tag instead of `logger'.
+    -p pri	File the records at priority pri.  The default is
+		user.notice.
+
+A priority is `facility.level', a bare level (the facility is then user), or
+a decimal priority code.  The facilities are kern, user, mail, daemon, auth,
+syslog, lpr, news, uucp, cron and local0 through local7; the levels, most
+urgent first, are emerg, alert, crit, err, warning, notice, info and debug.
+
+A priority that names nothing is refused, with
+
+    logger: unknown priority foo
+
+and an exit status of 1, rather than being logged under some default.  A
+record filed under the wrong facility is one the person looking for it will
+not find.
+
+Files
+/dev/log		the FIFO syslogd reads
+/etc/syslog.conf	where syslogd puts what it reads
+/usr/adm/syslog		where that normally is
+
+Notes
+This page has no COHERENT Lexicon article behind it: this system has a system
+log and the release the Lexicon documents has none.  Both this command and the
+syslogd behind it were written for this port, and this page was written here
+from their source; none of Mark Williams Company's text is in it.
+
+Nothing is queued.  syslog(3) opens /dev/log without delay, so with no syslogd
+holding the FIFO open the open fails and the record is discarded; logger still
+exits 0.  A logger that prints nothing is therefore not proof that the record
+was filed -- look in the file /etc/syslog.conf sends it to.
+
+See Also
+commands, syslog(), syslogd

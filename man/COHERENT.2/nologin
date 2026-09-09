@@ -1,0 +1,34 @@
+nologin -- System Administration
+
+Lock out logins -- NOT IMPLEMENTED ON THIS SYSTEM
+/etc/nologin
+
+/etc/nologin DOES NOTHING HERE.  On other COHERENT releases login(1) looks for
+this file and, if it exists, refuses the login and prints the file's contents
+instead.  The login(1) this system ships does not read it (base/cmd/login), and
+neither does getty(1), so creating /etc/nologin locks nobody out.  Nor is
+/etc/trustme, the exemption list that goes with it, read by anything.
+
+This matters because the failure is silent and looks like success: an
+administrator who creates the file to close the machine before a backup or a
+shutdown gets no error, no warning, and no lockout.  /etc/shutdown therefore
+does not create the file either -- see shutdown, "Notes".
+
+To keep users off the machine, take it to single-user mode:
+
+    cd /
+    /etc/shutdown single 5
+
+Notes
+This page REPLACES the COHERENT 4.2 Lexicon article of the same name, which
+describes the feature as working.  The article was shipped on this system for a
+facility it does not have; the honest page is the one that says so.  Nothing of
+Mark Williams Company's text remains in what you are reading.
+
+Restoring the facility is small and is not done because nobody has asked for
+it: login(1) would need to stat the file before it prompts, cat it to the
+terminal and exit, exempt uid 0, and read /etc/trustme -- and /etc/rc would
+need to remove the file on the way up, as the article says it does.
+
+See Also
+Administering COHERENT, commands, login, shutdown

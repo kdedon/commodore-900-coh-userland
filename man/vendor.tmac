@@ -1,0 +1,11 @@
+.\" vendor.tmac -- macros groff -man does not define, prepended by
+.\" hostbuild/extract-man.sh to every VENDOR-DOCS page it renders.
+.\"
+.\" .HS/.HE delimit a COHERENT page's HELP SCREEN: the usage text that goes
+.\" into /usr/lib/helpfile, which the Lexicon's own tmac.an drops when it
+.\" formats the article.  groff has no such macro, so without this the block
+.\" renders as a paragraph of run-together usage lines at the head of every
+.\" DESCRIPTION.  HS discards through the .HE line, which .ig consumes.
+.de HS
+.ig HE
+..

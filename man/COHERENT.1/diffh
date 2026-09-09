@@ -1,0 +1,49 @@
+diffh -- Command
+
+The half-hearted differencing algorithm, run by diff -h and diff -d
+/usr/lib/diffh [-bdefhs] [-c symbol] file1 file2
+
+diffh is a second implementation of diff(1) that trades minimal output for
+bounded memory.  It is not meant to be typed: diff execs it, with the command
+line diff itself was given, in two cases.
+
+    diff -h		always
+    diff -d		when either file is larger than 25000 bytes
+
+diff proper reads both files into memory and finds the shortest edit script by
+the Hirschberg algorithm, so its answer is minimal but its appetite grows with
+the files.  diffh streams both files instead, holding at most a few hundred
+lines of either at a time, and resynchronises the moment it sees two lines in
+a row that match.  It therefore runs on files of any size in a fixed amount of
+memory, and reports differences that are correct but not always the smallest
+ones there are.
+
+That trade is worth making where changes are small and well separated, which
+is what -h is for, and it is the only way to compare two files that will not
+both fit, which is what -d is for.
+
+Since diff hands its whole command line over unchanged, diffh accepts every
+diff option and reports differences in the same formats: the default ed-style
+listing, -e and -f scripts, -c for a C preprocessor merge, -s for a summary
+count and -b to ignore trailing and repeated white space.  Its exit status is
+diff's: 0 if the files are the same, 1 if they differ and 2 on error.
+
+Files
+/usr/lib/diffh	this program
+/bin/diff	the caller
+
+Notes
+This page has no COHERENT Lexicon article behind it.  The Lexicon's diff
+article names /usr/lib/diffh as the program -h and -d run, but does not
+describe it, and this system installs it as a program of its own.  The page
+was written here, from the source in base/cmd/diff; none of Mark Williams
+Company's text is in it.
+
+diffh and diff share the file comparison, output and option-parsing code and
+differ only in the algorithm that finds the differences, so anything true of
+diff's output is true of this one's.
+
+The 25000-byte threshold at which -d switches over is compiled in.
+
+See Also
+cmp, commands, diff, diff3

@@ -1,0 +1,56 @@
+halt -- Command
+
+Stop the machine with every filesystem clean
+/etc/halt [ -n ] [ -u ]
+
+/etc/halt is the last thing that runs on the way down.  It unmounts every
+filesystem in /etc/mnttab except the root, in reverse table order, syncs twice,
+prints
+
+    halt: the machine is stopping -- it is safe to switch off
+
+and calls halt(2), which disables interrupts and stops the processor.  Only
+root can run it.
+
+WHAT MAKES A FILESYSTEM CLEAN IS THE SYNC, NOT THE UNMOUNT.  A modified
+filesystem carries FSDIRTY in its super block, and the next mount of it is
+forced read-only until check(1) has passed over it; the byte is rewritten
+FSCLEAN by sync(2), for every mounted filesystem, once its inodes and blocks
+are on the disk.  So a filesystem that is still mounted when the machine stops
+is as clean as one that was unmounted, provided the last thing to touch it was
+a sync -- which is why the sync here is last and why -n has to be asked for.
+
+The unmount is still done first, and done for its own reasons: an unmounted
+filesystem cannot be dirtied again between the sync and the stop, and umount(2)
+refuses while any process holds a file or a working directory on it, which is a
+report about the state of the machine that a bare sync does not give.  A
+refused unmount is printed and then ignored:
+
+    halt: /dev/hd6 (/usr) still mounted: in use
+    halt: 1 filesystem(s) remain mounted; they are synced
+
+Abandoning the halt there is what would leave the disk dirty, so it does not.
+
+Options
+    -n	Do not sync.  Stop the machine as it stands.  Every mounted
+	filesystem is then left dirty and will need check(1).
+    -u	Do not unmount anything.  Sync and stop.
+
+Notes
+This page has no COHERENT Lexicon article behind it, because there was no such
+command: 4.2's /etc/halt sleeps forever and tells the operator to switch off,
+the AT it ran on having no way to stop the processor from userland.  This one
+is new here and does stop it.
+
+WHAT "STOPS" MEANS DEPENDS ON THE KERNEL.  Without KDDT, halt(2) reaches
+halt_ in md.s, which masks interrupts and jumps to itself.  With the in-kernel
+debugger linked, that same entry point is the debugger's, and halt(2) RETURNS
+when the debugger is told to continue -- so a return is reported rather than
+ignored:
+
+    halt: halt(2) returned -- the machine did NOT stop
+
+There is no warm restart on this hardware; see reboot.
+
+See Also
+check, commands, halt(), reboot, shutdown, sync

@@ -1,0 +1,194 @@
+nawk -- Command
+
+Pattern-scanning language, the nawk dialect
+nawk [-F c] [-f progfile] [prog] [var=value] [file ...]
+awk  [-F c] [-f progfile] [prog] [var=value] [file ...]
+
+nawk scans each input file for records that match a pattern and performs
+an action on the ones that do.  A program is a sequence of
+
+	pattern { action }
+
+rules; a rule with no pattern acts on every record, and a rule with no
+action prints the record.  Records are lines by default and fields are
+the white-space-separated words within them, available as $1, $2 and so
+on, with $0 the whole record.  With no file, or with the file name `-',
+nawk reads the standard input.
+
+ON THIS SYSTEM awk IS nawk.  /bin/awk and /bin/nawk are two names for one
+file -- a hard link, so ls -l shows a link count of 2 and one size -- and
+the program behind both names is the one described here.  It is NOT the
+1985 Mark Williams awk that this Lexicon's awk article describes.  See
+THE TWO awks below for what that changes.
+
+OPTIONS
+-F c		Use c as the field separator instead of white space.
+		More than one character is taken as a regular expression:
+		-F'[0-9]' splits on any digit.
+-f progfile	Read the program from progfile instead of from the
+		command line.  Repeat it and the last one wins.
+
+An operand of the form var=value assigns to a variable before the files
+after it are read, and is not itself a file name.
+
+THE LANGUAGE
+Patterns may be regular expressions between slashes, expressions,
+comparisons, a pair of expressions separated by a comma (a range), or the
+words BEGIN and END, whose rules run before the first record and after
+the last.
+
+Actions are C-like: if/else, while, for, for (var in array), do ... while,
+break, continue, next, exit [expr], return, and { } to group.  Expressions
+have the C operators + - * / % ^ ++ -- = += -= *= /= %= ^= ?: && || !, the
+comparisons < <= == != >= >, the regular-expression matches ~ and !~, and
+concatenation, which is written by putting two values next to each other.
+Variables are numbers or strings as the context needs; an unset variable
+is both "" and 0.
+
+Arrays are associative and subscripted by strings: a["x"], and a[i,j] for
+a multiple subscript, which is joined with SUBSEP.  `k in a' is true when
+a has that subscript, `for (k in a)' walks them in no defined order, and
+`delete a[k]' removes one.
+
+Built-in variables: NR, FNR, NF, FS, OFS, ORS, RS, FILENAME, SUBSEP,
+OFMT, RSTART, RLENGTH, ARGC and ARGV.  Assigning to a field rebuilds $0
+with OFS between the fields; assigning past NF extends the record.  RS
+set to a single character makes that the record separator; RS set to the
+empty string makes a blank line one, so a record is a paragraph.
+
+Built-in functions, all verified against this binary:
+
+	length(s)  index(s,t)  substr(s,m[,n])  split(s,a[,fs])
+	sub(re,repl[,target])  gsub(re,repl[,target])  match(s,re)
+	sprintf(fmt,...)  getline  system(cmd)  close(file)
+	sqrt  exp  log  sin  cos  atan2  int  rand  srand
+
+sub and gsub replace the first and every match, return how many they
+replaced, and default to $0.  match sets RSTART and RLENGTH.
+
+print writes its arguments separated by OFS and ended by ORS; printf
+takes a format and honours %d %i %o %x %c %s %e %f %g with field width,
+precision, `-' and `0'.  Either may be redirected with > or >> to a file,
+or with | to a command; getline reads the next record, `getline var'
+reads into a variable, `getline < file' and `getline var < file' read
+from a file, and `"cmd" | getline' reads from a command.  close() closes
+any of them so it can be reopened.
+
+Functions are defined at the top level and may recurse:
+
+	function name(arg, arg, local, local) { ... return expr }
+
+Parameters past the ones the caller supplies are the function's local
+variables, which is the only way to declare one.  Arrays pass by
+reference, scalars by value.  Read the LIMITS below before writing a
+deeply recursive one.
+
+THE TWO awks
+There have been two awk languages on this machine and they are different
+programs, not two releases of one.
+
+The 1985 Mark Williams awk terminates a rule with a NEWLINE and nothing
+else, so `awk '{n++} END{print n}'' -- the one-liner every tutorial opens
+with -- is a syntax error to it, and it has no user-defined functions, no
+split, gsub, substr, sprintf or getline, and integer division (1/3 is 0).
+That is the language the awk article in this manual describes, and it is
+what `stock' installs.
+
+nawk is the 1989 Hirabayashi implementation of the newer awk the POSIX
+1003.2 draft standardised.  It accepts the one-liner, has everything
+listed above, and 1/3 is 0.333333.  Everything the older language did, it
+does the same way: all nine programs of the port's own rule-separator test
+produce byte-identical output under both.
+
+So the awk article is not wrong about this program -- it is incomplete.
+What it documents, nawk does; what it does not mention, nawk adds.  Where
+the two disagree at all is the arithmetic (real division, and printf %x
+taking its argument correctly), and there nawk is the one that is right.
+
+LIMITS
+	Characters per input record	511
+	Fields per record		99
+	Nested function calls		about 5
+
+A record of 512 characters or more is refused with `record too long'
+rather than truncated.  Records arrive in fixed 512-byte buffers
+throughout this program; the check exists because without it a long line
+walked off them and hung nawk with no output at all.
+
+The nesting limit is not the language's and not this program's: a process
+on this system runs on the 4 KB of stack it is given and the stack does
+not grow, so any program dies of a segmentation violation about 4 KB
+down.  Each nested nawk call costs the best part of a kilobyte of it, so
+a function that recurses more than about five deep is killed.  Iteration
+has no such limit -- loops, arrays and the record loop are all bounded by
+memory instead, and a 2,000-line input with 2,000 distinct array
+subscripts runs without trouble.
+
+FILES
+/bin/nawk	the program
+/bin/awk	the same file, under its other name
+
+SEE ALSO
+awk, commands, grep, lex, sed, yacc
+Introduction to the awk Language
+
+DIAGNOSTICS
+A program that will not parse produces the name nawk was invoked under,
+`Syntax error at line N', the line, a `<--' pointing at the token that
+could not be used, and what was expected there.  Run-time errors are
+prefixed `awk: ' whichever name was used, and are followed by the number
+of the record being processed.  Both exit 1.
+
+`exit expr' in the program sets the exit status.
+
+NOTES
+This is a third-party program, not a Mark Williams one: it was written in
+1989 by Saeko and Kouichi Hirabayashi for a 16-bit Minix, deliberately to
+fit 64K of text and 64K of data, which is why it fits here.  Every source
+file carries their notice, and this is all of it:
+
+	(C) 1989 Saeko Hirabauashi & Kouichi Hirabayashi
+	Absolutely no warranty.  Use this software with your own risk.
+	Permission to use, copy, modify and distribute this software for
+	any purpose and without fee is hereby granted, provided that the
+	above copyright and disclaimer notice.
+
+The misspelling of the first name is theirs.  The regular-expression
+package inside it is Henry Spencer's of 1986, from the University of
+Toronto, modified by K. Hirabayashi and marked as modified, which is what
+Spencer's terms ask of anyone who changes it.
+
+Differences from the language as POSIX defines it, all measured here:
+
+	int() rounds down rather than toward zero, so int(-3.7) is -4
+	where awk and POSIX give -3.
+
+	system() returns 1 if the command ran and 0 if it could not be
+	started, rather than the command's exit status.
+
+	toupper and tolower are not implemented, and neither is the -v
+	option.  The 1985 awk had no -v either.
+
+	Bracket expressions are ranges and lists only: [a-z] and [abc]
+	work, the POSIX class names [[:upper:]] do not.  This regular
+	expression package is Henry Spencer's of 1986 and predates them.
+
+	`print (expr), expr' is a syntax error -- a parenthesised first
+	argument followed by a comma.  Write it without the parentheses,
+	or parenthesise the whole list.
+
+	Assigning a field its own value, $1=$1, does not rebuild $0 with
+	the current OFS.  Assigning any other value does.
+
+The C library underneath contributes three of its own, and they are not
+this program's doing.  printf has no %+ flag.  sin() is not exactly zero
+at zero -- though compare `awk', which gets sin(1) and cos(1) wrong
+altogether.  And a number that is not a whole number prints through OFMT,
+whose default %.6g does not strip trailing zeros here, so `print 0.5'
+says 0.500000; awk has printed it that way since 1985.  Whole numbers are
+exact and print as integers.
+
+The program understands Shift-JIS Japanese text, which is what the
+authors wrote it for.  It cannot fire on 7-bit input.  On 8-bit input
+that is not Shift-JIS the bytes 0x81-0x9F and 0xE0-0xFC are read as the
+first half of a two-byte character.

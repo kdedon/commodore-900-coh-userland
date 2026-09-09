@@ -1,0 +1,48 @@
+umount.all -- System Administration
+
+Unmount every filesystem except the root
+/etc/umount.all
+
+/etc/umount.all is a shell script run on the way to single-user mode by
+/etc/shutdown.  It takes no arguments and no options.
+
+It runs /etc/mount with no arguments to list what is mounted, and calls
+/etc/umount on the block special device of every filesystem whose mount point
+is not `/'.  The root is reported by mount like any other filesystem and is
+recognised and skipped: it cannot be unmounted while the system is running.
+
+A REFUSED UNMOUNT DOES NOT STOP THE REST.  umount(2) fails while any process
+holds an open file or a working directory on the filesystem, and the ones that
+are free should still come down, so each failure is discarded and the sweep
+carries on.  When it is over, mount is run once more and anything still there
+is named:
+
+    umount.all: /dev/hd6 is still mounted on /usr
+
+The exit status is always 0.  A caller that needs the answer as a status
+should do its own unmounting: /etc/halt does, through umount(2), and reports
+each refusal with the reason the kernel gave.
+
+The sweep runs TWICE.  mount reports filesystems in the order /etc/rc mounted
+them, which is shallowest first, and that is the wrong order for unmounting a
+nested one -- /usr/man sits inside /usr, so /usr is busy until /usr/man is
+gone.  The inner filesystem comes down on the first pass if it happened to be
+reported first and on the second pass otherwise.
+
+Files
+/etc/mount	lists what is mounted, and does the unmounting
+/etc/shutdown	the caller
+/etc/mnttab	the table mount keeps
+
+Notes
+This page has no COHERENT Lexicon article behind it: the Lexicon documents
+mount and umount, and never this script.  The page was written here, from the
+script; none of Mark Williams Company's text is in it.
+
+The script itself is a port of the COHERENT 4.2 original, which is generic
+where the 3.x scripts of the same name were hand-written lists of one site's
+own devices.  This shell has no comment lexer, so the script explains itself
+in arguments to the `:' command.
+
+See Also
+Administering COHERENT, halt, mount, shutdown, umount

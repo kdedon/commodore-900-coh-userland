@@ -1,0 +1,42 @@
+whoami -- Command
+
+Print the login name of the effective user id
+whoami
+
+whoami prints, on one line, the login name that /etc/passwd gives for the
+EFFECTIVE user id of the process.  It takes no arguments and reads no input.
+
+This is not the question `who am i' answers.  That reads /etc/utmp and names
+whoever logged this terminal in, which is still the login name after an su and
+is no answer at all for a process with no terminal.  whoami reports the
+identity the kernel would enforce, which is what matters when deciding whether
+a command is about to be permitted.
+
+    $ whoami
+    guest
+    $ su
+    Password:
+    # whoami
+    root
+
+Diagnostics
+    whoami: no name for uid 25
+
+No /etc/passwd entry has that user id.  The number is still the truthful
+answer, so it is printed on the standard output as well, and the exit status
+is 1.  Otherwise the status is 0.
+
+Files
+/etc/passwd	user ids to login names
+
+Notes
+This page has no COHERENT Lexicon article behind it, and no COHERENT holding
+carries this command: it was written for this port, and this page was written
+here from its source.  None of Mark Williams Company's text is in it.
+
+A setuid program that runs whoami gets the name of the owner it is running as,
+not of the person who typed the command.  There is no option to ask for the
+real user id instead, and this system ships no id(1) to print both.
+
+See Also
+commands, su, who

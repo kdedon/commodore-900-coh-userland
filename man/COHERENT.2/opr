@@ -1,0 +1,39 @@
+opr -- Command
+
+Send a print job to the spooler for a named printer
+opr [-lp | -vp] [lpr options] [file ...]
+
+opr chooses a spooler and becomes it.  It looks at its first argument, and if
+that argument names one of the printers it knows about, it removes it from the
+command line and execs the program that serves that printer; everything else
+on the command line, options and file names alike, is passed through
+unchanged.
+
+    -lp		/bin/lpr, the line printer.  This is the default.
+    -vp		/bin/vpr, the versatec plotter.
+
+With no printer argument, or with a first argument that is not one of the two
+above, opr execs /bin/lpr.  So `opr -c3 file' is `lpr -c3 file', and
+`opr -vp -c3 file' is `vpr -c3 file'.
+
+Since opr replaces itself with the spooler, its options, its behaviour and its
+exit status are the spooler's from that point on.  It has no options of its
+own beyond the printer names, reads no files itself and spools nothing.
+
+Diagnostics
+    opr: -vp unavailable
+
+The spooler for that printer could not be executed -- on this system, because
+/bin/vpr is not installed; there is no versatec plotter on a Commodore 900 and
+nothing builds one.  Exit status is 1.
+
+Notes
+This page has no COHERENT Lexicon article behind it.  It was written here from
+the source in base/cmd/lpr; none of Mark Williams Company's text is in it.
+
+The list of printers is compiled in, so a site with a second printer changes
+opr rather than a configuration file.  With only /bin/lpr installed here, opr
+is a name for lpr and nothing more.
+
+See Also
+commands, lpr

@@ -1,0 +1,108 @@
+top -- Command
+
+Display the processes using the most processor time
+top [-ISbinqu] [-d count] [-s seconds] [-U user] [number]
+
+top shows a summary of the machine and then the processes using the most
+processor time, redrawing the display every few seconds until you quit it.  It
+reads the process table and the segment tables out of the running kernel
+through /dev/kmem, and each process's u-area through /dev/mem or /dev/swap, so
+it is installed setuid to root.
+
+The summary is four lines: the number of processes and how many are in each
+state; the percentage of processor time spent in user, system and idle over
+the last interval; the load average over one, five and fifteen minutes; and
+memory, taken from the kernel's own segment arena.  Below them is one line per
+process, ordered by processor use.
+
+    PID		the process id
+    USERNAME	who owns it (-u shows the numeric uid instead)
+    NICE	the nice value, as the kernel holds it
+    SIZE	the total size of the process's segments
+    RES		the resident part of that
+    STATE	sleep, wait, run, stop or zomb
+    TIME	processor time used, minutes and seconds
+    %CPU	share of the processor over the last interval
+    COMMAND	the command name
+
+Options
+    -b		Batch mode: write plain text and do not read the keyboard.
+		This is the default when the output is not a terminal.
+    -d count	Show count displays and exit.
+    -i		Interactive: read the keyboard even if the output is not a
+		terminal.
+    -I		Show idle processes as well.
+    -n		The same as -b.
+    -q		Run at the highest priority.  Root only; a warning
+		otherwise.
+    -s seconds	Wait seconds between displays.  The default is 5.
+    -S		Show system processes as well.
+    -u		Print numeric user ids instead of names.
+    -U user	Show only that user's processes.
+    number	Show at most that many processes.
+
+The environment variable TOP is read before the command line and may hold any
+of these, so a preferred set of options need not be typed each time.
+
+Interactive Commands
+While a display is up, a single character does the following.
+
+    ^L	Redraw the screen.
+    d	Change the number of displays still to show.
+    e	List the errors from the last kill or renice.
+    h, ?	Show the interactive commands.
+    i, I	Toggle the display of idle processes.
+    k	Send a signal to a list of processes.
+    n, #	Change the number of processes shown.
+    q	Quit.
+    r	Renice a process.
+    s	Change the seconds between displays.
+    u	Show one user's processes; `+' brings back all of them.
+
+The terminal is driven through the termcap description of $TERM.  Once the
+first display is drawn, only the characters that changed are rewritten, so an
+update costs a few dozen characters rather than a screenful -- which matters
+on a serial console.  A terminal that cannot address the cursor gets the batch
+display, and the commands that need cursor addressing are withheld with a note
+saying so.
+
+Diagnostics
+    renice: this kernel has no setpriority(2)
+
+The `r' command cannot work here.  This kernel's nice(2) is the V7 one, which
+a process may only apply to itself, so nothing can renice another process and
+the command says so rather than appearing to succeed.
+
+The load average is read from the kernel's own counter.  A kernel too old to
+keep one has no symbol for it, and the three figures are then shown as dashes
+rather than as whatever happened to be at that address.
+
+Files
+/dev/kmem	the process and segment tables
+/dev/mem	u-areas of resident processes
+/dev/swap	u-areas of processes that are not resident
+/coherent	the kernel image the symbol table is read from
+
+Notes
+This page has no COHERENT Lexicon article behind it, and no COHERENT holding
+carries a top: the program is William LeFebvre's, release 3.3, ported here.
+Its own manual page is not among this project's holdings, so this page was
+written here from the source that is; none of Mark Williams Company's text and
+none of the upstream page's text is in it.  The copyright notices and terms
+that came with the program are kept beside its source, unaltered.
+
+WHAT IS OURS is the part that knows this kernel: the walk of the process
+queue, the segment arithmetic behind SIZE, RES and the memory line, the
+u-area read, and the processor-state figures, which are computed from the
+per-process time deltas between one display and the next.
+
+Nothing in top computes in floating point.  Every quantity it prints through
+what looks like a floating conversion -- the load average, the processor
+percentages, the times -- is an integer in fixed point and is printed as one,
+which is a representation the program supports and not a local fork.
+
+There is no mpid in this kernel, so the summary does not report the last
+process id started.
+
+See Also
+commands, kill, nice(), ps

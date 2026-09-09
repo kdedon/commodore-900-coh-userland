@@ -1,0 +1,47 @@
+[ -- Command
+
+Evaluate a conditional expression -- the bracket spelling of test
+[ expression ]
+
+/bin/[ is /bin/test under a second name.  It is the same program, staged twice
+by the distribution, and it evaluates exactly the expressions test evaluates
+and returns exactly the same status: 0 if the expression is true, 1 if it is
+false, and 2 with the expression named on standard error if the expression
+cannot be read at all.  See test for the operators.
+
+The one difference is the argument list.  The program looks at the last
+character of the name it was invoked under: if that character is `[', a final
+argument of `]' is required and is removed before the expression is evaluated.
+Under any other name no bracket is expected, and a `]' on the end of the line
+would be an operand like any other.  So
+
+    if [ -f /etc/nologin ]
+    if test -f /etc/nologin
+
+are the same test, and
+
+    if [ -f /etc/nologin
+
+is a usage error rather than a condition that did not hold.
+
+THE BRACKETS ARE NOT SHELL SYNTAX.  `[' is a command name and `]' is an
+argument, so both need white space around them, and an operand that might be
+empty or might begin with `-' needs quoting, exactly as it does for test:
+
+    if [ "$answer" = yes ]
+
+The Bourne shell here has no built-in `['; every use of it runs this program.
+
+Files
+/bin/[		this program
+/bin/test	the same program under its own name
+
+Notes
+This page has no COHERENT Lexicon article of its own.  The Lexicon's test
+article mentions in passing that `[' is linked to test, but the index has no
+entry under `[', so `man [' found nothing on a machine that ships the command.
+This page was written here to answer it; none of Mark Williams Company's text
+is in it.
+
+See Also
+commands, expr, sh, test

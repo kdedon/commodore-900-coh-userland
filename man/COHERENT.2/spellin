@@ -1,0 +1,59 @@
+spellin -- Command
+
+Compress a sorted word list into a spell dictionary
+spellin < wordlist > dictionary
+
+spellin reads words from the standard input, one per line, and writes them to
+the standard output in the packed form that spell(1) reads.  It takes no
+options and no file arguments; a dictionary is built by redirection.
+
+    sort -uf words.new /usr/dict/clista | spellin > /usr/dict/clista.new
+
+THE INPUT MUST BE SORTED, and sorted the way spell searches: case-folded,
+duplicates removed, one word per line.  spellin does not check this and does
+not sort for you.  A dictionary built from unsorted input is not diagnosed --
+it simply fails to find words, since spell walks it in collating order and
+stops looking once it is past where the word should have been.
+
+The Encoding
+A word is packed three characters to sixteen bits, five bits each, with the
+sixteenth bit marking the last group of a word.  The alphabet is the
+twenty-six letters, which are folded to lower case, plus hyphen and
+apostrophe; anything else in a word is encoded as zero, the pad the last group
+of a short word is filled with.  Nothing in the packing depends on this
+machine's byte order or word size, so a dictionary is portable to any COHERENT
+system whose spell reads this format.
+
+A `#' in the input word is the optional-s marker: spell expands such an entry
+into both the singular and the plural, so `cat#' matches cat and cats and
+takes one entry rather than two.
+
+Diagnostics
+    spellin: I/O error on output
+
+The output could not be written -- normally a full filesystem.  Exit status is
+1, and the partly-written dictionary must be discarded.  A usage message and
+exit status 1 answer any argument at all.
+
+Files
+/usr/dict/clista	the American word list, in this format
+/usr/dict/clistb	the British word list
+/usr/lib/spell		the program that reads them
+
+Neither dictionary is shipped and there is no word list here to build one
+from, so spell answers `cannot open' on a fresh system until somebody feeds a
+word list through spellin.  That is what this command is for.
+
+Notes
+This page has no COHERENT Lexicon article behind it.  The Lexicon documents
+spell, and this system installs the dictionary builder as a program of its
+own.  The page was written here from the source in base/cmd/spell; none of
+Mark Williams Company's text is in it.
+
+This is the sorted-list spell, not the hashed one, and its dictionaries are
+therefore ordinary word lists that sort -m can merge before spellin packs
+them.  A dictionary from a hashed spell is a different file entirely and
+cannot be read here.
+
+See Also
+commands, sort, spell

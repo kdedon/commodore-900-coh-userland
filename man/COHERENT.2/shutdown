@@ -1,0 +1,68 @@
+shutdown -- Command
+
+Shut down the COHERENT system
+/etc/shutdown halt|single|reboot minutes
+
+/etc/shutdown takes the machine down in an orderly way.  It warns every
+logged-in user once a minute for the number of minutes you ask for, warns them
+again ten seconds before the end, and then hands over to init, which kills
+every process and spawns the single-user shell.  That shell reads /.profile,
+which is the other half of the program: it unmounts what /etc/rc mounted and,
+for the halt and reboot levels, runs /etc/halt.  Neither half is any use
+without the other.
+
+The LEVEL must be one of three words:
+
+halt Stop the machine.  /etc/halt unmounts what it can, syncs every
+     filesystem so that none comes back up dirty, and stops the processor.  Use
+     this when you intend to switch the power off.
+
+single
+     Bring the machine down to single-user mode, with the filesystems other
+     than the root unmounted.  Use this to run check(1) or to install a
+     kernel.
+
+reboot
+     The same as halt, and it says so.  This machine cannot restart itself in
+     software (see reboot), so the level is accepted and recorded, /.profile
+     reports that there is no warm restart, and the machine halts.  You then
+     press reset.
+
+MINUTES is a whole number from 0 to 30.  Zero shuts the system down at once.
+
+Only root can run shutdown, and it must be run from the root directory: a
+shell sitting on /usr holds that filesystem busy, and the unmount in /.profile
+would then fail on exactly the filesystem the shutdown exists to detach.  It
+refuses with a reason in both cases rather than half way through.
+
+You do not need to type sync afterwards.  The sync is what clears the dirty
+flag in each super block, so it is the last thing the shutdown does.
+
+Notes
+This page REPLACES the COHERENT 4.2 Lexicon article of the same name, because
+what this system ships is a port of the 4.2 script with a different set of
+levels and no third-party text of it survives here.  Four differences, each of
+which the original article would have you look for:
+
+    THERE IS NO powerfail LEVEL.  It wants a signal from an uninterruptable
+    power supply, and this machine has no interface to one.
+
+    THERE IS NO boot LEVEL.  It means "come back up automatically", which is
+    the thing this hardware cannot do; `reboot' takes its place and halts.
+
+    /etc/nologin IS NOT CREATED, and creating it would do nothing: this
+    login(1) does not read it.  Logins remain possible during the countdown
+    and are killed with everything else at the end.
+
+    THERE IS NO "Some file systems remain mounted.  Proceed?" PROMPT.  A
+    filesystem that is still mounted when the machine stops is as clean as one
+    that was unmounted, provided the last thing to touch it was the sync -- so
+    /etc/halt reports what it could not detach and syncs it anyway instead of
+    asking whether to abandon a half-finished shutdown.
+
+Interrupting shutdown during the countdown aborts it and the system remains
+multi-user.  Once the final ten-second warning has been printed, the signals
+are ignored and it goes.
+
+See Also
+commands, halt, init, reboot, wall

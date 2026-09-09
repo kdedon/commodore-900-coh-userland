@@ -1,0 +1,81 @@
+syslogd -- System Administration
+
+Read the system log FIFO and file what arrives
+/etc/syslogd [-d] [-f conffile] [-p fifo]
+
+syslogd is the system logger.  It reads records written by syslog(3) into the
+FIFO /dev/log and appends each one to the files /etc/syslog.conf names for its
+facility and level.  /etc/rc starts it; nothing else needs to.
+
+It makes /dev/log itself, at start-up, if the node is not already there, and
+sets it mode 0666 afterwards -- a log that unprivileged programs cannot write
+is not a system log, and root's umask would otherwise have taken the write
+bits off.  It then holds the FIFO open for reading AND writing, which is what
+lets it exist before its first client does and keeps a quiet moment, when no
+process has the FIFO open for writing, from looking like end of file.
+
+A record is one write(2) of under 5120 bytes, which this kernel makes atomic,
+so records from different processes cannot interleave; syslog(3) keeps one
+under 256 bytes.  A record begins with its priority as `<n>', which syslogd
+strips before filing; a record with no such prefix is filed as user.notice.
+
+Options
+    -d		Stay in the foreground and echo every record, with the
+		facility and level it was filed under, to standard output
+		as well as filing it.
+    -f file	Read file instead of /etc/syslog.conf.
+    -p fifo	Listen on fifo instead of /dev/log.
+
+The Configuration File
+One rule per line: a selector, white space, and the file the record is
+appended to.
+
+A selector is facility.level.  Naming a level selects that level and every
+more urgent one, so mail.info takes everything from mail except debug.  `*'
+stands for every facility or every level, `none' as the level takes a facility
+back out again, several facilities are separated by commas and several
+selectors by semicolons.  The facilities are kern, user, mail, daemon, auth,
+syslog, lpr, news, uucp, cron and local0 through local7; the levels, most
+urgent first, are emerg, alert, crit, err, warning, notice, info and debug.  A
+line whose first non-blank character is `#' is a comment.
+
+ONLY A FILE ACTION IS SERVED.  An action that does not begin with `/' is
+skipped rather than half-honoured: there is no network here to forward a
+record to and no wall(1) to write it on.  A device is a file for this purpose,
+so /dev/console works, but syslogd writes it and never creates it.  At most
+twelve rules are read.
+
+A configuration that cannot be read, or that selects nothing, is not an empty
+configuration: syslogd falls back to one rule sending everything to
+/usr/adm/syslog.  A machine whose log vanished over a typo is worse off than
+one that over-files.
+
+Each destination is opened and closed once per record.  This machine has
+twenty descriptors, the log is written a few times a minute, and a file held
+open across a truncation would go on writing at the old offset.
+
+Signals
+SIGHUP rereads the configuration and files a record saying so.  SIGTERM --
+which is signal 5 on this system, not 15 -- files a closing record and exits.
+Both arrive while syslogd is asleep in a read of the FIFO, so each handler
+only sets a flag and the work is done when the read returns.
+
+syslogd files its own start, reread and exit records under the syslog
+facility, through the same rules as everything else, so they appear where
+every other record appears.
+
+Files
+/dev/log		the FIFO, made by syslogd
+/etc/syslog.conf	the configuration
+/usr/adm/syslog		the usual destination, and the fallback
+
+Notes
+This page has no COHERENT Lexicon article behind it: this system has a system
+log and the release the Lexicon documents has none.  syslogd, syslog(3) and
+logger(1) were all written for this port, and this page was written here from
+syslogd's source; none of Mark Williams Company's text is in it.
+
+There is no forwarding to another host, no /dev/klog and no mark interval.
+
+See Also
+Administering COHERENT, logger, syslog()

@@ -1,0 +1,119 @@
+# VENDOR-DOCS -- programs this port ships whose OWN upstream project wrote a
+# man page beside the source, which the Lexicon never carried.  Read by
+# hostbuild/extract-man.sh, which renders each with groff/nroff and stages the
+# rendering; nothing here is COHERENT's text or ours -- it is MGR's, pico's or
+# screen's own documentation, name and all.
+#
+# Every MGR client and MGR itself carry a troff page under mgr/src/clients/ or
+# mgr/src/mgr/, and pico and screen carry one beside their own source.  The
+# rendering is needed because /bin/man only cats an article to $PAGER and this
+# distribution ships no nroff macro packages, so nothing on the machine could
+# format one.
+#
+# One line per program: <name> <TAB> <path to the .1/.man, relative to the repository root>.
+# Every path is checked on each run: extract-man.sh refuses a row that names a
+# file which is not there, so a page cannot go missing from an image quietly.
+bounce		mgr/src/clients/examples/bounce.1
+browse		mgr/src/clients/portable/simple/browse.1
+bury		mgr/src/clients/portable/sh/bury.1
+c_menu		mgr/src/clients/portable/sh/c_menu.1
+clock		mgr/src/clients/portable/simple/clock.1
+close		mgr/src/clients/portable/simple/close.1
+cursor		mgr/src/clients/portable/sh/cursor.1
+cut		mgr/src/clients/portable/simple/cut.1
+cycle		mgr/src/clients/examples/cycle.1
+font		mgr/src/clients/portable/sh/font.1
+grav		mgr/src/clients/examples/grav.1
+grid		mgr/src/clients/examples/grid.1
+hilbert		mgr/src/clients/examples/hilbert.1
+ico		mgr/src/clients/portable/ico/ico.1
+iconmsgs	mgr/src/clients/portable/simple/iconmsgs.1
+ify		mgr/src/clients/portable/ify/ify.1
+loadfont	mgr/src/clients/portable/sh/loadfont.1
+maze		mgr/src/clients/portable/simple/maze.1
+mclock		mgr/src/clients/portable/simple/mclock.1
+menu		mgr/src/clients/portable/sh/menu.1
+mgr		mgr/src/mgr/mgr.1
+mgrbiff		mgr/src/clients/portable/simple/mgrbiff.1
+mgrload		mgr/src/clients/portable/mgrload/mgrload.1
+mgrmag		mgr/src/clients/bitblit/simple/mgrmag.1
+mgrmode		mgr/src/clients/portable/simple/mgrmode.1
+mgrsclock	mgr/src/clients/portable/simple/mgrsclock.1
+mgrshowfont	mgr/src/clients/portable/simple/mgrshowfont.1
+mgrsketch	mgr/src/clients/portable/mgrsketch/mgrsketch.1
+mgrview		mgr/src/clients/portable/simple/mgrview.1
+oclose		mgr/src/clients/examples/oclose.1
+pico		editors/pico/pico.1
+resetwin	mgr/src/clients/portable/sh/resetwin.1
+rotate		mgr/src/clients/misc/rotate.1
+screen		net/screen/screen.1
+screendump	mgr/src/clients/bitblit/simple/screendump.1
+set_console	mgr/src/clients/misc/set_console.1
+set_termcap	mgr/src/clients/portable/simple/set_termcap.1
+setname		mgr/src/clients/portable/ify/setname.1
+shape		mgr/src/clients/portable/sh/shape.1
+show		mgr/src/clients/misc/show.1
+snap		mgr/src/clients/bitblit/simple/snap.1
+startup		mgr/src/clients/portable/simple/startup.1
+stringart	mgr/src/clients/examples/stringart.1
+walk		mgr/src/clients/examples/walk.1
+window_print	mgr/src/clients/portable/simple/window_print.1
+xbd		mgr/src/clients/portable/xbd/xbd.man
+zoom		mgr/src/clients/icon/zoom.1
+
+# Nine commands this port ships came with an upstream page the Lexicon never
+# carried, and those pages are kept in base/man/vendor -- with the component
+# that ships the programs, and out of COHERENT.1/COHERENT.2, which
+# extract-man.sh sweeps wholesale.  Same relationship as the rows above: the
+# page and the program come out of one upstream tree, so they are staged the
+# same way.  enroll, xencode and xdecode are three commands of one program and
+# share its page, which documents all three.
+7mail		base/man/vendor/7mail
+enroll		base/man/vendor/knapsack
+learn		base/man/vendor/learn
+load		base/man/vendor/load
+mkproto		base/man/vendor/mkproto
+Ncron		base/man/vendor/Ncron
+uload		base/man/vendor/uload
+version		base/man/vendor/version
+xdecode		base/man/vendor/knapsack
+xencode		base/man/vendor/knapsack
+xmail		base/man/vendor/xmail
+
+# Vellum, the hi-res drawing suite (hr/cmd/vellum).  It is a suite of
+# eleven commands over one library and it documents itself the same way:
+# a page per command beside the source, plus vellum(1) for the editor,
+# which is also where the suite as a whole is described.
+symedit		hr/cmd/vellum/symedit.1
+velcheck	hr/cmd/vellum/velcheck.1
+veldiff		hr/cmd/vellum/veldiff.1
+veldxf		hr/cmd/vellum/veldxf.1
+velgraph	hr/cmd/vellum/velgraph.1
+velinfo		hr/cmd/vellum/velinfo.1
+velnet		hr/cmd/vellum/velnet.1
+velpic		hr/cmd/vellum/velpic.1
+velplot		hr/cmd/vellum/velplot.1
+velsym		hr/cmd/vellum/velsym.1
+vellum		hr/cmd/vellum/vellum.1
+
+# The hi-res desktop and its applications (hr/cmd).  zview is the window
+# server and desktop; the rest are the applications and the three dock
+# widgets, which live together in hr/cmd/zwidg and so are named by file.
+# One page per program, beside its source, as Vellum's are.
+zcalc		hr/cmd/zcalc/zcalc.1
+zclock		hr/cmd/zclock/zclock.1
+zdock		hr/cmd/zdock/zdock.1
+zedit		hr/cmd/zedit/zedit.1
+zfile		hr/cmd/zfile/zfile.1
+zlogin		hr/cmd/zlogin/zlogin.1
+zmail		hr/cmd/zmail/zmail.1
+zman		hr/cmd/zman/zman.1
+zmaze		hr/cmd/zmaze/zmaze.1
+zmon		hr/cmd/zmon/zmon.1
+zprint		hr/cmd/zprint/zprint.1
+zpuzzle		hr/cmd/zpuzzle/zpuzzle.1
+zterm		hr/cmd/zterm/zterm.1
+zview		hr/cmd/zview/zview.1
+zwclock		hr/cmd/zwidg/zwclock.1
+zwmem		hr/cmd/zwidg/zwmem.1
+zwwin		hr/cmd/zwidg/zwwin.1
