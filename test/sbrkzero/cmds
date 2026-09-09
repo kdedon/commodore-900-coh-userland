@@ -1,0 +1,4 @@
+# Does sbrk() hand back zeroed memory?  The inet stack's alloc() is an sbrk
+# wrapper and its #if ZERO blocks skip table initialisation on that assumption.
+/bin/sbrkzero
+echo SBRKRC=$?

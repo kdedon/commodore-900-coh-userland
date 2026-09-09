@@ -1,0 +1,13 @@
+# Regression: interface configuration, read-back, and an ICMP echo round
+# trip through the daemon; plus the sbrk segment-bound check.
+/etc/mknod /dev/inet p
+/etc/inet &
+sleep 3
+/etc/ifconfig 10.0.0.2 255.255.255.0 10.0.0.1
+echo IFCRC=$?
+/etc/ifconfig
+/bin/psipping 3
+echo PINGRC=$?
+/bin/sbrkzero
+echo SBRKRC=$?
+ps

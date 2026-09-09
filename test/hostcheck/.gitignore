@@ -1,0 +1,13 @@
+# The repository's top-level .gitignore holds `coherent/os/tests/*/[a-z]*',
+# which exists to keep the built guest probes out of the tree -- and which also
+# matches every source file in here.  These four are sources, not artefacts.
+!kshim.c
+!hostcompat.h
+!termio.h
+!Makefile
+!run.sh
+!.gitignore
+
+# The artefacts.
+*-h
+work/

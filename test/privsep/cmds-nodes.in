@@ -1,0 +1,75 @@
+# tests/privsep/cmds-nodes.in -- the device half, typed at a root shell.  run.sh replaces @MUTBITS@ and @MUTNODES@: both are an echo on the real
+# system, and on the mutant run the first takes the setuid bit off ps, top and
+# mgrload and the second puts the device nodes back to 666.  They are two
+# mutations at two points in one run because they answer two different
+# questions, and each is invisible while the other is in force -- ps at 755
+# works perfectly well against a 666 /dev/kmem, which is exactly the trade this
+# system used to make.
+#
+# Everything an ordinary user does here goes through `su guest': su(1) run by
+# root needs no password and setuid()s BOTH ids down (cmd/su.c).  /usr is
+# mounted by hand because rc has not run and mgrload lives there.  /tmp is not
+# mounted; the /tmp DIRECTORY on the root filesystem is 777, which is where the
+# guest writes.
+# The distribution ships no `dump' node -- run.sh's own table says why -- so
+# naming one here makes ls(1) exit 1 and the set-up step, which is what the
+# whole half is believed on, report a failure that is about the LISTING.
+/bin/ls -l /dev/rhd4 /dev/hd4 /dev/mem /dev/kmem /dev/swap /dev/fd1 /dev/rfd1; echo PRIV ls rc=$?
+# The guest comes up MULTI-USER, so /etc/rc has mounted /usr already and a
+# second mount of it answers "device busy".  What the check below needs is
+# that /usr IS mounted, so mount it only when it is not, and report on the
+# state rather than on the command.
+/bin/test -d /usr/spool/uucp || /etc/mount /dev/hd6 /usr
+/bin/test -d /usr/spool/uucp; echo PRIV mount rc=$?
+# --- root still reaches every node the policy shut ------------------------
+# The filesystem tools all open the raw device, and all of them run as root.
+# /dev/rhd3 is the /tmp partition: the smallest filesystem on the disc and the
+# one holding nothing the rest of this run depends on.
+/bin/check /dev/rhd3; echo PRIV check rc=$?
+/bin/icheck /dev/rhd3; echo PRIV icheck rc=$?
+/bin/dcheck /dev/rhd3; echo PRIV dcheck rc=$?
+/bin/ncheck /dev/rhd3 >/dev/null; echo PRIV ncheck rc=$?
+/bin/df /; echo PRIV rootdf rc=$?
+# The one open that IS the attack, made by the user entitled to make it.
+/bin/dd if=/dev/rhd4 bs=512 skip=@PWBLK@ count=1 of=/dev/null; echo PRIV rootraw rc=$?
+# mkfs(8) and dump(1) are not run: one would overwrite a filesystem the checks
+# above just read and the other wants a tape.  What they need is a writable raw
+# device, and that is the question test(1) answers directly.
+test -w /dev/rhd3 -a -r /dev/rhd3; echo PRIV rootwrite rc=$?
+@MUTBITS@
+# --- positive: the three namelist readers, run by an ordinary user --------
+echo PRIV BEGIN ps
+su guest /bin/ps -ax; echo PRIV END ps rc=$?
+echo PRIV BEGIN top
+su guest /bin/top -b 1; echo PRIV END top rc=$?
+# mgrload needs a window it cannot have here, and says so and exits -- but it
+# takes its sample BEFORE it looks at the terminal, so the presence of its
+# "cannot open" line, or the absence of it, is the answer about /dev/kmem.
+echo PRIV BEGIN mgrload
+su guest /usr/mgr/bin/mgrload; echo PRIV END mgrload rc=$?
+# --- negative: the raw disk, kernel memory and swap, as that same user ----
+su guest /bin/sh -c 'echo x >/dev/rhd4'; echo PRIV wrawroot rc=$?
+su guest /bin/sh -c 'echo x >/dev/hd4'; echo PRIV wblkroot rc=$?
+su guest /bin/sh -c 'echo x >/dev/mem'; echo PRIV wmem rc=$?
+su guest /bin/sh -c 'echo x >/dev/kmem'; echo PRIV wkmem rc=$?
+su guest /bin/sh -c 'echo x >/dev/swap'; echo PRIV wswap rc=$?
+su guest /bin/dd if=/dev/rhd4 bs=512 skip=@PWBLK@ count=1 of=/dev/null; echo PRIV rrawroot rc=$?
+su guest /bin/sh -c 'test -r /dev/rhd4'; echo PRIV testr rc=$?
+su guest /bin/sh -c 'test -w /dev/rhd4'; echo PRIV testw rc=$?
+# The floppy is deliberately still 666: removable media a user brings to the
+# machine.  This is the permission answer for both directions of it.
+su guest /bin/sh -c 'test -r /dev/fd1 -a -w /dev/fd1'; echo PRIV testfd rc=$?
+su guest /bin/sh -c 'test -r /dev/rfd1 -a -w /dev/rfd1'; echo PRIV testrfd rc=$?
+# df(1) opens the device named in /etc/mtab, so this is the one thing an
+# ordinary user loses to the policy.  It is recorded, not hidden.
+su guest /bin/df /; echo PRIV guestdf rc=$?
+@MUTNODES@
+# The exploit itself, and the only run in which it can work: the guest reads the
+# block of the root partition that holds /etc/passwd, straight off the raw
+# device, and opens the same device for writing.  With the nodes at 600 both
+# are refused above; here they are not, and grep prints the line that names
+# uid 0.
+echo PRIV BEGIN exploit
+su guest /bin/sh -c 'dd if=/dev/rhd4 bs=512 skip=@PWBLK@ count=1 2>/dev/null | grep root:'; echo PRIV END exploit rc=$?
+su guest /bin/sh -c 'echo x >/dev/rhd4'; echo PRIV wraw2 rc=$?
+echo PRIV done rc=0

@@ -1,0 +1,49 @@
+# tests/privsep/cmds-login.in -- the two checks that need a password and a
+# login, and therefore an /etc/utmp record.
+#
+# WHY THEY ARE NOT IN cmds-priv.in.  Everything there goes through `su guest',
+# which needs no password and writes no utmp record.  These do:
+#
+#   passwd(1) changing its OWN password.  As root it skips the old-password
+#	check (cmd/passwd.c tests getuid()), so root sets one first; then guest
+#	changes it, which is the path that has to read the old one back through
+#	crypt(3) and then rewrite /etc/passwd through the setuid bit.
+#   newgrp into a group whose access list NAMES the caller.  newgrp identifies
+#	the caller with getlogin(), which reads /etc/utmp, which only login(1)
+#	writes -- so under su the member arm answers "not in access list" for
+#	the caller's ABSENCE from utmp, not for its absence from the group.
+#
+# EVERY LINE AFTER `GATE' IS TYPED WITHOUT WAITING FOR A `#' PROMPT, because
+# getpass(3) prints "Old password: " and login(1) prints "Password: " and
+# neither is a shell prompt.  Keep the order exactly: the answers are positional.
+#
+# The account ships with `nologin' in its password field -- seven characters,
+# which is neither a valid 13-character crypt(3) result nor the one-character
+# shape of FINDINGS T-57 -- so the password used below is created here, on this
+# throwaway copy of the image, and is not a shipped credential.
+# The guest comes up MULTI-USER, so /etc/rc has mounted /usr already and a
+# second mount of it answers "device busy".  What the check below needs is
+# that /usr IS mounted, so mount it only when it is not, and report on the
+# state rather than on the command.
+/bin/test -d /usr/spool/uucp || /etc/mount /dev/hd6 /usr
+/bin/test -d /usr/spool/uucp; echo PRIV mount rc=$?
+mkdir /usr/guest; chown guest /usr/guest; chgrp user /usr/guest; echo PRIV home rc=$?
+echo TERM=vt100 >/usr/guest/.profile; chown guest /usr/guest/.profile
+cat /etc/passwd
+GATE
+passwd guest
+gu3st1x
+gu3st1x
+cat /etc/passwd
+su guest /bin/passwd guest
+gu3st1x
+n3wgu3st
+n3wgu3st
+cat /etc/passwd
+login guest
+n3wgu3st
+/bin/factor ids
+newgrp system
+/bin/factor ids
+newgrp user
+/bin/factor ids

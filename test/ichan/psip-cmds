@@ -1,0 +1,11 @@
+# Traffic: configure the interface, then inject an ICMP echo request on the
+# psip channel and check that the stack transmits a matching Echo Reply.  This
+# needs no serial line, no host bridge and no SLIP peer -- psip carries raw IP
+# packets, so a userland process IS the wire (see net/test/psipping.c).
+/etc/mknod /dev/inet p
+/etc/inet &
+sleep 3
+/etc/ifconfig 10.0.0.2 255.255.255.0
+/etc/ifconfig
+/bin/psipping 2
+echo PINGRC=$?

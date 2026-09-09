@@ -1,0 +1,7 @@
+# Bisect the inet control-channel handshake.  Single user: /tmp and
+# /usr are not mounted, so everything lives on the root filesystem.
+/etc/mknod /dev/inet p
+/etc/inet &
+sleep 3
+/bin/ichanprobe
+echo PROBERC=$?
