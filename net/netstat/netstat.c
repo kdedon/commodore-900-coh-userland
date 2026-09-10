@@ -9,69 +9,29 @@
  *	netstat -n		addresses as numbers, never as names
  *	netstat -I <dev>	interrogate a named ip device
  *
- * WRITTEN, NOT PORTED, and the reason is the data source.  COHERENT 4.x had a
- * netstat -- its Lexicon page survives, and the option letters above are that
- * page's, so a 4.x user's fingers work here -- but 4.x carried a BSD stack
- * inside the kernel, where netstat read the protocol control blocks out of
- * /dev/kmem with nlist().  This port's stack is Minix 2.0.4's inet, and inet is
- * a USER PROCESS: its connection table lives in that process's own memory, is
- * reachable through no ioctl, and cannot be read by a debugger, let alone by a
- * command.  Nothing of the 4.x program's body would survive; only its interface
- * is worth keeping, so only its interface was kept.
+ * The stack is Minix 2.0.4's inet, a USER PROCESS, so there is no kernel table
+ * to read: everything here comes from four ioctls the daemon answers --
+ * NWIOGIPCONF (address and netmask), NWIOGIPOROUTE and NWIOGIPIROUTE (the
+ * outgoing and incoming routing tables, one entry per call), NWIOGETHSTAT (an
+ * ethernet interface's counters) -- plus /etc/inet.conf, which is the only
+ * statement of which interfaces this machine should have.
  *
- * WHAT IS THEREFORE MISSING, and why an option is absent rather than empty.
+ * That bounds three options.  -a cannot show protocol, port or peer, because
+ * the daemon never reports them; it lists the per-socket channels clients
+ * mknod() to reach it (net/include/inet_ipc.h), skipping any whose owner is
+ * gone, tested with kill(pid, 0).  -s reports the ethernet interface and
+ * nothing else, since ip, icmp, tcp and udp keep no readable counters.  -m
+ * (mbuf statistics) is not implemented and not accepted, because an option
+ * that always answers zero is worse than no option.
  *
- * -a in BSD lists connections with both endpoints.  Here the only per-socket
- * evidence outside the daemon is the channel each client mknod()s to reach it
- * (net/include/inet_ipc.h): /tmp/ic<pid>.<seq>.{q,r}, one pair per open socket.
- * That says HOW MANY sockets are open and WHICH PROCESS holds each -- real,
- * checkable state -- and it says nothing about protocol, port or peer, because
- * the daemon never told anybody.  So -a prints the channels under their own
- * heading and does not pretend they are connections.  A process that dies
- * without closing leaves its FIFOs behind, so each candidate is checked with
- * kill(pid, 0) and a channel whose owner is gone is not listed: ukill() takes
- * signal 0 as an existence test (sys/coh/sys1.c), which is what makes the
- * filtering possible at all.
- *
- * -m in the 4.x page showed mbuf statistics.  This stack's buffer pool
- * (net/inet/generic/buf.c) keeps its counts inside the daemon with no ioctl to
- * read them, exactly like the connection table, so -m is not implemented.  It
- * is not accepted and silently ignored either: an option that always answers
- * zero is a worse answer than no option.
- *
- * -s asks each protocol for its counters.  Only ONE layer in this stack counts
- * anything a client can read: the ethernet driver, through NWIOGETHSTAT
- * (net/include/net/gen/eth_io.h eth_stat_t).  ip, icmp, tcp and udp keep no
- * externally visible counters at all.  So -s reports the ethernet interface
- * when there is one and says plainly that there is nothing else to report --
- * and on the shipped configuration (/etc/inet.conf is `psip0', a SLIP link)
- * there is no ethernet interface, so it reports that instead of a screen of
- * zeroes.  When the LANCE driver lands, this option starts working with no
- * change here.
- *
- * WHAT IS PRESENT is what the daemon does answer, through the same ioctls
- * ifconfig and pr_routes use:
- *
- *	NWIOGIPCONF	the interface's address and netmask
- *	NWIOGIPOROUTE	the outgoing routing table, one entry per call
- *	NWIOGIPIROUTE	the incoming (source) routing table
- *	NWIOGETHSTAT	an ethernet interface's counters, if one exists
- *
- * plus /etc/inet.conf, which is the only statement anywhere of which interfaces
- * this machine is supposed to have -- the daemon reads it at startup and does
- * not offer the list back.
- *
- * ONE HAZARD, inherited and not fixable from here: NWIOGIPCONF does not answer
- * "unconfigured".  ip_ioctl() SUSPENDS the request until the interface has an
- * address, so `netstat' before `/etc/ifconfig' has run does not print an empty
- * table -- it waits, forever, with no output.  That is the stack's behaviour and
- * ifconfig has it too; it is why the interface section runs first and says what
- * it is doing.
- *
- * The ioctl request code is an int, never a long.  With _WORD_SIZE 2 the NWIO*
- * macros expand to ((x<<8)|y), whose type is int, and there are no prototypes
- * between here and ioctl(): a long argument pushes four bytes where ioctl()
- * reads two and takes the data pointer with it.  Same trap pr_routes documents.
+ * TWO HAZARDS.  NWIOGIPCONF does not answer "unconfigured": ip_ioctl()
+ * SUSPENDS the request until the interface has an address, so netstat before
+ * /etc/ifconfig has run waits forever with no output -- which is why the
+ * interface section runs first and says what it is doing.  And the ioctl
+ * request code is an int, never a long: with _WORD_SIZE 2 the NWIO* macros
+ * expand to ((x<<8)|y), an int, and with no prototype in between a long
+ * argument pushes four bytes where ioctl() reads two.  Same trap pr_routes
+ * documents.
  */
 
 #include <sys/types.h>
