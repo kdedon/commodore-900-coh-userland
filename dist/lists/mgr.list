@@ -86,7 +86,7 @@ f	/usr/mgr/bin/mgrlogin	6511 0 0	src=hostbuild/build/mgr/bin/mgrlogin
 # from nothing else -- there is no opendir here -- so a font not named in
 # .mgrc cannot be selected however many are on the disk.
 d	/usr/mgr/font
-f	/usr/mgr/font/.mgrc	644 0 1
+f	/usr/mgr/font/.mgrc	644 0 1	src=mgr/c900/font.mgrc
 f	/usr/mgr/font/cmr-9x16		644 0 1	src=mgr/font/cmr-9x16
 f	/usr/mgr/font/cmrb-10x16	644 0 1	src=mgr/font/cmrb-10x16
 f	/usr/mgr/font/term-9x16		644 0 1	src=mgr/font/term-9x16
@@ -127,4 +127,4 @@ t	/usr/mgr/menus		src=mgr/menus
 # directive sets one, which is why this is a file to be sent and not a config
 # line.  It is not a .menu file: those are menu(1)'s tab-separated source, this
 # is its output.  (A 14-character name, because that is a directory entry.)
-f	/usr/mgr/menus/default.esc	644 0 1
+f	/usr/mgr/menus/default.esc	644 0 1	src=mgr/c900/default.esc
