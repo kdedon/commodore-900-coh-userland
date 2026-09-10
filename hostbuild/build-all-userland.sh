@@ -1,7 +1,7 @@
 #!/bin/sh
 # build-all-userland.sh -- the full userland build: the base component's
 # single-file cmd/*.c, every multi-directory command in it that links, the
-# editors and tools components, the games, and the curses libs + curses games.
+# editors component, the games, and the curses libs + curses games.
 # Prints a grand total.  Prereqs: build-libc-z8001.sh, build-curses.sh.
 #
 # The net and mail components are NOT here: their programs link libsocket.a
@@ -53,6 +53,11 @@ for d in "$OS"/base/cmd/*/; do
 	case "$n" in more) continue;; esac
 	case "$n" in worm) continue;; esac	# curses game -- built by build-curses-games.sh
 	case "$n" in rogue) continue;; esac	# bundled curses -- build-rogue.sh, below
+	# The three third-party ports below: each has its own script because each
+	# needs a command line this loop does not give it -- less its termcap
+	# library and the regexp engine in base/lib, patch its hand-written
+	# config.h, rcs the installed paths of diff and co compiled in.
+	case "$n" in less|patch|rcs) continue;; esac
 	# top links libterm and needs a GENERATED sigdesc.h, neither of which this
 	# loop can supply; build-curses-games.sh owns it (see build_top there).
 	case "$n" in top) continue;; esac
@@ -106,7 +111,7 @@ step rsh 1 sh "$HERE/build-yacc-cmd.sh" -s sh rsh "$SHVER"
 echo "=== elvis (own script: its own tinytcap) ==="
 step elvis 1 sh "$HERE/build-elvis.sh"
 step editors 2 sh "$HERE/build-editors.sh"
-echo "=== third-party tools (less, gzip, patch, rcs, rogue) ==="
+echo "=== third-party ports (less, gzip, patch, rcs, rogue) ==="
 # rogue carries its own bundled curses, so the multi-dir loop skips it and
 # build-curses-games.sh (which reads games/bsd/CURSES.list) never names it.
 # With no caller it was outside the build entirely: its binary is staged by

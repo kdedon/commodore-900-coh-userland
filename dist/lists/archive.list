@@ -1,13 +1,14 @@
-# archive.list -- file archivers and serial file transfer.  All period
-# third-party ports that shipped for COHERENT on the MWC BBS; sources in
-# os/archive and os/comms, built by hostbuild/build-archive.sh and
-# hostbuild/build-comms.sh.
+# archive.list -- file archivers, compressors and serial file transfer.  All
+# period third-party ports that shipped for COHERENT on the MWC BBS; sources in
+# os/archive and os/comms, built by hostbuild/build-archive.sh,
+# hostbuild/build-gzip.sh and hostbuild/build-comms.sh.
 #
-# Everything here goes in /usr/bin.  Read tools.list's note on the /bin versus
+# Everything here goes in /usr/bin.  Read base.list's note on the /bin versus
 # /usr/bin split before moving any of it: /bin is what the single-user
-# maintenance shell can reach, and none of these is a repair tool.  Together
-# they are about 477 blocks of /usr, against the roughly 756 that file measured
-# as free -- check the mkimage block counts before adding more.
+# maintenance shell can reach, and none of these is a repair tool.  gzip is the
+# largest single cost, because its three names are three copies of the same 97
+# blocks rather than links -- check the `mkimage' block counts before adding
+# more.
 
 # --- archivers --------------------------------------------------------------
 # zoo 2.1 (Rahul Dhesi, 1991).  Creates and extracts.  Its `a' and `x' are the
@@ -56,6 +57,22 @@ f	/usr/bin/lharc		755 0 1	src=hostbuild/build/bin/lharc
 # Terms: os/archive/unzip/COPYING (Smith 1989, and Info-ZIP's own record of what
 # he intended), and NOTICE.md -- 5.41+ is the licensed successor, not yet ported.
 f	/usr/bin/unzip		755 0 1	src=hostbuild/build/bin/unzip
+
+# --- compressors ------------------------------------------------------------
+# gzip 0.8.2 (archive/gzip), under three names.
+#
+# gzip opens its output O_CREAT|O_EXCL, so it depends on the kernel clearing
+# its in-core exclusive-open mark at close (sys/coh/fs3.c iclose(), covered
+# by tests/openexcl); a kernel that does not refuses every later open of the
+# archive with EEXIST until the inode is evicted.
+#
+#   THE THIRD NAME MUST BE gzcat, NOT zcat: base.list already stages /bin/zcat
+#   (a copy of compress(1), LZW only), and gzip.c:351 already recognises
+#   "gzcat".  A duplicate destination is a hard error in the packer, so the
+#   name has to differ even though the directories now do.
+f	/usr/bin/gzip
+f	/usr/bin/gunzip	src=hostbuild/build/bin/gzip
+f	/usr/bin/gzcat	src=hostbuild/build/bin/gzip
 
 # --- serial file transfer ---------------------------------------------------
 # rz/sz (Chuck Forsberg, Omen Technology).  ZMODEM, with YMODEM and XMODEM

@@ -7,7 +7,7 @@
 # The tree is build output and untracked; re-run this after a clean checkout.
 #
 # A MANUAL PAGE BELONGS WITH WHAT IT DOCUMENTS.  Every article is tracked in the
-# component that builds its subject -- base/man, net/man, tools/man and the rest
+# component that builds its subject -- base/man, net/man, archive/man and the rest
 # here; the C library, C language and compiler-pass articles in the toolchain's
 # man; the device-driver, kernel-module and bare system-call articles in the
 # kernel's os/man.  Each such tree is the same shape: COHERENT.1/, COHERENT.2/,
@@ -41,7 +41,7 @@ FAILED=
 # through mk/deps.sh.  An owner tree that is not there is a FAILURE and not a
 # warning: the manual would be short by that owner's pages and nothing outside
 # would say so.
-LOCALOWNERS="base net tools editors mail archive comms games hr mgr test"
+LOCALOWNERS="base net editors mail archive comms games hr mgr test"
 
 owner_man() {	# $1 = the owner's name; prints its manual tree, or nothing
 	case $1 in

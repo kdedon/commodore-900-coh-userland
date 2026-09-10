@@ -1,6 +1,6 @@
 The COHERENT Lexicon, for what this component owns.
 
-COHERENT.1/ and COHERENT.2/ hold 664 articles of Mark Williams Company's
+COHERENT.1/ and COHERENT.2/ hold 666 articles of Mark Williams Company's
 on-line manual -- the two halves the Lexicon splits itself into, a-l and m-z --
 covering the base COHERENT system this component builds: its commands, its
 shell, its libraries (libmp, libm, libcurses, libterm, libedit) and the

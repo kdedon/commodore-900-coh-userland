@@ -9,7 +9,7 @@
 #
 # THE CORPUS IS THIS REPOSITORY'S OWN.  hostbuild/extract-man.sh assembles
 # hostbuild/build/man out of the pages every component tracks in its own tree --
-# base/man, net/man, tools/man, editors/man and the rest -- so a manual package
+# base/man, net/man, archive/man, editors/man and the rest -- so a manual package
 # is cut from material this repository holds and versions, and there is no
 # third-party archive to fetch before one can be.
 #

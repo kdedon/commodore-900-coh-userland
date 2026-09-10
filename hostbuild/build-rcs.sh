@@ -1,13 +1,13 @@
 #!/bin/sh
 # build-rcs.sh -- RCS 4.3 (ci/co/rcs/rlog/ident/rcsdiff/rcsmerge/rcsclean/merge)
-# for the Z8001 COHERENT target.  Sources live in tools/rcs: RCS 4.3 with the
+# for the Z8001 COHERENT target.  Sources live in base/cmd/rcs: RCS 4.3 with the
 # Coherent patch kit (CohRCS001..006) applied, plus the fixes this target needs.
 # The largest program, ci, links inside one 64K text segment, so no large model.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OS="$HERE/.."
 . "$OS/hostbuild/toolchain.sh"	# sets $TC: the Z8001 toolchain checkout
-SRC="$OS/tools/rcs"
+SRC="$OS/base/cmd/rcs"
 CCZ="$TC/ccz"
 BIN="$HERE/build/bin"
 INC="-I $OS/include -I $OS/include/sys"

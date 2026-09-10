@@ -1,9 +1,9 @@
 #!/bin/sh
 # build-patch.sh -- Larry Wall's patch(1), the FSF 2.0.1 kit (unified-diff
-# capable), ported to Z8001 COHERENT.  Sources live in tools/patch.
+# capable), ported to Z8001 COHERENT.  Sources live in base/cmd/patch.
 #
 # The kit's Configure script probes the build machine, which is the wrong
-# machine here, so tools/patch/config.h is hand-written for the target and
+# machine here, so base/cmd/patch/config.h is hand-written for the target and
 # NODIR selects the single-suffix backup naming (no directory scan, so
 # backupfile.c is not built).
 set -u
@@ -11,7 +11,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 OS="$HERE/.."
 . "$OS/hostbuild/toolchain.sh"	# sets $TC: the Z8001 toolchain checkout
 CCZ="$TC/ccz"
-SRC="$OS/tools/patch"
+SRC="$OS/base/cmd/patch"
 BIN="$HERE/build/bin"
 # getopt, strtok, strchr, strtoul, memcmp, memcpy, memset and strcasecmp all
 # come from libc-z8001.a.  They used to be named here as SOURCES out of

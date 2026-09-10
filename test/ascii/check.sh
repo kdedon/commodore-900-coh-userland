@@ -76,10 +76,8 @@ games/ttycity/nc_render.c
 KNOWN_CORRUPT='
 '
 
-# Vendored / archival trees: never rewritten, so never checked.  tools/ is
-# host-side Python 3 image tooling -- nothing in it is read by the target
-# toolchain or ships onto the machine.  src/ is NOT excluded: the 1985
-# compiler does read it.  sys/ref (the vendored holdings kept for diffing
+# Vendored / archival trees: never rewritten, so never checked.  src/ is NOT
+# excluded: the 1985 compiler does read it.  sys/ref (the vendored holdings kept for diffing
 # against the kernel) is in a separate repository and is not here anymore.
 ARCHIVAL='^man-4\.2/
 ^mgr/
@@ -92,7 +90,10 @@ ARCHIVAL='^man-4\.2/
 ^base/lib/misc/
 ^base/lib/ndir/
 ^base/lib/regexp/
-^tools/
+^base/cmd/less/
+^base/cmd/patch/
+^base/cmd/rcs/
+^archive/gzip/
 ^scratch/
 ^\.claude/'
 

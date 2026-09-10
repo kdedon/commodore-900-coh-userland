@@ -1,9 +1,9 @@
 #!/bin/sh
-# build-less.sh -- less 177 (tools/less), the full-screen pager.
+# build-less.sh -- less 177 (base/cmd/less), the full-screen pager.
 #
 # less drives the terminal through termcap, so it links libterm (base/lib/libterm)
 # the same way more does, and it matches search patterns with the Spencer regexp
-# package in base/lib/regexp, selected by REGCOMP in tools/less/defines.h.
+# package in base/lib/regexp, selected by REGCOMP in base/cmd/less/defines.h.
 # lesskey compiles a key-binding file and needs neither.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -12,7 +12,7 @@ OS="$HERE/.."
 CCZ="$TC/ccz"
 BIN="$HERE/build/bin"
 ROOT="$HERE/build/root"
-SRC="$OS/tools/less"
+SRC="$OS/base/cmd/less"
 LIBTERM="$TCB/curses/libterm.a"
 # getopt, strtok, strchr, strtoul, memcmp, memcpy, memset and strcasecmp all
 # come from libc-z8001.a.  They used to be named here as SOURCES out of
@@ -54,7 +54,7 @@ build less $LESSSRC "$OS/base/lib/regexp/regexp.c" "$LIBTERM" $GLIB
 build lesskey "$SRC/lesskey.c" $GLIB
 
 # The help text less shows for `h' is read at run time from HELPFILE
-# (tools/less/defines.h), so it ships alongside the other command data files.
+# (base/cmd/less/defines.h), so it ships alongside the other command data files.
 cp "$SRC/less.hlp" "$ROOT/usr/lib/less.hlp"
 
 echo "== less: $ok linked, $fail failed:$fl"

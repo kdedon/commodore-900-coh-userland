@@ -4,8 +4,9 @@
 # The BINARY packages create licence obligations, and a source package is how
 # they are satisfied.  What ships in one image of ours:
 #
-#	tools     rcs, under the GNU GPL VERSION 1 (all 19 files say so and
-#	          "version 2" appears nowhere in the directory); gzip, GPLv2
+#	runtime   rcs, under the GNU GPL VERSION 1 (all 19 files say so and
+#	          "version 2" appears nowhere in the directory)
+#	archive   gzip, GPLv2
 #	games     tetris, distributable only "without any fee or other monetary
 #	          gains", authorship statement reproduced on all copies
 #	net       GNU screen, GPL VERSION 1 -- its COPYING is the v1 text and all

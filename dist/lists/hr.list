@@ -25,7 +25,7 @@
 #
 # WITHOUT THE FONTS NOTHING STARTS.  zview opens "sysfont" at start-up, and
 # the three .hf faces the server loads into the shared VRAM tail are generated
-# from the raw FM fonts by tools/mkfont.py in the producing repository.  Both
+# from the raw FM fonts by hostbuild/mkfont.py in the producing repository.  Both
 # sets are staged here, in one tree entry, because they land in one directory.
 #
 # The three catalogs under /usr/hr/etc name the applications: apps is the

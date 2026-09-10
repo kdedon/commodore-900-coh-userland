@@ -223,7 +223,7 @@ l	/usr/bin/vi	to=/usr/bin/elvis
 # --- file utilities ---------------------------------------------------------
 # What a Makefile, a person driving one, and an administrator reading a disc
 # actually invoke.  Deliberately NOT here: sed, awk, sort, tr -- a Makefile
-# that needs them wants lists/tools.list, and adding it to a copy of the dist
+# that needs them wants lists/runtime.list, and adding it to a copy of the dist
 # is one line.
 f	/bin/ls
 f	/bin/lc
@@ -286,4 +286,24 @@ f	/bin/du
 # somebody has to be able to read off the console.
 f	/bin/date
 f	/bin/time
+
+# --- the /bin versus /usr/bin split -----------------------------------------
+# /usr is a separate filesystem that only /etc/rc mounts, so nothing in
+# /usr/bin exists in the single-user maintenance shell -- and that is NORMAL,
+# not a defect.  A root filesystem carrying only the basics, with ed(1) as the
+# editor and no pager, is how Unix is supposed to look in single user.  Do not
+# move a command to /bin to make single user more capable, and do not put its
+# data files on the root filesystem for that reason either; help text belongs
+# in /usr/lib beside more.help.
+#
+# The one reason that could justify moving something across, and how to act on
+# it: space.  /usr is sized in dist/media/*.media, and the partition table is
+# generated from those files into kboot.cfg (hostbuild/dist.py wdslots), so
+# growing it is one edit.  On the 21 MB media /usr and /usr/man jointly own
+# blocks 10336..31007 and the boundary between them sits where it does because
+# man is read-only and sized to its content, leaving the growth room on the
+# /usr side; the 42 MB development media gives /usr the whole tail of the
+# drive.  Move a boundary rather than scatter commands across filesystems, and
+# check the `mkimage' block counts before adding to either side.
+
 # end of base.list

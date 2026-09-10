@@ -89,8 +89,8 @@ lic mit-oc         n y y LICENSE                        MIT.License     this rep
 # GPL.  THE VERSION IS NOT BOILERPLATE AND WAS CHECKED PER TREE.  All three
 # oblige source; two of them are version ONE, which is not what this project
 # said about them until the files themselves were read.
-lic gpl2-gzip      y y y tools/gzip/COPYING               Version.2       gzip, GPL v2 or later
-lic gpl1-rcs       y y y tools/rcs/COPYING                Version.1       RCS 4.3, GPL v1 or later (19 files say "either version 1"; "version 2" is nowhere in the directory)
+lic gpl2-gzip      y y y archive/gzip/COPYING               Version.2       gzip, GPL v2 or later
+lic gpl1-rcs       y y y base/cmd/rcs/COPYING                Version.1       RCS 4.3, GPL v1 or later (19 files say "either version 1"; "version 2" is nowhere in the directory)
 lic gpl1-screen    y y y net/screen/COPYING             Version.1       GNU screen, GPL v1 or later -- COPYING is the v1 text and all 11 sources say "either version 1"; the GPLv2 this project previously recorded was wrong
 
 # Bellcore's grant for MGR.  It obliges no source and it does oblige the notice:
@@ -113,8 +113,8 @@ lic ckermit        n y y comms/ckermit/COPYING          Columbia        C-Kermit
 lic zoo            n y y archive/zoo/COPYING            Dhesi           zoo 2.1, Dhesi 1991: copying for any purpose, commercial or not, notices preserved
 lic lharc          n y y archive/lharc/COPYING          FREEWARE        C-LHarc, Tagawa: "This is FREEWARE"
 lic zmodem         n y y comms/zmodem/COPYING           Satchell        rz/sz: Satchell's and Brown's grants; Forsberg's public-domain statement cited second-hand
-lic less           n y y tools/less/version.c             Nudelman        less: free use and modification, notice intact, not sold for profit without the author's consent
-lic patch          n y y tools/patch/patch.c              Larry.Wall      patch, Wall 1986: copy freely, do not make money off it, do not claim authorship
+lic less           n y y base/cmd/less/version.c             Nudelman        less: free use and modification, notice intact, not sold for profit without the author's consent
+lic patch          n y y base/cmd/patch/patch.c              Larry.Wall      patch, Wall 1986: copy freely, do not make money off it, do not claim authorship
 lic elvis          n y y base/cmd/elvis/COPYING              redistributable elvis 1.4, Kirkendall: freely redistributable in source or executable form, no restrictions stated
 lic pico           n y y editors/pico/pico.h                Washington      pico, University of Washington: any purpose without fee, notice retained, name-use restriction
 lic spencer        n y y base/lib/regexp/regexp.c   Toronto         Spencer's regexp, University of Toronto 1986
@@ -147,7 +147,7 @@ lic rogue          n y ? games/rogue/main.c               traded          rogue:
 # that, and whether the GPL's own terms can be met over a file whose author
 # restricted it, is a question about two documents and is not resolvable by
 # reading this tree.  SHIP IS `?' FOR A HUMAN.
-lic sri-harrenstien n y ? tools/rcs/partime.c             Harrenstien     RCS partime.c and maketime.c, Harrenstien/SRI 1980-81: not to be sold nor used in licensed software without permission -- inside a GPLv1 tree
+lic sri-harrenstien n y ? base/cmd/rcs/partime.c             Harrenstien     RCS partime.c and maketime.c, Harrenstien/SRI 1980-81: not to be sold nor used in licensed software without permission -- inside a GPLv1 tree
 
 # A public-domain claim in a comment is a claim and not a dedication
 # instrument.  Recorded as found, which is all anybody here can do.
@@ -162,6 +162,7 @@ lic no-grant       n n ? -                              -               copyrigh
 # ---- THE COMPONENTS -------------------------------------------------------
 
 use archive        zoo
+use archive        gpl2-gzip        /usr/bin/{gzip,gunzip,gzcat}
 use archive        lharc
 use archive        unzip
 use archive        zmodem
@@ -174,7 +175,11 @@ use base           ucb-adv          libcurses, linked by the shell and by make
 use runtime        mwc-bsd3
 use runtime        ucb-adv          /usr/bin/cut, /usr/bin/more, and libcurses/libterm which most of runtime links
 use runtime        ucb-bsd3
-use runtime        spencer          /usr/bin/more links usr.bin-3.x/regexp
+use runtime        spencer          /usr/bin/more and /usr/bin/less link base/lib/regexp
+use runtime        gpl1-rcs         /usr/bin/{ci,co,rcs,rlog,ident,rcsdiff,rcsclean,rcsmerge,merge}
+use runtime        sri-harrenstien  partime.c and maketime.c, compiled into every RCS binary by build-rcs.sh
+use runtime        less             /usr/bin/less and /usr/bin/lesskey
+use runtime        patch            /usr/bin/patch
 use runtime        top              /bin/top
 use runtime        nawk             /bin/awk and /bin/nawk
 use runtime        elvis            /usr/bin/{vi,ex,elvis}
@@ -239,14 +244,6 @@ use toolchain      mwc-bsd3         the Z8001 compiler, assembler, linker and li
 
 use toolchain-1985 no-grant         the twelve June 1985 Mark Williams binaries the reference disk shipped with -- cc, ccx, db, l, nld, cpp, cc0, cc1, cc2, cc3, scrts0.o, slibc.a -- for which no repository here holds source or terms.  Predating the 2015 COHERENT source release, so mwc-bsd3 does not reach them; this is why the component publishes no `src' kind.
 
-use tools          gpl2-gzip        /usr/bin/{gzip,gunzip,gzcat}
-use tools          gpl1-rcs         /usr/bin/{ci,co,rcs,rlog,ident,rcsdiff,rcsclean,rcsmerge,merge}
-use tools          sri-harrenstien  partime.c and maketime.c, compiled into every RCS binary by build-rcs.sh
-use tools          less             /usr/bin/less and /usr/bin/lesskey
-use tools          patch            /usr/bin/patch
-use tools          spencer          usr.bin-3.x/regexp, linked by less
-use tools          ucb-adv          libcurses
-use tools          mwc-bsd3
 
 use vellum         mit-oc           the suite, its library and the stencil and example drawings
 use vellum         mwc-bsd3         csu and libc

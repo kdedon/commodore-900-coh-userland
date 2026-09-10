@@ -22,7 +22,7 @@
 # seds the installed paths of diff/diff3/co into it, so what ships is generated
 # and its source is the .sh beside the rest of RCS.  The whole RCS directory
 # travels because merge is one program of a package under one licence (GPLv1).
-merge		tools/rcs
+merge		base/cmd/rcs
 
 # wargames(6) -- a shell game, copied whole by build-games.sh.  The directory is
 # the one games/bsd/scripts holds, which is this program and its siblings.

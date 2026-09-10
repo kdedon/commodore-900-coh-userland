@@ -434,6 +434,7 @@ COHERENT.2/param.h	param.h	Define machine-specific parameters
 COHERENT.2/passwd.c	passwd	Set/change login password
 COHERENT.2/passwd.f	passwd	Define system users
 COHERENT.2/paste	paste	Merge lines of files
+COHERENT.2/patch	patch	Patch a variable or flag within the kernel
 COHERENT.2/path.e	PATH	Directories that hold executable files
 COHERENT.2/path.h	path.h	Define/declare constants and functions used with PATH
 COHERENT.2/paths	paths	Routing data base for mail
@@ -588,6 +589,7 @@ COHERENT.2/tic	tic	Compile a terminfo description
 COHERENT.2/time.a	time	Overview
 COHERENT.2/timeb.h	timeb.h	Define timeb structure
 COHERENT.2/time.c	time	Time the execution of a command
+COHERENT.2/time.h	time.h	Give time-description structure
 COHERENT.2/timeout.h	timeout.h	Define the timer queue
 COHERENT.2/times.c	times	Print total user and system times
 COHERENT.2/times.h	times.h	Definitions used with times() system call

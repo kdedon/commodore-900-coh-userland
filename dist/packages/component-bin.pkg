@@ -9,7 +9,7 @@
 # again.
 #
 # WHAT IT IS.  A component is a dist/lists/*.list that is a package: base,
-# runtime, net, mail-light, games, net-games, mgr, mgr-clients, tools, editors,
+# runtime, net, mail-light, games, net-games, mgr, mgr-clients, editors,
 # archive.  That list, resolved against its producer's build output, IS this
 # package -- so what a component-bin package installs and what an image carries
 # are the same files by construction, not by two lists that have to be kept

@@ -252,6 +252,20 @@ f	/usr/bin/calendar
 f	/usr/bin/cgrep
 f	/usr/bin/chmog
 f	/usr/bin/chroot
+# RCS 4.3 (base/cmd/rcs), the revision control system, staged as one group:
+# ci/co/rcs/rcsclean exec each other and diff(1) by the absolute paths compiled
+# into them (build-rcs.sh: CO, RCS_CMD and MERGE point at /usr/bin, DIFF and
+# DIFF3 at /bin), so these paths are load-bearing -- moving any of them breaks
+# the delta and merge paths silently.  merge is a shell script, not a binary.
+f	/usr/bin/ci
+f	/usr/bin/co
+f	/usr/bin/rcs
+f	/usr/bin/rlog
+f	/usr/bin/ident
+f	/usr/bin/rcsdiff
+f	/usr/bin/rcsclean
+f	/usr/bin/rcsmerge
+f	/usr/bin/merge
 f	/bin/col
 f	/bin/comm
 f	/bin/compress
@@ -323,6 +337,13 @@ f	/bin/enroll
 f	/bin/xencode
 f	/bin/xdecode
 f	/bin/learn
+# less 177 (base/cmd/less), the full-screen pager.  Termcap-driven, so it needs
+# the /etc/termcap and the $TERM that base.list stages.  less.hlp is the text
+# `h' displays, read at run time from the path baked into cmd/less/defines.h,
+# in /usr/lib where command data files belong beside more.help.
+f	/usr/bin/less
+f	/usr/bin/lesskey
+f	/usr/lib/less.hlp
 f	/bin/lex
 # NOT SHIPPED: `login-tmp' has NO SOURCE anywhere in the tree.  Nothing may
 # ship without source.
@@ -372,6 +393,16 @@ f	/bin/nawk
 f	/bin/newgrp	4755 0 1
 f	/bin/nm
 f	/bin/nroff
+# patch 2.0.1 (base/cmd/patch).  The 2.0.1 kit rather than the Coherent-adapted
+# 2.0 one: 2.0 predates unified diff entirely (no UNI_DIFF anywhere in it), and
+# a patch that cannot read `diff -u' output is not useful now.  Context, unified
+# and normal formats all apply.  This system's own diff(1) feeds it: diff's
+# default output is the normal format (`3a4', `4d3', `1,2c1,2',
+# base/cmd/diff/diff2.c), which patch reads and applies; diff has no context or
+# unified output (its -c takes a SYMBOL, for #ifdef output), so patches made
+# here are normal-format ones, and patch also applies context and unified
+# patches brought in from elsewhere.
+f	/usr/bin/patch
 # NOT SHIPPED HERE: placement.lst put the `passwd' COMMAND at /etc/passwd, where
 # the /etc/passwd password FILE above overwrote it -- so no passwd command has
 # ever shipped, and MANIFEST's `bin/passwd 4755' override was dead.  The command

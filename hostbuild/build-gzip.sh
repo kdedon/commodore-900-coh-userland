@@ -1,10 +1,10 @@
 #!/bin/sh
-# build-gzip.sh -- gzip 0.8.2 (tools/gzip) for the Z8001 COHERENT target.
+# build-gzip.sh -- gzip 0.8.2 (archive/gzip) for the Z8001 COHERENT target.
 #
 # One binary, three names: gzip switches on argv[0], so gunzip and zcat are
 # copies of it (the same trick build-extra-userland.sh uses for compress).
 #
-# -DCOHERENT selects the target block in tools/gzip/tailor.h, which turns on
+# -DCOHERENT selects the target block in archive/gzip/tailor.h, which turns on
 # DYN_ALLOC.  That is not optional here: the deflate hash chains, the hash
 # heads and the shared 32K window are 32K each, all the static data has to
 # fit one 64K segment, and ld refuses a larger one.  On the heap each is a
@@ -14,7 +14,7 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OS="$HERE/.."
 . "$OS/hostbuild/toolchain.sh"	# sets $TC: the Z8001 toolchain checkout
-SRC="$OS/tools/gzip"
+SRC="$OS/archive/gzip"
 CCZ="$TC/ccz"
 BIN="$HERE/build/bin"
 INC="-I $OS/include -I $OS/include/sys"

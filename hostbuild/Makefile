@@ -164,7 +164,8 @@ userland: $(ULSTAMP)
 #                  the yacc/rogue/elvis scripts
 #   base/lib       libcurses/libterm/ndir/regexp, linked by the above
 #   editors        build-editors.sh (me, pico)
-#   tools          build-less.sh, build-gzip.sh, build-patch.sh, build-rcs.sh
+#   base/cmd       build-less.sh, build-patch.sh, build-rcs.sh
+#   archive        build-gzip.sh
 #   games          build-games.sh + build-curses-games.sh
 # include is NOT listed, and no longer exists: every header it held was
 # a stale duplicate of one the toolchain or the kernel owns, and shadowed it.
@@ -173,7 +174,7 @@ userland: $(ULSTAMP)
 # edit there will not by itself invalidate $(ULSTAMP).  The toolchain half is
 # still covered, by $(TCSTAMP); the kernel's is not, so a change to $KINC needs
 # `make clean-userland' (or a touch of any source below) to be picked up.
-ULDIRS = $(OS)/base/cmd $(OS)/base/lib $(OS)/editors $(OS)/tools \
+ULDIRS = $(OS)/base/cmd $(OS)/base/lib $(OS)/editors $(OS)/archive/gzip \
 	 $(OS)/games
 $(call dirs-exist,ULDIRS,$(ULDIRS))
 ULSRC := $(shell find $(ULDIRS) \
@@ -337,7 +338,7 @@ man: $(MAN)
 # edges.  All of them are prerequisites, so an edited or new page rebuilds
 # /usr/man.
 MANSRC := $(shell find $(OS)/man $(addsuffix /man,$(addprefix $(OS)/,base net \
-	tools editors mail archive comms games hr mgr test)) \
+	editors mail archive comms games hr mgr test)) \
 	-type f 2>/dev/null)
 $(MAN): $(HERE)/extract-man.sh $(MANSRC)
 	sh $(HERE)/extract-man.sh

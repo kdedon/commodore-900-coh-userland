@@ -16,7 +16,7 @@
 # says what the selection resolved to.  The compiler is the one this project
 # builds from source, in commodore-900-toolchain.
 # ---------------------------------------------------------------------------
-# ../tools/mkfont.py renders the raw FM fonts; overridable for a machine whose
+# ../hostbuild/mkfont.py renders the raw FM fonts; overridable for a machine whose
 # python3 is elsewhere.
 PYTHON ?= python3
 
@@ -973,7 +973,7 @@ VEL_TARGETS := $(LIBVEL) $(addprefix $(VELBIN)/,$(VELTOOLS)) \
 vellum: $(VEL_TARGETS)
 
 # The ZView system fonts: generated into the shared-VRAM .hf format the server
-# loads into the tail (../tools/mkfont.py); every client blits from that single
+# loads into the tail (../hostbuild/mkfont.py); every client blits from that single
 # copy -- no relink, no per-glyph trap.  All three come from the FM fonts:
 # gacha.r.hf 8x15 (terminal -- 8px cell = byte-aligned glyph output),
 # gacha.b.hf 9x16 (UI chrome) and sail.hf 6x8 (icon labels).
@@ -985,10 +985,10 @@ vellum: $(VEL_TARGETS)
 HRGUIFONTS = $(ROOT)/usr/hr/fonts/gacha.r.hf $(ROOT)/usr/hr/fonts/gacha.b.hf \
 	$(ROOT)/usr/hr/fonts/sail.hf
 HRFMDIR    = $(HRFONTDIR)
-$(HRGUIFONTS) &: ../tools/mkfont.py $(HRFMDIR)/gacha.r.7 \
+$(HRGUIFONTS) &: ../hostbuild/mkfont.py $(HRFMDIR)/gacha.r.7 \
 		$(HRFMDIR)/gacha.b.8 $(HRFMDIR)/sail.r.6
 	@mkdir -p $(ROOT)/usr/hr/fonts
-	$(PYTHON) ../tools/mkfont.py --fm $(HRFMDIR) --out $(ROOT)/usr/hr/fonts
+	$(PYTHON) ../hostbuild/mkfont.py --fm $(HRFMDIR) --out $(ROOT)/usr/hr/fonts
 
 # the launchable-app catalog zview reads at startup (src -> staging image).
 $(ROOT)/usr/hr/etc/apps: $(HRSRC)/etc/apps
