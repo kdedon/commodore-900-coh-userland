@@ -1,6 +1,6 @@
 The COHERENT Lexicon, for what this component owns.
 
-COHERENT.1/ and COHERENT.2/ hold 2 articles of Mark Williams Company's on-line
+COHERENT.1/ and COHERENT.2/ hold 3 articles of Mark Williams Company's on-line
 manual -- the two halves the Lexicon splits itself into, a-l and m-z --
 covering the editors this component builds.  man.index is the index of exactly
 those articles, one row per article: <path> <TAB> <title> <TAB> <one-line

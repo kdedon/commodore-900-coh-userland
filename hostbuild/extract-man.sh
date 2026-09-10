@@ -41,7 +41,7 @@ FAILED=
 # through mk/deps.sh.  An owner tree that is not there is a FAILURE and not a
 # warning: the manual would be short by that owner's pages and nothing outside
 # would say so.
-LOCALOWNERS="base net tools editors mail archive comms games graphics hr mgr test"
+LOCALOWNERS="base net tools editors mail archive comms games hr mgr test"
 
 owner_man() {	# $1 = the owner's name; prints its manual tree, or nothing
 	case $1 in

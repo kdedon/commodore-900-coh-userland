@@ -337,7 +337,7 @@ man: $(MAN)
 # edges.  All of them are prerequisites, so an edited or new page rebuilds
 # /usr/man.
 MANSRC := $(shell find $(OS)/man $(addsuffix /man,$(addprefix $(OS)/,base net \
-	tools editors mail archive comms games graphics hr mgr test)) \
+	tools editors mail archive comms games hr mgr test)) \
 	-type f 2>/dev/null)
 $(MAN): $(HERE)/extract-man.sh $(MANSRC)
 	sh $(HERE)/extract-man.sh

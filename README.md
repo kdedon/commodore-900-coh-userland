@@ -5,7 +5,7 @@ component is a top-level directory named for what it is, with the same internal
 layout -- `cmd/`, `lib/`, `include/`, `drv/`, `etc/`, `test/` and whatever else
 that component needs: `base/` the general command set and its libraries, `hr/`
 the HR window system, and `mgr/`, `net/`, `games/`, `archive/`, `comms/` and
-`graphics/` beside them. A distribution is a descriptor that selects
+`editors/` beside them. A distribution is a descriptor that selects
 components, not a place sources live. Kernel and disk-image builds live in
 separate repositories.
 

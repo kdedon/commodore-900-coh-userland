@@ -1,2 +1,3 @@
 COHERENT.1/buffer	buffer	Definition
 COHERENT.1/detab	detab	Replace tab characters with spaces
+COHERENT.1/emacs	emacs	COHERENT screen editor

@@ -38,7 +38,7 @@ B="$HERE/build"
 # nothing builds, and an edit to one of those does not change a shipped byte --
 # a staleness alarm that fires on them would be on permanently, and an alarm
 # that is always on is read as decoration.
-SCOPE="base games mgr net test archive comms graphics hr man
+SCOPE="base games mgr net test archive comms hr man
        hostbuild/build.sh"
 # Every build-*.sh, named by pattern rather than one by one: a new sweep script
 # is part of the scope the moment it exists, without anybody remembering.
