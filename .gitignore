@@ -36,7 +36,6 @@
 # failed link cannot delete the kernel every other reader is using.
 /hostbuild/kobj.*/
 /hostbuild/logs/
-/net/hostbuild/build/
 # net native-build products.  By pattern, not by name: the list was
 # maintained a binary at a time and a new client reached a commit before anyone
 # noticed.  Everything net builds is an extensionless file next to its source.
@@ -61,7 +60,6 @@
 !/net/include/
 !/net/test/
 !/net/resolv/
-!/net/hostbuild/
 !/net/inet/*.c
 !/net/inet/*.h
 !/net/inet/*.s
