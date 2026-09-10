@@ -13,9 +13,9 @@ mkdir -p "$BIN"; : > "$LOG"
 DEFS="-DUNIX -DUNIX_SYSV -DCURSES -DCOHERENT"
 # System headers come from include and include/sys only; see
 # build-curses.sh.
-INC="-I $OS/base/cmd/rogue -I $OS/include -I $OS/include/sys"
-SRCS=$(ls "$OS"/base/cmd/rogue/*.c | grep -v sim_getlogin | tr '\n' ' ')
-SRCS="$OS/base/cmd/rogue/sim_getlogin.c $SRCS"
+INC="-I $OS/games/rogue -I $OS/include -I $OS/include/sys"
+SRCS=$(ls "$OS"/games/rogue/*.c | grep -v sim_getlogin | tr '\n' ' ')
+SRCS="$OS/games/rogue/sim_getlogin.c $SRCS"
 if CCZ_VAR=800000020800 "$CCZ" -s -i -L $DEFS $INC \
      -o "$BIN/.rogue.new" $SRCS >>"$LOG" 2>&1; then
 	mv -f "$BIN/.rogue.new" "$BIN/rogue"

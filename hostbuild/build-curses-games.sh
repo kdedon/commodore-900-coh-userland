@@ -163,7 +163,7 @@ build_top() {
 }
 build_top
 
-build worm  "$OS/base/cmd/worm/worm.c"
+build worm  "$OS/games/worm/worm.c"
 [ -d "$OS/base/cmd/snake" ] && build snake $(ls "$OS"/base/cmd/snake/*.c)
 
 # The BSD games that need curses.  games/bsd/CURSES.list is the single list;

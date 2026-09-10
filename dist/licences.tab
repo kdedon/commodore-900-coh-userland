@@ -137,7 +137,7 @@ lic unzip          n y ? archive/unzip/COPYING          commercial      UnZip 4.
 # 25 of 25 rogue sources carry the same restriction, so its scope is not in
 # doubt; what is in doubt is who granted it and on what basis, because no
 # upstream distribution has been matched to this tree.
-lic rogue          n y ? base/cmd/rogue/main.c               traded          rogue: "not to be traded, sold, or used for personal gain or profit", uniform across all 25 sources, upstream unidentified
+lic rogue          n y ? games/rogue/main.c               traded          rogue: "not to be traded, sold, or used for personal gain or profit", uniform across all 25 sources, upstream unidentified
 
 # Two files inside the GPLv1 RCS tree that carry neither the GPL boilerplate
 # the other nineteen carry nor any grant compatible with it: partime.c and
