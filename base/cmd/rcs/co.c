@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* Copyright (C) 1982, 1988, 1989 Walter Tichy
    Distributed under license by the Free Software Foundation, Inc.
 

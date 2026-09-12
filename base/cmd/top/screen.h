@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  *  top - a top users display for Unix 4.2
  *
  *  This file contains all the definitions necessary to use the hand-written

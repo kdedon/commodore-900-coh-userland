@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: primes.h,v 1.5 2003/08/07 09:37:34 agc Exp $	*/
 
 /*

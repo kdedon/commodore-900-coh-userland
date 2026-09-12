@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #define VERSION "1.31 03-29-88"
 #define PUBDIR "/usr/spool/uucppublic"
 

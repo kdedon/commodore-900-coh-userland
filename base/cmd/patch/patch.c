@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 char rcsid[] =
 	"$Header: patch.c,v 2.0.2.0 90/05/01 22:17:50 davison Locked $";
 

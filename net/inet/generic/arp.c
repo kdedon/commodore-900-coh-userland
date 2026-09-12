@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
 arp.c
 
 Copyright 1995 Philip Homburg

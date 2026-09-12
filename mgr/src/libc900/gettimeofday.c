@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * gettimeofday -- from times(2), the only clock with sub-second resolution
  * here (HZ = 100, so the answer is 10 ms granular).  Derived from Harry
  * Pulley's COHERENT 4.0 emulation in src/libcoh, with the tbuffer made real:

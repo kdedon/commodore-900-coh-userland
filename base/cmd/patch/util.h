@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* $Header: util.h,v 2.0 86/09/17 15:40:06 lwall Exp $
  *
  * $Log:	util.h,v $

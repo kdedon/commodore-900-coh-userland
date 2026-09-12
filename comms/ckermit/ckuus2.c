@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*  C K U U S 2  --  "User Interface" STRINGS module for Unix Kermit  */
  
 /*

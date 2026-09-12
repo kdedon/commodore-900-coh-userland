@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: log.c,v 1.13 2004/09/07 13:20:39 jrf Exp $	*/
 
 /*-

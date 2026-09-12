@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #if	!defined(lint) && !defined(DOS)
 static char rcsid[] = "$Id: fileio.c,v 4.2 1993/04/15 00:25:35 mikes Exp $";
 #endif

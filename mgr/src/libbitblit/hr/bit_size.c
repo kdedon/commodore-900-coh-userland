@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #include "screen.h"
 
 /* Bytes occupied by a wide x high x depth bitmap.  long: the result exceeds

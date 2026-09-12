@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #include <sys/pstat.h>
     
 struct pst_dynamic dynamic;

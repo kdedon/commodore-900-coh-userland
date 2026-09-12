@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 char *ckxv = "Unix tty I/O, 4E(048), 13 Jan 89";
 
 /*  C K U T I O  */

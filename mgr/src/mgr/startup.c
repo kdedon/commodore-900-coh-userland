@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*{{{}}}*/
 /*{{{  Notes*/
 /* read and process startup file */ /* this needs to be redone */

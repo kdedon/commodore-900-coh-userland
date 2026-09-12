@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: misc.c,v 1.13 2004/11/05 21:30:32 dsl Exp $	*/
 
 /*

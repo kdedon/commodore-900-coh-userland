@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * draw the border around this window.             broman@nosc.mil, 1996/03
  */
 

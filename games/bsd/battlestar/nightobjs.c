@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: nightobjs.c,v 1.9 2003/08/07 09:37:03 agc Exp $	*/
 
 /*

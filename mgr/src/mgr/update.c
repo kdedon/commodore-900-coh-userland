@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*{{{}}}*/
 /*{{{  Notes*/
 /*                        Copyright (c) 1988 Bellcore

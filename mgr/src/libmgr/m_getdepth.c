@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #include <ctype.h>
 #include <stdio.h>
 #include <mgr/mgr.h>

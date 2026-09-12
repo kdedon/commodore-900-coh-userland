@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
    Predicate m_localsrv() indicates whether the Mgr server's
    host machine is the same as that of the client.
    The result is also set to false in case of error.

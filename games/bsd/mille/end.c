@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: end.c,v 1.7 2003/08/07 09:37:25 agc Exp $	*/
 
 /*

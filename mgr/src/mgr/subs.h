@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 void           set_covered    ();
 void           un_covered     ();
 void           expose         ();

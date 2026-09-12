@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* Definition file for less */
 /* Generated Thu May  2 20:44:39 1991 CST by linstall. */
 

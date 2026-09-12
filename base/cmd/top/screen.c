@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  *  Top users/processes display for Unix
  *  Version 3
  *

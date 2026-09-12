@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 void put_str();
 struct menu_state *menu_define();
 struct menu_state *menu_setup();

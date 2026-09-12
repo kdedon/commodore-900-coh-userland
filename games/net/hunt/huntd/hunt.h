@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 
 /*
  * Copyright (c) 1983-2003, Regents of the University of California.

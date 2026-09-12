@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
 udp.c
 
 Copyright 1995 Philip Homburg

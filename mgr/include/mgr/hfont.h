@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #ifndef _HFONT_H
 #define _HFONT_H
 /*{{{}}}*/

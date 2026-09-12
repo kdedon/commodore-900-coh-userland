@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * ismgrterm - returns 0 (true) if tty is an MGR window.
  */
 

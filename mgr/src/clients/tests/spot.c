@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* print info about current mouse spot */
 
 #include <sys/time.h>

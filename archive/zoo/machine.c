@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #ifndef LINT
 /* @(#) machine.c 2.3 88/01/02 01:21:44 */
 static char sccsid[]="@(#) machine.c 2.3 88/01/02 01:21:44";

@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* select from Udo Munk, udo@umunk.GUN.de ; implements select() using poll() */
 
 #include <poll.h>

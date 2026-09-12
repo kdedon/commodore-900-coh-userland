@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*{{{}}}*/
 /*{{{  Notes*/
 /*	Check to see if the TERM environment variable says this is an "mgr"

@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* $Header: pch.c,v 2.0.1.7 88/06/03 15:13:28 lwall Locked $
  *
  * $Log:	pch.c,v $

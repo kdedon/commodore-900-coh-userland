@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #ifndef _MGR_SHARE_H
 #define _MGR_SHARE_H
 

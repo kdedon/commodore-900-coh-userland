@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: extern.h,v 1.10 2004/01/27 20:30:28 jsm Exp $	*/
 
 /*

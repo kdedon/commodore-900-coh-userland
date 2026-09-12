@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* $Header: inp.c,v 2.0.1.1 88/06/03 15:06:13 lwall Locked $
  *
  * $Log:	inp.c,v $

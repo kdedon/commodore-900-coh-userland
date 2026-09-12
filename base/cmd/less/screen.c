@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * Routines which deal with the characteristics of the terminal.
  * Uses termcap to be as terminal-independent as possible.
  *

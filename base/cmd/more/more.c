@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * more: COHERENT port of traditional Berkeley pager
  *	 Last rev 06/14/91
  */

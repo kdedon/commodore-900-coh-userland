@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* $Header: common.h,v 2.0.1.2 88/06/22 20:44:53 lwall Locked $
  *
  * $Log:	common.h,v $

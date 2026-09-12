@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * ping.c -- ICMP echo, after Minix 2.0.4's ping(1).
  *
  *	ping [-c count] [-s size] [-w seconds] host

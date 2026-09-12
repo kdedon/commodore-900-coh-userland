@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #include "EXTERN.h"
 #include "common.h"
 #include "INTERN.h"

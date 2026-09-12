@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*{{{}}}*/
 /*{{{  #includes*/
 #define _POSIX_SOURCE

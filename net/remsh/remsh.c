@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * remsh -- run a command on another machine (BSD rsh, service "shell").
  *
  *	remsh [-l login] host command ...

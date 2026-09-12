@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * <termios.h> for the C900 build.  This shadows include/termios.h and is
  * reached first (Makefile.c900's INCS), because MGR wants the whole POSIX
  * terminal interface and this kernel's line discipline is termio: the struct

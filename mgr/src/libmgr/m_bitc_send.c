@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * m_bitc_sendh, m_bitc_sendb, m_bitc_sent.
  * These routines transfer a bitmap from client memory to the Mgr server,
  * to a scratchpad bitmap, to the current window, or to the root window pattern.

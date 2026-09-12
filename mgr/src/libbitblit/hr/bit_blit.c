@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * bit_blit -- move a rectangle between bitmaps under one of the sixteen
  * boolean functions of source and destination.
  *

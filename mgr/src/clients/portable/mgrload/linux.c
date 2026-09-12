@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>

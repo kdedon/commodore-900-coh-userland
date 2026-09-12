@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: words.c,v 1.11 2003/08/07 09:37:03 agc Exp $	*/
 
 /*

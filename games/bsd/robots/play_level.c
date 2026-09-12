@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: play_level.c,v 1.6 2003/08/07 09:37:37 agc Exp $	*/
 
 /*

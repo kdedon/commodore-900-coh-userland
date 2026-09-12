@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * is_mgr_term - returns 1 (true) if tty is an MGR window, 0 else.
  */
 

@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * fingerd -- answer finger(1) queries from the network (RFC 742/1288).
  *
  *	fingerd [-d] [-m maxqueries] [-p service]

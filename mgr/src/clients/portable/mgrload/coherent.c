@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* COHERENT.c -- the load average, read from the running kernel.
  *
  * The original of this file (Harry C. Pulley, IV, 1993, after Randy Wright's

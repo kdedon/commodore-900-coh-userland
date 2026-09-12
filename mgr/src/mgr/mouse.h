@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* interface file for mouse driver */
 /* Andrew Haylett, 14th December 1992 */
 

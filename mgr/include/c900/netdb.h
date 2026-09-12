@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * netdb.h -- host and service lookup for the MGR tree.
  *
  * Two behaviours, selected by MGR_REAL_NETDB.

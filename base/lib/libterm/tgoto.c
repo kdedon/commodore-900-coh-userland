@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* Copyright (c) 1979 Regents of the University of California */
 #define	CTRL(c)	('c' & 037)
 

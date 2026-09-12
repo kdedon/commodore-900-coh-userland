@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * screen.h -- the libbitblit device header for the C900 hi-res bitmap board,
  * in the shape of libbitblit/sunmono/sun.h.  Every libbitblit source and
  * every tool that handles external bitmaps includes it as "screen.h".

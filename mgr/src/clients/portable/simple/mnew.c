@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * mnew - run any command line in a new mgr window
  *
  * usage:  mnew [options...] 'shell command line'

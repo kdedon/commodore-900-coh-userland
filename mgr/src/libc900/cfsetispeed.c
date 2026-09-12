@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* cfsetispeed.c by Harry Pulley, IV; 18DEC92.  Written for Coherent 4.0 to 
    emulate functions, etc. so that it may compile Linux MGR code. */
 

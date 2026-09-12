@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: globals.c,v 1.19 2003/08/07 09:37:02 agc Exp $	*/
 
 /*

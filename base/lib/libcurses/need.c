@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* $Header: /newbits/usr/lib/libcurses/RCS/need.c,v 1.2 91/09/30 13:06:39 bin Exp Locker: bin $
  *
  *	The  information  contained herein  is a trade secret  of INETCO

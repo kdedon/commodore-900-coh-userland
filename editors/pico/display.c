@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #if	!defined(lint) && !defined(DOS)
 static char rcsid[] = "$Id: display.c,v 4.14 1993/10/04 16:58:48 mikes Exp $";
 #endif

@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #if	!defined(DOS)
 static char rcsid[] = "$Id: ansi.c,v 4.3 1993/04/15 00:18:07 mikes Exp $";
 #endif

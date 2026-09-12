@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* routines for allocating/freeing colors for use in windows */
 
 #include <malloc.h>

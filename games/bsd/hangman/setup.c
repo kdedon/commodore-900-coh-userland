@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: setup.c,v 1.10 2003/08/07 09:37:22 agc Exp $	*/
 
 /*-

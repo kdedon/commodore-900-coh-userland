@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * Copyright 1989 Phill Everson & Martyn Shortley
  * Copyright 1989 Roberto Biancardi
  *

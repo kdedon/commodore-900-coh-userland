@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * Screen control routines for termcap.
  * A good example of how to use termcap.
  * For more information get

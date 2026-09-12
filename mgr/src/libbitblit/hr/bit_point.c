@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * Set, clear or complement one pixel.
  */
 #include "screen.h"

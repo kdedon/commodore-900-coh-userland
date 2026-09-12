@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* tinytcap.c */
 
 /* This file contains functions which simulate the termcap functions, but which

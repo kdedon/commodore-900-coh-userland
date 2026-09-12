@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: prop.c,v 1.9 2004/01/27 20:30:30 jsm Exp $	*/
 
 /*

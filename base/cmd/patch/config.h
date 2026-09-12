@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* config.h -- COHERENT/Z8001 configuration for patch.
  *
  * Hand-written in place of the Configure-generated file: the target is

@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  *  This file defines the interface between top and the machine-dependent
  *  module.  It is NOT machine dependent and should not need to be changed
  *  for any specific machine.

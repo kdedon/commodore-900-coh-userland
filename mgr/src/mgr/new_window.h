@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 WINDOW *insert_win();
 int check_window();
 int next_windowset_id();

@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /* simple driver for serial mouse */
 /* Andrew Haylett, 14th December 1992 */
 

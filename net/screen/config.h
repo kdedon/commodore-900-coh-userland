@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * config.h -- COHERENT 3.5 (the 3.2 source tree) / Z8001.
  *
  * Derived from the COHERENT config.h by Hal Snyder (hal@mwc.com), shipped with

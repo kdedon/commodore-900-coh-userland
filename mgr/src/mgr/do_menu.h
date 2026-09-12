@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 int set_slide();
 int set_page();
 struct menu_state *do_menu();

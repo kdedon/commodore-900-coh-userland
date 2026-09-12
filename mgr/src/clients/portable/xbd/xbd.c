@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*********************************************/
 /* you just keep on pushing my luck over the */
 /*          BOULDER        DASH              */

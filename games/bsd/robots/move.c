@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: move.c,v 1.12 2004/08/27 09:07:08 christos Exp $	*/
 
 /*

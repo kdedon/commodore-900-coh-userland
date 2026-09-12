@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 #if defined(DEBUG) || defined(MOVIE)
 /*
  * Copyright (c) 1980 Regents of the University of California.

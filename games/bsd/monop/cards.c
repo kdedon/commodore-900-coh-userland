@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: cards.c,v 1.14 2004/01/27 20:30:30 jsm Exp $	*/
 
 /*

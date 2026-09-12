@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*{{{  m_parse -- parse a line into fields*/
 #ifndef iswhite
 #define iswhite(x)	((x)==' ' || (x)=='\t')

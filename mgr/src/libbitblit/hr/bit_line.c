@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * Draw a line, Bresenham, one pixel at a time.
  *
  * The row step is a plain pointer addition, except for the single step that

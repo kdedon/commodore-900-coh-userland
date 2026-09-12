@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 /*	$NetBSD: dayobjs.c,v 1.9 2003/08/07 09:37:01 agc Exp $	*/
 
 /*

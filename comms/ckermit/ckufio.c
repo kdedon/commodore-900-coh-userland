@@ -1,3 +1,6 @@
+/*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
 char *ckzv = "Unix file support, 4E(038) 24 Jan 89";
 
 /* C K U F I O  --  Kermit file system support for Unix systems */

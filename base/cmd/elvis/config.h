@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * vi configuration file
  * We try to automatically configure to various compilers and operating
  * systems. Extend the autoconf section as needed.
