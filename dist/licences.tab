@@ -129,6 +129,14 @@ lic less           n y y base/cmd/less/version.c             Nudelman        les
 lic patch          n y y base/cmd/patch/patch.c              Larry.Wall      patch, Wall 1986: copy freely, do not make money off it, do not claim authorship
 lic elvis          n y y base/cmd/elvis/COPYING              redistributable elvis 1.4, Kirkendall: freely redistributable in source or executable form, no restrictions stated
 lic pico           n y y editors/pico/pico.h                Washington      pico, University of Washington: any purpose without fee, notice retained, name-use restriction
+# compress(1).  The two sources carry a Swartz-and-Pleban BSD-3-Clause header,
+# and the code under it is neither man's: the file's own comment names Spencer
+# Thomas, Jim McKie, Steve Davies, Ken Turkowski and James Woods, the authors of
+# the 1984 USENET compress.  That lineage carries no grant in this tree, so ship
+# is `?'.  The headers are left as found; correcting another project's copyright
+# claim is not this table's to do.  SHIP IS `?' FOR A HUMAN.
+lic compress-usenet n y ? base/cmd/compress/compress.c   Spencer.W.Thomas  compress(1), Thomas/McKie/Davies/Turkowski/Woods 1984: no grant found, and the header above it names neither author
+
 lic spencer        n y y base/lib/regexp/regexp.c   Toronto         Spencer's regexp, University of Toronto 1986
 lic top            n y y base/cmd/top/COPYING                LeFebvre        top 3.3, LeFebvre: freely redistributable, "this entire comment MUST remain intact"
 lic nawk           n y y base/cmd/nawk/awk.h                 Hirabayashi     nawk, Hirabayashi 1989: any purpose without fee, notice and disclaimer retained
@@ -184,10 +192,11 @@ use archive        mwc-bsd3         csu and libc, which every component links
 use base           mwc-bsd3
 use base           ucb-adv          libcurses, linked by the shell and by make
 
-use runtime        mwc-bsd3
+use runtime        mwc-bsd3         including /bin/{enroll,xencode,xdecode}, whose seven sources are byte-identical to donor/v0.7.3-z8001/cmd/knapsack
 use runtime        ucb-adv          /usr/bin/cut, /usr/bin/more, and libcurses/libterm which most of runtime links
 use runtime        ucb-bsd3
 use runtime        spencer          /usr/bin/more and /usr/bin/less link base/lib/regexp
+use runtime        compress-usenet  /bin/{compress,uncompress,zcat}
 use runtime        gpl1-rcs         /usr/bin/{ci,co,rcs,rlog,ident,rcsdiff,rcsclean,rcsmerge,merge}
 use runtime        sri-harrenstien  partime.c and maketime.c, compiled into every RCS binary by build-rcs.sh
 use runtime        less             /usr/bin/less and /usr/bin/lesskey
@@ -195,7 +204,6 @@ use runtime        patch            /usr/bin/patch
 use runtime        top              /bin/top
 use runtime        nawk             /bin/awk and /bin/nawk
 use runtime        elvis            /usr/bin/{vi,ex,elvis}
-use runtime        no-grant         /bin/{enroll,xencode,xdecode} from cmd/knapsack, which carries no notice of any kind
 use runtime        bellcore-mgr     -src only: the source map's object search reaches mgr/src, so runtime-src carries MGR source that no runtime binary contains
 
 use cpm            mwc-bsd3
@@ -218,8 +226,8 @@ use net-games      ucb-adv          libcurses, which hunt links
 use games          gpl1-screen      -src only: object-search over-reach onto cmd/screen; no games binary is screen
 use games          bellcore-mgr     -src only: object-search over-reach onto mgr/src
 
-use hr             mit-oc           the ZView server, its driver, the desktop catalogs and the icons
-use hr             pleban-bsd3      /usr/hr/bin/hrclip and the clgfx modules the server and its clients link
+use hr             mit-oc           the ZView server, the desktop catalogs and the icons
+use hr             pleban-bsd3      /usr/hr/bin/hrclip, the clgfx modules the server and its clients link, and /drv/hr
 use hr             mwc-bsd3         the rendering engine the server links, the 16 raw FM fonts the .hf faces are generated from (they carry no notice of their own and their origin is unestablished; they are byte-identical to the COHERENT 0.7.3 Z8001 holding, which is the material this row covers), csu and libc
 
 use hr-clients     mit-oc
