@@ -78,13 +78,25 @@
 lic mwc-bsd3       n y y LICENSE                        Swartz          MWC COHERENT, BSD-3-Clause (Swartz, 2015)
 
 # This repository's own new work, under the MIT licence its LICENSE states for
-# code written for this project: the ZView window server, its driver, its
-# desktop applications, the Vellum drawing suite, and the distribution's own
+# code written for this project: the ZView window server and its driver, the
+# desktop applications, the parts of the Vellum suite written here (velcmd,
+# veldlg, velgraph and the clgfx draw library), and the distribution's own
 # scripts and /etc files, which are the whole of what login-text and
 # login-graphical install.  MIT obliges no source and does oblige the notice --
 # "the above copyright notice and this permission notice shall be included in
 # all copies" -- which every package carries as its own LICENSE.
-lic mit-oc         n y y LICENSE                        MIT.License     this repository's own work (ZView, Vellum, the distribution's /etc files), MIT
+lic mit-oc         n y y LICENSE                        MIT.License     this repository's own work (ZView, the parts of Vellum written here, the distribution's /etc files), MIT
+
+# Michal Pleban's contribution to the hi-res desktop, under the BSD 3-Clause
+# licence the SPDX line in each of his files states: the clgfx widget, dialog,
+# scrollbar, selection and window-list modules, the Vellum library and all of
+# the Vellum tools but velgraph, the hrgui headers, hrclip, zmaze and zpuzzle.
+# zdlg and the standalone lock, pty and graphics tests are his too; they are
+# built by testing.list, which is not a component and packages nothing.  Like
+# mwc-bsd3 this obliges no source and does oblige the notice in a binary
+# redistribution, and the three-clause text every package carries is the one
+# in this repository's LICENSE.
+lic pleban-bsd3    n y y LICENSE                        Redistribution  hi-res desktop code by Michal Pleban, BSD-3-Clause
 
 # GPL.  THE VERSION IS NOT BOILERPLATE AND WAS CHECKED PER TREE.  All three
 # oblige source; two of them are version ONE, which is not what this project
@@ -207,9 +219,11 @@ use games          gpl1-screen      -src only: object-search over-reach onto cmd
 use games          bellcore-mgr     -src only: object-search over-reach onto mgr/src
 
 use hr             mit-oc           the ZView server, its driver, the desktop catalogs and the icons
+use hr             pleban-bsd3      /usr/hr/bin/hrclip and the clgfx modules the server and its clients link
 use hr             mwc-bsd3         the rendering engine the server links, the 16 raw FM fonts the .hf faces are generated from (they carry no notice of their own and their origin is unestablished; they are byte-identical to the COHERENT 0.7.3 Z8001 holding, which is the material this row covers), csu and libc
 
 use hr-clients     mit-oc
+use hr-clients     pleban-bsd3      /usr/hr/bin/{zmaze,zpuzzle} and the clgfx modules every client links
 use hr-clients     mwc-bsd3         csu, libc, libm and the rendering engine every client links
 
 use hostfs         mwc-bsd3
@@ -245,5 +259,6 @@ use toolchain      mwc-bsd3         the Z8001 compiler, assembler, linker and li
 use toolchain-1985 no-grant         the twelve June 1985 Mark Williams binaries the reference disk shipped with -- cc, ccx, db, l, nld, cpp, cc0, cc1, cc2, cc3, scrts0.o, slibc.a -- for which no repository here holds source or terms.  Predating the 2015 COHERENT source release, so mwc-bsd3 does not reach them; this is why the component publishes no `src' kind.
 
 
-use vellum         mit-oc           the suite, its library and the stencil and example drawings
+use vellum         mit-oc           velcmd, veldlg, velgraph and the stencil and example drawings
+use vellum         pleban-bsd3      every binary but velgraph, and libvellum.a, which all of them link
 use vellum         mwc-bsd3         csu and libc
