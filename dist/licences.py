@@ -1,26 +1,11 @@
 #!/usr/bin/env python3
-"""licences.py -- collect the release's licence texts from dist/licences.tab.
+"""licences.py -- collect licence texts declared by dist/licences.tab.
 
     python3 dist/licences.py --collect <dir>
 
-WHAT THIS IS FOR.  A licence obligation is discharged by handing the terms over
-with the thing they govern.  The thing handed over is the release, so the texts
-are collected ONCE into a directory beside it: an index.tab naming every regime
-and which component is under it, and beside that each regime's licence text,
-verbatim, as the repository that holds the code holds it.
-
-A source package needs nothing from here.  It carries the source root of every
-program it ships, so each program's own COPYING travels beside the code it
-governs, which is where upstream put it and where a reader looks for it.
-
-dist/licences.tab is the register those rows are read from -- one row per
-component per licence regime, with the source and notice obligations each
-carries.  A `?' in the `ship' column is a recorded judgement, unsettled and
-treated conservatively; it travels into the package as it stands.
-
-The texts are copied, never transcribed: a transcription would be this project's
-words about somebody else's terms.  Nothing here is legal advice.
-"""
+Copy verbatim texts and an index beside the component archives.  Source
+packages also carry each program's own notices.  Preserve unresolved "?"
+shipping assessments from the table."""
 import os
 import sys
 

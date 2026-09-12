@@ -1,33 +1,14 @@
 #!/usr/bin/env python3
-"""component.py -- this repository's file groups, resolved into packages.
+"""component.py -- resolve component file groups for packaging.
 
     python3 hostbuild/component.py components
     python3 hostbuild/component.py component <name> <bin|src|man|dev>
     python3 hostbuild/component.py packages
 
-A COMPONENT is a dist/lists/*.list carrying a `package' line: a named group of
-the files this repository ships.  The list is the group's `bin' half, and the
-other kinds are derived from it -- the source that discharges each binary's
-licence, the manual pages for its programs, the compile-time interface.
-
-WHY THE PRODUCER RESOLVES THEM.  This repository is the one that knows which
-binaries it built, which sources they were compiled from (hostbuild/ulsrcmap.py)
-and which manual pages it tracks for them.  A consuming repository that
-re-derived any of that would be keeping a second, drifting copy of a fact only
-the build has.  So the groups are resolved and packed here, and what crosses the
-boundary is the finished archive.
-
-The resolved set is emitted as text, one entry per line, because the format's
-other intended consumer is an on-box installer walking it with sh and awk:
-nothing may become the only thing that understands it.
-
-WHERE A PATH IS LOOKED FOR.  Every path in a list is relative to this
-repository's root (dist/FORMAT in commodore-900-dist).  A few lists name a
-file another repository publishes -- the kernel's console drivers, the
-toolchain's Z8001 cc -- so the root is a SEARCH PATH: this repository first,
-then the checkouts named in $C900_OSPATH.  A component whose entries do not all
-resolve refuses by name rather than packing a group with holes in it.
-"""
+A package directive in dist/lists names a component.  Derive its source,
+manual and development packages from the runtime list and build source map.
+Resolve paths in this repository first, then C900_OSPATH, kernel and toolchain.
+Emit tab-separated entries; refuse unresolved required files."""
 import os
 import re
 import subprocess

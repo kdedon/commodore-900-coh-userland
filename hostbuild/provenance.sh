@@ -1,34 +1,7 @@
-# provenance.sh -- shared build-provenance stamping, for `.' not for exec.
-#
-# Several builds share one filesystem namespace on one machine, so an
-# artifact's identity is not implied by its path -- and an artifact built
-# from uncommitted edits cannot be reproduced from any commit.  A stamp makes
-# that self-announcing.
-#
-# A whole-tree `git status --porcelain' is useless as an alarm here: the tree
-# normally carries uncommitted files belonging to other work, so a DIRTY flag
-# that counts all of them is on permanently, and a warning that is always on
-# is read as decoration.  So every stamp records TWO dirt counts:
-#
-#   dirty     the whole worktree             -- context, never an alarm
-#   dirtysrc  ONLY the paths that were compiled into this artifact -- the alarm
-#
-# `dirtysrc' is what makes the line worth reading: it is nonzero exactly when
-# the artifact cannot be reproduced from any commit.  Callers pass the scope
-# (paths relative to the repo root) that actually feeds the thing they built.
-#
-# Usage:
-#	. "$HERE/provenance.sh"
-#	prov_write <stampfile> <kind> [scope-path ...] [-- k=v ...]
-#	prov_header <label> [stampfile]     # prints; loud FIRST LINE if dirtysrc>0
-#	prov_get <stampfile> <key>
-#
-# A stamp is `key=value' lines, one per line, values free of newlines.
+# provenance.sh -- build identity and freshness records; source this file.
+# Stamps identify source, artifacts and dependency builds.
 
-# prov_repo [dir]: the git worktree containing <dir>, falling back to the
-# caller's cwd.  The fallback matters: a stamp may legitimately be written to a
-# scratch path outside the tree, and the tree it should NAME is still the one
-# the build is running in.
+# prov_repo [dir] -- git worktree containing dir, or the current worktree.
 prov_repo() {
 	git -C "${1:-.}" rev-parse --show-toplevel 2>/dev/null ||
 	git rev-parse --show-toplevel 2>/dev/null
@@ -114,15 +87,8 @@ prov_get() {
 	sed -n "s/^$2=//p" "$1" | head -1
 }
 
-# prov_header <label> [stampfile] -- one or two lines describing what is about
-# to be used.  If the stamp says the artifact was built with uncommitted edits
-# in its OWN source, the warning is the FIRST line printed, before any result,
-# so it cannot be discovered three lanes later.
-#
-# Returns 0 clean, 1 DIRTY, 2 NO STAMP.  The two are different findings and a
-# caller must be able to treat them differently: dirty is a caveat on a result
-# that is still a result, while an artifact with no stamp at all has no known
-# origin and is the thing a consistency check should refuse.
+# prov_header <label> [stampfile] -- print build identity.
+# Return 0 for clean source, 1 for dirty source, 2 for a missing stamp.
 prov_header() {
 	_ph_label=$1; _ph_f=${2:-}; _ph_rc=0
 	if [ -n "$_ph_f" ] && [ -f "$_ph_f" ]; then
@@ -164,34 +130,15 @@ prov_now() {
 	unset _pn_label _pn_root _pn_h _pn_d _pn_s
 }
 
-# prov_id <file> -- the content identity of a build artifact.  sha1 of the bytes,
-# short.  Used as the KERNEL LINK ID: `ld -k' bakes absolute kernel addresses
-# into every loadable driver, so a driver is only valid against the exact
-# kernel.out image it was linked from, and content is the only honest name for
-# that -- an mtime says when, not which.
+# prov_id <file> -- first 12 SHA-1 digits, or none if absent.
+# Kernel link identity must follow bytes because drivers bind absolute addresses.
 prov_id() {
 	[ -f "$1" ] || { echo none; return 0; }
 	sha1sum "$1" 2>/dev/null | cut -c1-12
 }
 
-# prov_srcid <tree> [scope paths...] -- the SOURCE identity of a build: WHICH
-# SOURCE was compiled, not which bytes came out.  12 hex, or `unknown' when
-# <tree> is not a git worktree (an unpacked release has no source to name, and
-# its stamp's recorded id stands on its own).
-#
-# The output bytes cannot serve as this id.  Two builds of the compiler from
-# one tree into two build directories differ, and differ ONLY there: the
-# staging path is mapped into the debug info and the build-id note follows it.
-# A content id would report every lane's private build of identical source as a
-# different compiler -- an alarm on the normal case.  It is also the wrong
-# question.  A compiler is the same compiler wherever it was built, and what a
-# lane holding a bad object needs is which source to go and read.
-#
-# HEAD alone is not enough either: this tree is normally dirty in scope, and a
-# bare commit id would call two lanes' different edits one compiler.  So the id
-# covers uncommitted content too -- the diff against HEAD, plus the bytes of
-# untracked files.  Scope is the paths that were compiled in, as everywhere
-# else here: a change outside it did not change the compiler.
+# prov_srcid <tree> [scope paths...] -- hash HEAD and uncommitted changes
+# in scope, including untracked file contents.  Return unknown outside git.
 prov_srcid() {
 	_pi_t=$1; shift
 	git -C "$_pi_t" rev-parse HEAD >/dev/null 2>&1 || { echo unknown; return 0; }
@@ -205,28 +152,9 @@ prov_srcid() {
 	unset _pi_t
 }
 
-# prov_scopeid <tree> [scope paths...] -- the CONTENT identity of a scope: did
-# the source that feeds this artifact change, committed or not.  12 hex, or
-# `unknown' when <tree> is not a git worktree.
-#
-# NOT prov_srcid, and the difference is the whole point.  prov_srcid folds in
-# `rev-parse HEAD', so ANY commit anywhere in the repository moves it -- a
-# README, a makefile, another lane's program.  Across a repository boundary that
-# is fatal to the alarm: four lanes commit to the userland all afternoon, and an
-# id that moved on every one of them would report a freshly packed image as
-# stale before it finished writing.  An alarm that is always on is read as
-# decoration, which is the same objection this file's header makes to a
-# whole-tree dirty flag.
-#
-# So the commit is not in it.  What is in it is the CONTENT of the scope: the
-# blob ids git records for the tracked files in it, plus uncommitted changes to
-# them, plus the bytes of untracked files in it.  Two trees at different commits
-# whose scope content is identical have the same id, which is exactly the claim
-# an artifact's stamp should be making.
-#
-# prov_srcid keeps its callers (prov_tc_record) unchanged: the compiler's id is
-# recorded by the toolchain repository's own copy of this file, and both sides of
-# that comparison have to compute it the same way.
+# prov_scopeid <tree> [scope paths...] -- hash the scoped HEAD entries,
+# working diff and untracked contents.  Exclude the commit id so unrelated
+# commits do not invalidate a published artifact.
 prov_scopeid() {
 	_pj_t=$1; shift
 	git -C "$_pj_t" rev-parse --git-dir >/dev/null 2>&1 || { echo unknown; return 0; }
@@ -241,32 +169,10 @@ prov_scopeid() {
 	unset _pj_t
 }
 
-# prov_tc_record <toolchain-build-dir> <record-file> <id-file> [shape] -- record
-# WHICH COMPILER this build tree is using, and leave its identity somewhere the
-# build system can depend on.  Always returns 0: this reports, it does not
-# decide.
-#
-# The compiler is a build INPUT.  When an input changes, what was built from it
-# is out of date and make rebuilds it -- so <id-file> holds the compiler's
-# source id and nothing else, and every target compiled with the toolchain
-# names it as a prerequisite.  A changed compiler then rebuilds exactly what
-# depends on it, silently and with no step for anyone to remember.
-#
-# <id-file> is rewritten ONLY when the value differs.  Rewriting it every run
-# would make its mtime move every run, and every build would relink -- a
-# permanent rebuild in place of a permanent question, which is no better.
-# <record-file> carries the full human-readable record and is rewritten every
-# time; nothing depends on it, so its mtime is free to move.
-#
-# <shape> is `checkout' (the default) or `release X.Y.Z'.  A release is pinned
-# on purpose and its source tree is not on this machine, so the staleness
-# comparison is not run for one: it would report every pinned release as stale
-# the moment a checkout beside it moved on.
-#
-# STALE -- the published compiler is behind its own source -- is still worth
-# saying, because the fix a lane is looking for may be in the tree and not in
-# the compiler.  It is said and not enforced: the remedy is a build in ANOTHER
-# repository, which this one cannot run for you and should not stop for.
+# prov_tc_record <build-dir> <record-file> <id-file> [shape]
+# Record compiler identity; update id-file only when it changes.
+# Report stale checkout builds; release builds use their recorded identity.
+# Always return 0.
 prov_tc_record() {
 	_tk_b=$1; _tk_rec=$2; _tk_idf=$3; _tk_shape=${4:-checkout}
 	_tk_s="$_tk_b/z8001/.provenance"
@@ -319,41 +225,10 @@ prov_tc_record() {
 	return 0
 }
 
-# prov_part_check <label> <stamp> <record> <shape> <fix> -- the same two
-# questions prov_tc_record asks about the compiler, asked about a PART BUILT IN
-# ANOTHER REPOSITORY: the kernel, and the userland.  Returns 0 to proceed, 1 to
-# stop; the caller stops, because a sourced file must not decide that for it.
-#
-# An image is assembled out of artifacts this repository cannot build and must
-# not try to.  That leaves exactly two ways for it to be wrong and both are
-# silent:
-#
-#   MISSING    the producer is checked out but has published nothing (or has
-#              published half of it).  `make' cannot see this as a missing
-#              prerequisite, because the prerequisite is in a tree it has no
-#              rule for -- so without this check the packer either fails deep
-#              inside content resolution or, worse, packs whatever an earlier
-#              build left behind.  <fix> is the command to run, in the
-#              repository that owns it.
-#
-#   STALE      the published artifact is behind its own source.  This is the
-#              one that will keep happening: four lanes edit the userland while
-#              an image is being packed, and a binary built an hour ago is what
-#              a pack picks up whether or not the fix it is missing has landed.
-#              Committed or not makes no difference to the image, so the
-#              comparison is over prov_srcid, which moves when uncommitted
-#              content moves.
-#
-# A release has no source tree on this machine, so only the identity half
-# applies to it -- running the staleness half would report every pinned release
-# as stale the moment a checkout beside it moved on.
-#
-# The identity is RECORDED either way, in <record> and (by the caller) in the
-# image's own stamp, so that a packed image can answer "which kernel, which
-# userland" without being taken apart.
-#
-# C900_PART_ACCEPT=1 proceeds and re-records, for the operator who knows --
-# packing an image deliberately against a part whose tree has moved on.
+# prov_part_check <label> <stamp> <record> <shape> <fix>
+# Refuse missing or stale dependency builds and record accepted identities.
+# Release builds skip source freshness checks.  A nonempty C900_PART_ACCEPT
+# allows a stale build.  Return 0 to proceed, 1 to stop.
 prov_part_check() {
 	_pc_l=$1; _pc_s=$2; _pc_rec=$3; _pc_shape=${4:-checkout}; _pc_fix=$5
 	if [ ! -f "$_pc_s" ]; then

@@ -26,12 +26,8 @@ done
 name="$1"; shift
 DIR="$OS/base/cmd/${src:-$name}"
 LOG="$HERE/build/$name.log"
-# getopt, strtok, strchr, strtoul, memcmp, memcpy, memset and strcasecmp all
-# come from libc-z8001.a.  They used to be named here as SOURCES out of
-# games/lib/src, which made each an object on the link line and bound it in
-# preference to the archive member of the same name -- so this program got a
-# 65-line shim getopt where the library holds the de-ANSI'd 4.2 MWC one.
-# games/lib/src now holds only err(3) and fgetln(3), which libc has not got.
+# libc-z8001.a supplies string routines and getopt.
+# games/lib/src supplies err(3) and fgetln(3).
 GLIB=""
 mkdir -p "$BIN"; : > "$LOG"
 

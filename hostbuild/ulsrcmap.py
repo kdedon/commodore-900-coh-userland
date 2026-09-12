@@ -1,84 +1,13 @@
 #!/usr/bin/env python3
-"""ulsrcmap.py -- fold the build's own record of what it compiled into the
-SOURCE MAP this repository publishes: build/.ulsrcmap, one line per program.
+"""ulsrcmap.py -- fold compiler records into build/.ulsrcmap.
 
     python3 ulsrcmap.py [-o OUT] [-q] [<record>]
 
-`record' defaults to $C900_BUILD_MAP, else build/compiled-programs.log.
-
-WHY THE PRODUCER PUBLISHES THIS.  A binary package creates licence obligations
-(GPLv1 rcs, GPLv2 gzip and screen, GPLv3+ ttycity, GPL archive tools) and a
-source package is how they are discharged: for every executable
-shipped, the complete corresponding source, the recipe that compiles it and the
-licence texts governing it.  The assembling repository cannot work out which
-sources built which program and must not guess -- one directory is not one
-program here (cmd/diff builds diff and /usr/lib/diffh; cmd/knapsack builds
-enroll, xencode and xdecode and no `knapsack' at all), half the programs are
-linked from objects a separate invocation compiled, and MGR is built by its own
-Makefile in a tree of two thousand files.  Only the compile driver knows, so the
-compile driver records it (host/buildlog.sh, c900_buildmap) and this folds the
-record.
-
-WHAT A LINE NAMES, and why more than the .c files:
-
-  a SMALL contributing directory,        base/cmd/sh, games/bsd/rogue,
-  whole                                  archive/rcs: a directory that holds
-                                         one program's source holds the rest of
-                                         what that source needs and states --
-                                         the headers, the yacc grammar (cmd/find
-                                         has no .c file at all, only find.y), the
-                                         vendor's own makefile, the readme, the
-                                         licence text.  Named as a directory, so
-                                         the consumer walks it and nothing has to
-                                         be enumerated here or kept in step.
-  a LARGE one, by the compiled files     base/cmd holds five hundred unrelated
-  only                                   single-file commands and mgr two
-                                         thousand files; naming either would put
-                                         the whole tree in every package that
-                                         drew one file from it.  SMALL is fewer
-                                         than 64 files counted recursively -- a
-                                         per-program source directory is small,
-                                         and a tree of unrelated programs is not.
-  the recipe chain                        hostbuild/build-*.sh, recorded by
-                                         the build ($C900_BUILD_RECIPE): the
-                                         script that compiled and linked this
-                                         program.
-  the build's ENTRY POINT, marked `+'    hostbuild/Makefile, which selects the
-                                         targets and computes their dependency
-                                         lists.  A source package owes it -- it
-                                         is part of the recipe -- but no program
-                                         is compiled from it, and no stamp here
-                                         names it as a prerequisite, so editing
-                                         it rebuilds nothing and changes no
-                                         binary.  See THE `+' MARKER below.
-  the headers, libc and csu               the headers every program compiles
-                                         against and the C library and startup
-                                         code every one of them is statically
-                                         linked with.  A statically linked GPL
-                                         program's corresponding source includes
-                                         them; they are built from the TOOLCHAIN
-                                         repository's src/{include,libc,csu}, so
-                                         those are what is named.
-
-THE `+' MARKER: a path may be written `+<path>', which says it belongs in this
-program's complete corresponding source and the program is NOT BUILT FROM it.
-The distinction exists because the map answers two questions, and only one of
-them wants the same set.  A -src package wants everything the licence obliges,
-so it takes marked and unmarked paths alike and the marker costs it nothing.
-The other question is "is this staged binary older than a source it was built
-from" (commodore-900-dist, dist.py source_ages), and an unmarked-only answer
-is the one worth reading: a program is behind a source when rebuilding from that
-source would produce a different program.  Naming every program every time the
-entry point is touched is a report that no longer distinguishes the fix nobody
-rebuilt from an afternoon's editing, which is the same as no report.
-
-OVER-INCLUSION IS SAFE HERE AND UNDER-INCLUSION IS NOT, which decides every
-close call: a package carrying a source file the program did not need is still a
-true statement about what was shipped, and one missing a file is not.  So the
-record is read as a UNION across builds (it is append-only), an archive on a
-link line pulls in every object logged beside it, and a path that no longer
-exists is dropped rather than made to fail.
-"""
+Read C900_BUILD_MAP or build/compiled-programs.log by default.  Union records
+across builds and include linked objects, recipes, headers, libc and startup
+sources.  Carry small source directories whole; list compiled files from large
+ones.  Prefix paths needed for source packages but not binary freshness with
+"+".  Drop missing local paths; retain external toolchain source requirements."""
 
 import os
 import sys

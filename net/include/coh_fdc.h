@@ -1,25 +1,9 @@
 /*
- * coh_fdc.h -- the inet daemon's reply-descriptor cache.
+ * Reply-descriptor cache for the inet daemon.
  *
- * A channel is two FIFOs.  The daemon must watch the request FIFO all the time,
- * because that is where the next request appears and select() needs a
- * descriptor for it, but it needs the reply FIFO only for as long as a write to
- * it takes.  Holding both costs two of the daemon's twenty descriptors per
- * channel and puts the machine's whole connection count at eight; holding the
- * request FIFO and reaching the reply FIFO through this cache costs one, and
- * doubles it.
- *
- * The cache does hold reply descriptors while there are spare ones -- a held
- * descriptor is what makes a reply a single write() rather than open/write/
- * close -- but every one of them is reclaimable, so a descriptor is never
- * unavailable for a new channel merely because an idle channel is sitting on
- * it.  Least recently used goes first, so the channels carrying traffic keep
- * theirs and the idle ones pay the open.
- *
- * The limit is measured, not assumed: fdc_room() asks the kernel how many
- * descriptors this process can still get (dup until it refuses).  Nothing here
- * knows NOFILE, so a daemon started with fewer descriptors, or one that has
- * opened /dev/eth ports, gets the right answer rather than a compiled-in one.
+ * Keep request FIFOs open for select().  Cache reply descriptors while
+ * there is room, evicting the least recently used when another is needed.
+ * Measure available descriptors with dup() when admitting a channel.
  */
 #ifndef COH_FDC_H
 #define COH_FDC_H

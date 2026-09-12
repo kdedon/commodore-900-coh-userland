@@ -1,15 +1,8 @@
 /*
-coh_fdc.c -- the inet daemon's reply-descriptor cache.
-
-See ../include/coh_fdc.h for what this is for.  Nothing here includes the
-stack's headers: the whole file is descriptors and paths, so it compiles on its
-own and the host harness (../test/hostcheck) exercises this source verbatim
-against a real descriptor limit.
-
-open/close/dup are left to K&R's implicit int declaration on purpose -- a
-declaration here would conflict with the host <fcntl.h> prototypes the harness
-compiles against.
-*/
+ * Cache reply FIFO descriptors for the inet daemon.
+ * See coh_fdc.h for the interface.  The host checks compile this file
+ * without the stack headers.
+ */
 
 #include "coh_fdc.h"
 
@@ -27,15 +20,9 @@ static long fdc_stamp;
 static int fdc_ref = 1;		/* a descriptor to dup when probing	*/
 
 /*
- * How many more descriptors this process can get.
- *
- * Asked of the kernel rather than worked out from NOFILE: the daemon does not
- * know how many descriptors it was started with, and the /dev/eth ports open
- * after this file is initialised, so an arithmetic answer would be wrong in
- * both directions.  dup() until it refuses, then hand them all back.
- *
- * Only the accept path asks, so the dozen-odd system calls this costs are paid
- * once per new channel and never per request.
+ * Count free descriptors by dup(), then close the probes.
+ * Measure only when admitting a channel; inherited and device descriptors
+ * make a fixed NOFILE calculation unreliable.
  */
 static int
 fdc_free()
@@ -55,7 +42,9 @@ fdc_free()
 	return got;
 }
 
-/* Descriptors the cache is holding, all of which it can give back. */
+/*
+ * Count cached descriptors available for reclamation.
+ */
 static int
 fdc_held()
 {
@@ -93,6 +82,9 @@ int except;
 	return 1;
 }
 
+/*
+ * Initialize the cache and the descriptor used for free-slot probes.
+ */
 void
 fdc_init(reffd)
 int reffd;
@@ -110,6 +102,9 @@ int reffd;
 	fdc_ref= (reffd >= 0) ? reffd : 1;
 }
 
+/*
+ * Register a channel and its reply FIFO, releasing any cached descriptor.
+ */
 void
 fdc_hold(chan, path)
 int chan;
@@ -132,14 +127,8 @@ char *path;
 }
 
 /*
- * The channel is over: give the descriptor back and REMOVE THE FIFO.
- *
- * The name has to survive until here because fdc_fd() reopens it by path
- * whenever the descriptor has been reclaimed, so this is the first moment
- * nothing can want it again.  Removing it is not tidiness: a client that exits
- * rather than closing its socket never runs ichan_close(), so the pair of
- * inodes it made in /tmp was abandoned.  The daemon is the one party that
- * always outlives the channel, so it is the one that can be sure.
+ * Close the cached descriptor and unlink the channel's reply FIFO.
+ * The daemon owns cleanup even when the client exits without closing.
  */
 void
 fdc_forget(chan)
@@ -157,18 +146,8 @@ int chan;
 }
 
 /*
- * A descriptor open on `chan's reply FIFO, or -1 if the channel cannot be
- * answered at all.
- *
- * One eviction is enough to make room, because an eviction frees exactly the
- * one descriptor an open needs; a second failure is the path being gone, not
- * the table being full, and retrying then would close every held descriptor in
- * pursuit of a FIFO that no longer exists.
- *
- * O_RDWR, not O_WRONLY: the client opens both FIFOs before it announces itself
- * and holds them for as long as it lives, so there is a reader either way, but
- * being its own reader is what stops a reply to a client that has just died
- * from raising SIGPIPE in the daemon.
+ * Return a reply descriptor, or -1.  Evict at most one cached descriptor
+ * to make room.  O_RDWR prevents SIGPIPE if the client has exited.
  */
 int
 fdc_fd(chan)
