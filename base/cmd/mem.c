@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2026 OpenCoherent contributors.
+ * Copyright (c) 2026 Michal Pleban.
+ * Copyright (c) 2026 Kevin Dedon.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
