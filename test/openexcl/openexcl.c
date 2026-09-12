@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * openexcl.c -- O_EXCL must exclude while a file is open, and only then.
  *
  * open(2) with O_CREAT|O_EXCL marks the IN-CORE inode IFEXCL, and every later

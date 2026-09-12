@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * gfxhooks.c - the libhrgfx "divorce" shim (GUI.md sec 6).
  *
  * Definitions for the few symbols the rendering engine used to import from the

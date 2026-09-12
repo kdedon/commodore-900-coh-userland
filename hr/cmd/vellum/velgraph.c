@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * velgraph.c - x/y data -> a vellum drawing (VELLUM.md sec. 37): the
  * second user of this program was always make(1); the third is the
  * pipeline that ends in numbers.

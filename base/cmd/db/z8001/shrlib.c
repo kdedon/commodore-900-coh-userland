@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
 #include <stdio.h>
 #include <types.h>
 #include <machine.h>

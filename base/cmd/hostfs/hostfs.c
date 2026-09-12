@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * hostfs -- mount, sync and probe the host pass-through disk
  * (DEVELOPMENT DISTS ONLY; see sys/drv/hostfs.c for the device).
  *

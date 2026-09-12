@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * A debugger.
  * Instruction decoder for the Z8000.
  */

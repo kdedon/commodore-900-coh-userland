@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zwmem.c - dock widget: free user memory.
  *
  * The minimal cut of zmon's memory pane (which is itself /bin/mem's walk):

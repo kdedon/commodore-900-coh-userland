@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * psipstub.c -- a FAKE IP stack on the psip control channel, for proving that
  * psipping(8) can tell a correct stack from a broken one.
  *

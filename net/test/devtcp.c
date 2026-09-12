@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * devtcp -- the /dev/tcp shim, exercised the way the Minix net clients use it.
  *
  *	devtcp <host> <port>

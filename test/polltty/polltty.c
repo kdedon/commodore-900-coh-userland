@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * polltty.c -- can poll(2) wait on a terminal?
  *
  * Without a c_poll entry point in the tty driver, dpoll() answers POLLNVAL

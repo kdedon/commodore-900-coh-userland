@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * syslogd -- read log records from /dev/log and file them where
  * /etc/syslog.conf says.
  *

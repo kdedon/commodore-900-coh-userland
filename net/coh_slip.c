@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * coh_slip.c -- SLIP (RFC 1055) daemon for COHERENT/Z8001.
  *
  * Bridges a raw serial line to the inet stack's psip (point-to-point serial IP)

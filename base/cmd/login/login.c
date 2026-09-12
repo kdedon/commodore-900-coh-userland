@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 static char _version[]="login version 3.2.1";
 /*		       
  * Rec'd from Lauren Weinstein, 7-16-84.
@@ -372,24 +377,8 @@ ok:	alarm(0);	/* turn off login alarm timeout */
 		close(fd);
 	}
 	/*
-	 * Run the shell named in the last field of the passwd entry, with the
-	 * first character of its argv[0] set to `-' so that it knows it is a
-	 * login shell and reads the profiles (Lexicon, login: "As its last
-	 * action, login invokes the user's shell, as set in the last field of
-	 * the /etc/passwd entry ... it does so with the first character of its
-	 * argv[0] set to `-'").
-	 *
-	 * This used to exec /bin/sh unconditionally, passing "+sh" when the
-	 * passwd field named anything else, so the field only ever chose a
-	 * value for $SHELL.  Every account got /bin/sh whatever it asked for:
-	 * a user given /usr/bin/rsh, the RESTRICTED shell, got an unrestricted
-	 * one, and the `sync' and `who' accounts -- the passwd field's other
-	 * documented use, a program in place of a shell -- ran neither.
-	 *
-	 * A shell that cannot be executed falls back to /bin/sh rather than
-	 * refusing the login, because the passwd field is the one part of an
-	 * entry that no earlier check can validate, and a typo in it must not
-	 * be able to lock an account (or, for root, a machine) out.
+	 * Run the passwd shell with a login argv[0].  If it cannot execute,
+	 * fall back to /bin/sh.
 	 */
 	{
 		register char *cp, *bp;

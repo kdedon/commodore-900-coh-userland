@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
  * badscan.c
  * 2/7/91
  * Usage: badscan [-v] [-o proto] [-b boot] device count

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * acceptmany.c -- can a server accept more than one connection?
  *
  *	acceptmany [port [clients]]	default port 7030, 3 clients

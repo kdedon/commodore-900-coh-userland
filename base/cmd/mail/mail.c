@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 static	char	*rcsrev = "$Revision: 1.1 $";
 static	char	*rcshdr =
 	"$Header: /newbits/bin/mail/mail.c,v 1.1 91/02/04 10:42:40 bin Exp $";

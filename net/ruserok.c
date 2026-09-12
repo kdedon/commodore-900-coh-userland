@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * iruserok / ruserok -- the .rhosts and /etc/hosts.equiv check that decides
  * whether a remote user may act as a local one without a password.
  *

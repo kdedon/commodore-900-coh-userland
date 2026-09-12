@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
 f1575(a, b)
 int a, b;
 {

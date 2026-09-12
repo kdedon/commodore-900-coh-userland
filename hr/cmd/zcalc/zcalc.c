@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zcalc.c - a ZView desk calculator.
  *
  * A fixed-size window: a display box over a 4x5 grid of buttons drawn with

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * fifosig.c -- does a CAUGHT SIGNAL during a blocking FIFO read corrupt the
  * kernel's reader/writer counts?
  *

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * ichanprobe.c -- bisect the inet daemon's control-channel handshake.
  *
  * ifconfig dies with "Bad system call -- core dumped" before printing anything,

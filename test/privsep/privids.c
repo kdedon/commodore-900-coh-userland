@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * privids -- report the four identities the kernel keeps for a process, and
  * ask the kernel's own permission question about a named file.
  *

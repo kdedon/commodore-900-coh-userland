@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * mkkmem.c -- forge a /dev/kmem image for top(1) and ps(1) to walk.
  *
  * top reads a namelist from a kernel image, seeks /dev/kmem to the low half

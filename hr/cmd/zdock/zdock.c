@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zdock.c - the desktop dock: the icon bar along the top of the screen.
  *
  * This is the "shell" half of the desktop's kernel-and-shell split.  The

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * netdbtest.c -- the lookups and socket queries a BSD net program does first.
  *
  *	netdbtest

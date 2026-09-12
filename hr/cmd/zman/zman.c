@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zman.c - a ZView manual-page browser.
  *
  * The pages it shows are the pre-formatted catman pages this system installs

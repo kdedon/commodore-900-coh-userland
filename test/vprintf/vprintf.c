@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * vprintf.c -- is the refactored formatter real?
  *
  * libc/stdio/printf.c was split so that printf, fprintf, sprintf, vfprintf,

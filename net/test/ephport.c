@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * ephport.c -- can a server let the STACK choose its port, and then find out
  * which one it got?
  *

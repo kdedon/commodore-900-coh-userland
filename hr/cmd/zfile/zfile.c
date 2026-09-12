@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zfile.c - a ZView file manager.
  *
  * A browser that also opens files in the editor -- it does not RUN programs

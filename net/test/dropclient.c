@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * dropclient.c -- open connections and lose them the way a crashed client
  * does: no close(2), no protocol shutdown, the descriptors torn down by
  * process exit alone.

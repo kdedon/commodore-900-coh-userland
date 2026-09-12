@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * pollfifo.c -- does select() on a named FIFO actually block and then wake?
  *
  * This is the exact mechanism the inet daemon's rendezvous depends on: the

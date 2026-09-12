@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
 **	hrglyph -- load a character set into the hi-res console's loadable bank
 **	and show it, then check the driver's answers at the edges of the
 **	interface.  Nothing but ordinary bytes are written afterwards: the

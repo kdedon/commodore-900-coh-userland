@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * sgtty.h -- the TARGET's <sgtty.h>, trimmed, so that tests/pty/pty.c compiles
  * here verbatim against the definitions it will really meet.
  *

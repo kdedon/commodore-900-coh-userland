@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * pollhup.c -- does poll(2) report EOF on a pipe nobody can write to?
  *
  * POSIX: a pipe whose every write end has been closed reports POLLHUP, and a

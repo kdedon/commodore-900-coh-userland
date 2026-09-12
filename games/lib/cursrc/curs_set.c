@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * curs_set -- cursor visibility, for the BSD-games ports.
  *
  * The in-tree libcurses is 4.x BSD curses plus INETCO's System V additions;

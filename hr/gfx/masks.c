@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 int HALF_TONE[] = { 0x3333, 0xcccc, 0x3333, 0xcccc,
                     0x3333, 0xcccc, 0x3333, 0xcccc,
                     0x3333, 0xcccc, 0x3333, 0xcccc,

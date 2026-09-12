@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
  * chmog -- change the mode, owner, and group of files.
  *
  * This program was done from the 'chmod', 'chown', and 'chgrp'

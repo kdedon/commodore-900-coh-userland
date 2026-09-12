@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * cpm.c
  * Move files between the Coherent filesystem and the CP/M-8000 drive A:
  * partition (/dev/cpma), dos(1)-style: no kernel mount, the utility walks

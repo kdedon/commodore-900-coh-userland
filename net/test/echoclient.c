@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * echoclient.c -- minimal libsocket exerciser: TCP connect, send, recv.
  * Links against libsocket-z8001.a to prove the whole client path builds.
  *	echoclient 10.0.0.1 7

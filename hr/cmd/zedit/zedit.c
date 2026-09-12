@@ -1,75 +1,17 @@
 /*
- * zedit.c - a ZView plain-text editor client.
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * ZView text editor with a resizable character-cell display.
  *
- * A direct-render client (GUI.md Model A, like zterm): it keeps the document
- * as malloc'd lines, renders through a character-cell diff, and blits glyphs
- * straight to the framebuffer via clgfx.  The window is RESIZABLE
- * (HRF_STRETCH) and opens at the terminal's content size (80x25 cells of the
- * 8 px terminal font plus the scrollbar column), so an editor and a shell
- * tile identically.
- *
- * Layout, top to bottom:
- *   - ONE status line (terminal font): file name, a '*' when the buffer is
- *     modified, and the cursor's row,column -- with a 1 px rule under it;
- *   - below it the scrollable text area, with the common vertical scrollbar
- *     (clgfx/hrsbar.c) on the LEFT edge, exactly as in zterm: the bar is 16 px
- *     = one VRAM word, so the text grid keeps its byte alignment.
- *
- * Commands live in the window menu (wire.h HRM_*): New, Open, Save, Cut,
- * Copy, Paste, Help.  Open and Save put up a modal file-name dialog (hrdlg); Save
- * comes prefilled with the current name.  The window menu's Search entry
- * (wire.h HRM_SEARCH) opens the Find/Replace card -- Find, Replace (one
- * match, two-phase) and All (from the cursor to the end of the buffer).
- * Cut/Copy write the mouse selection
- * to the CLIPBOARD store; Paste inserts the clipboard at the cursor.  The
- * select-drag also publishes the PRIMARY selection on release, and a
- * middle-click E_PASTE inserts PRIMARY at the click -- both system gestures
- * work here exactly as in a terminal.
- *
- * The hi-res keyboard map (zvpump.c) delivers ASCII only, so the key set is
- * the MicroEMACS one (Coherent's own editor) -- and zvpump maps the nav
- * keypad (arrows, Home, End, PgUp, PgDn, keypad Del) onto these same codes,
- * so the dedicated keys just work:
- *   ^B/^F left/right    ^P/^N up/down    ^A/^E line start/end
- *   ^Z/^V page up/down  ^D/DEL del char
- *   ^K kill to end of line into the KILL BUFFER (consecutive ^Ks append,
- *      so ^K^K takes text + newline -- the classic line-moving idiom)
- *   ^W kill the selection into the kill buffer    ^Y yank it back
- *   ^O open a line below the cursor   ^T transpose   ^L recentre + redraw
- *   ^S find next (the Search dialog asks for the pattern the first time)
- *   ^G abort (drop the selection)
- *   ^X^C quit -- the MicroEMACS exit chord; asks only when the buffer is
- *      modified (the window-menu Quit asks the server's generic question)
- *   ^X^S save   ^X^V open a file   ^X^W save as   ^X^X swap mark/cursor
- *      -- the MicroEMACS chords, the same bytes zterm writes for
- *      F2/F3/Shift+F2/Shift+F4, so the keys read the same in me(1)
- *      inside a terminal
- *   ESC is Meta:  M-< / M-> buffer start/end   M-v page up
- *                 M-f / M-b word forward/back  M-s the Search dialog
- *                 M-r replace this match and step to the next
- *                 M-d / M-^H delete word forward / back
- * and the function keys (wire.h HRK_*), on the Norton Commander editor's
- * bar amended (F1 = Mark and F4 = Replace swapped from NC -- NC's F1
- * Help is the Help key here -- F3 = Open, F9 = Paste):
- *   Help (F11) = this list as a dialog
- *   F1 = Mark: a keyboard block at the cursor, motion extends it, F1
- *      again freezes it (domark)   F2 = save (dialog only if unnamed)
- *   F3 = Open   F4 = Replace: the Search dialog   F5 = Copy / F6 = Move
- *      (cut) the selection via the clipboard   F7 = find next
- *   F8 = Delete the selection, else ^K^K (cursor to end of line + the
- *      newline), through the kill buffer (^Y undoes)
- *   F9 = Paste the clipboard   New is on the menu
- *   F10 = quit: zvpump delivers it AS the ^X^C chord, not as a code of its own
- *   Shift/Ctrl function keys arrive pre-chorded from zvpump (Shift+F2
- *      ^X^W, Shift+F4 ^X^X, Shift+F8 ESC d, Ctrl+F8 ESC ^H, the rest
- *      me(1)-only chords zedit ignores) -- zvpump's keymap() is the
- *      full map
- *   Clear/Home = top of file   Stop/Continue = abort (drop the selection)
- *   In a zterm the same F-keys type the matching me(1) bytes (hrpump.c)
- * plus mouse: click places the cursor, drag selects.
- *
- * Tabs are stored literally and expanded to 8-column stops for display; the
- * cursor column shown in the status line is the DISPLAY column.
+ * Store the document as allocated lines and render changed cells through
+ * clgfx.  The status line and left scrollbar surround the text grid.
+ * Menu commands provide file operations, clipboard and search; keyboard
+ * commands use the MicroEMACS bindings supplied by zvpump.
+ * Selection drag publishes PRIMARY, while Copy and Cut use CLIPBOARD.
+ * Tabs remain in the document and expand to TABW columns for display.
  */
 #include <stdio.h>
 #include "wire.h"

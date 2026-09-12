@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * gethostby.c -- gethostbyname/gethostbyaddr: the host lookups that can reach
  * the NETWORK.
  *

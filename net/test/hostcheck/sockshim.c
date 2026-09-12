@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * sockshim.c -- host stand-in for libsocket, with injectable defects.
  *
  * The socket programs in net/test are compiled here VERBATIM and run over

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * stdiobound -- stdio's counted and positioning calls at the boundaries a
  * 16-bit int imposes.
  *

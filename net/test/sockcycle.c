@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * sockcycle.c -- does a socket opened and closed again give its memory back?
  *
  *	sockcycle [cycles [per-cycle]]		default 40 cycles of 4

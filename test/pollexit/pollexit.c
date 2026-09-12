@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * pollexit.c -- what happens to a poll(2) event buffer when a signal arrives?
  *
  * Every blocking poll(2) links a kernel event buffer onto TWO lists: the

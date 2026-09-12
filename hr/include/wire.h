@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * wire.h - hrgui client <-> server wire protocol (GUI.md Phase 1, server-render).
  *
  * Transport:

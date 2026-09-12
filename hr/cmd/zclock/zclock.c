@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zclock.c - a ZView clock client (GUI.md Phase 1).
  *
  * Face/hand geometry is lifted from the salvaged _graphics/hr clock.c (GUI.md

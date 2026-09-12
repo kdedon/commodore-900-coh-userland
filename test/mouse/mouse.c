@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * mouse.c -- exercise /dev/mouse, the native FN#7 pointing-device interface.
  *
  * The driver (sys/drv/mouse.c) samples the HR card's two free-running 10-bit

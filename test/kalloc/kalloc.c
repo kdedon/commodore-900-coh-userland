@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * kalloc.c -- how many processes can the kernel allocation arena still hold?
  *
  * There is one arena (sys/coh/alloc.c, sized by ALLSIZE in z8001/src/conf.c)

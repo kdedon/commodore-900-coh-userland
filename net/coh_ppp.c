@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * coh_ppp.c -- PPP (RFC 1661/1662) daemon for COHERENT/Z8001.
  *
  * The SLIP daemon's bigger sibling: it bridges the same raw /dev/tty* to the

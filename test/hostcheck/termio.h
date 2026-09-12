@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * termio.h -- the TARGET's <termio.h>, trimmed, so that tests/termio/termio.c
  * compiles here verbatim against the definitions it will really meet.
  *

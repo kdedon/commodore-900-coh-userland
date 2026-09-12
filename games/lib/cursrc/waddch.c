@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * waddch -- add one character to a window.
  *
  * This overrides the libcurses.a member of the same name, which puts a NUL on

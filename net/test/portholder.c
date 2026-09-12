@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * portholder.c -- take a TCP port and keep it, so that nothing else can bind it.
  *
  *	portholder [-w wait] [-t hold] port

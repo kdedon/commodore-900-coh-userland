@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * psipping.c -- prove real IP traffic through the stack, with no serial line.
  *
  *	psipping [<count> [echo|proto|badsum|runt|all]]

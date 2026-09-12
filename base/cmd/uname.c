@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * Copyright (c) 2026 Kevin Dedon.
  * Added alongside, not in place of, the Mark Williams notice below: the same
  * rights holder released COHERENT under BSD 3-Clause in 2015 (root LICENSE).
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /* (-lgl
  * 	COHERENT Version 4.2

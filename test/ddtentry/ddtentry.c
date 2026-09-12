@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * ddtentry -- can the in-kernel debugger be entered and left?
  *
  * halt(2) is the deliberate way in (trap.c uhalt, root only).  A kernel built

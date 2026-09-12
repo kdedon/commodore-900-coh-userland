@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * nlistfar -- nlist(3) over the two spans that do not fit 16 bits.
  *
  * A symbol's value on this machine is a virtual address: 32 bits, with the

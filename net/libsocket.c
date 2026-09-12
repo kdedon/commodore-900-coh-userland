@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * libsocket.c -- BSD socket() veneer for COHERENT/Z8001.
  *
  * Maps the BSD socket calls onto the Minix inet stack's device+ioctl protocol,

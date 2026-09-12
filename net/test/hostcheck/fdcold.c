@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * fdcold.c -- the descriptor policy the daemon had before coh_fdc.c: hold the
  * reply FIFO open from the moment the channel is accepted until it goes away.
  *

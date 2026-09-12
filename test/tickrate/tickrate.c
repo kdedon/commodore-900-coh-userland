@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * tickrate.c -- how much CPU work fits in one of the guest's own seconds?
  *
  *	tickrate [seconds]		default 5

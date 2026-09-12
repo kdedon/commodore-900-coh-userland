@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
 	<dirent.h> -- definitions for SVR3 directory access routines
 
 	last edit:	25-Apr-1987	D A Gwyn

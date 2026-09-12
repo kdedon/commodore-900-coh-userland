@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * test/mkfsgetlink/getlink.c -- the name-matching loop inside mkfs(1M)'s
  * getlink(), on the host, over a directory built for the cases where the
  * two versions of mkfs disagreed.

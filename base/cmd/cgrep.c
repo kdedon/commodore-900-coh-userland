@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
  * To compile use
  * cc cgrep.c -lmisc
  * This uses libmisc.a and the misc.h header from libmisc.a.Z

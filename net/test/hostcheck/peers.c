@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * peers.c -- the other end, for the two programs in net/test that ARE the
  * other end: rlecho (the far side of an rlogin session) and udpserver (the
  * guest side of a datagram round trip).  Neither can be run at all without

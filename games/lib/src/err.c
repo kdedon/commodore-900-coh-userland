@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * err(3) -- the BSD diagnostic family, for the games ports.
  *
  * The 3.2 libc has no <err.h>, and every BSD game calls err/errx/warn/warnx.

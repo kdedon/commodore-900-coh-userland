@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
  * $Header: /usr.src/local/unmkfs.c,v 1.4 90/07/06 11:43:38 root Exp $
  * $Log:	/usr.src/local/unmkfs.c,v $
  * Revision 1.4	90/07/06  11:43:38 	root

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * udpserver.c -- a UDP echo server, for exercising datagrams over the wire.
  *
  *	udpserver [port [count [seconds]]]  default port 7, 4 datagrams; the

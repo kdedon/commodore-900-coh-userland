@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * echoserver.c -- a TCP echo server over libsocket, for testing WITHOUT a wire.
  *
  *	echoserver [port [seconds]]	default 7; the second argument is the

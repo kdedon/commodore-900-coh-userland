@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * swap.c -- does a process that was pushed out to disk come back intact?
  *
  * The kernel swapper (sys/coh/swap.c) moves whole SEGMENTS, and this machine

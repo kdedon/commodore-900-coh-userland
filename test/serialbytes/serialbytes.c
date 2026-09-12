@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * serialbytes.c -- is a serial line byte-exact, all 256 values, both ways?
  *
  *	serialbytes out <dev>		write 0x00..0xFF to <dev>

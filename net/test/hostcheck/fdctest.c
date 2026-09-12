@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * fdctest.c -- how many connections does this machine have, and can every one
  * of them be answered?
  *

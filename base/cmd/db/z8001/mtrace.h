@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * A debugger.
  * Machine dependent header for the Zilog 8001.
  */

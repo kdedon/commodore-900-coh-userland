@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * sbrkzero.c -- is sbrk()-grown memory zero-filled?
  *
  * The ported Minix inet stack depends on it absolutely: alloc() is a thin sbrk()

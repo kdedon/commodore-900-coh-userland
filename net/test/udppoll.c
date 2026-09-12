@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * udppoll.c -- does poll() on a socket mean what a BSD program expects?
  *
  *	udppoll [addr]			default 10.0.0.2

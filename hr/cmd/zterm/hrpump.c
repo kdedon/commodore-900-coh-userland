@@ -1,24 +1,16 @@
 /*
- * hrpump.c - tiny I/O pump for the ZView terminal (zterm).
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * hrpump -- multiplex terminal output and window events for zterm.
  *
- * zterm multiplexes two blocking input sources -- the pty master's output and
- * its window's event ring -- into one "mux" pipe it owns (GUI.md 4.5),
- * so the main process blocks on a single read().  The V7 way to watch two fds
- * without select() is a dumb copier per source.  zterm used to fork() those
- * copiers, but fork clones its whole data/BSS (the 6 KB character grid + the
- * salvaged engine globals), so each terminal cost THREE ~12 KB processes and a
- * few open terminals exhausted memory (dead 3rd/4th terminal; menu save-buffer
- * malloc failing so the menu never cleared).  Exec'ing this instead makes each
- * pump a ~2 KB libc-only process.
- *
- * Invoked as:  hrpump <role> <masterfd> <muxwfd> [<wid>]
- *   role 'm' (master pump): copy master output -> mux as MX_DATA records; on EOF
- *        emit MX_EOF.
- *   role 'e' (event pump):  drain the window's event ring; a keystroke (E_KEY) is written
- *        STRAIGHT to the master (so ^C is never starved behind a flood of shell
- *        output), everything else is forwarded to the mux as an MX_EVT record.
- * fd numbers are passed by value (no dup2 renumbering); we close everything else
- * so the pump holds no stray references (e.g. the mux read end).
+ * hrpump <role> <masterfd> <muxwfd> [<wid>]
+ * Role m copies pty output to MX_DATA records and emits MX_EOF at EOF.
+ * Role e writes keystrokes directly to the pty and forwards other events
+ * as MX_EVT records.  Close all descriptors except masterfd and muxwfd.
+ * Separate executables keep each pump's resident data small.
  */
 #include <stdio.h>
 #include "wire.h"
@@ -105,8 +97,9 @@ char **argv;
 	muxw = atoi(argv[3]);
 	evfd = (argc > 4) ? atoi(argv[4]) : -1;
 
-	/* Drop every inherited fd but ours.  NOTE evfd is NOT an fd any more (it is
-	 * the window id for role 'e'), so it must not be spared here. */
+	/*
+	 * Keep only the pty and mux descriptors.  evfd holds a window id.
+	 */
 	for ( f = 0; f < 20; f++ )
 		if ( f != mfd && f != muxw )
 			close(f);
@@ -128,10 +121,10 @@ char **argv;
 	}
 	else					/* 'e' */
 	{
-		/* evfd is no longer a pipe fd: it is our WINDOW ID, and events come
-		 * from that window's ring in the shared tail (shmem.h SHM_EVQ).  We
-		 * still exist as a separate process for the same reason as before --
-		 * zterm must block on ONE thing, so we funnel events into its mux. */
+		/*
+		 * Read the window event ring and forward events to zterm
+		 * through its mux pipe.
+		 */
 		for (;;)
 		{
 			hr_evwait(evfd);

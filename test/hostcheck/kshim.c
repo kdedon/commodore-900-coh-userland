@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * kshim.c -- a host stand-in for the parts of COHERENT that test measures,
  * with injectable defects.
  *

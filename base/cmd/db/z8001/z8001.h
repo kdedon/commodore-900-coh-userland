@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * Constants.
  */
 #define ISBPT	0x7F81			/* Breakpoint instruction */

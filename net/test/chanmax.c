@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * chanmax.c -- how many connections can one PROCESS have open at once?
  *
  *	chanmax [n [least]]		default 24 channels, at least 6

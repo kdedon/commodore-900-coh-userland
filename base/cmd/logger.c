@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * logger -- make an entry in the system log.
  *
  *	logger [-t tag] [-p pri] [-i] [message ...]

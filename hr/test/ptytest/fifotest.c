@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * fifotest.c - reproduce the hrgui event-pipe handshake in isolation.
  *
  * zview answers each client over a NAMED pipe the client makes for itself:

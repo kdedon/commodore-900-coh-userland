@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zwwin.c - dock widget: how many programs are on the desktop.
  *
  * The count is of distinct CLIENTS (pids) in the server-published window

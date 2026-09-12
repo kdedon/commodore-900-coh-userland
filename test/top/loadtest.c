@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * loadtest.c -- call mgrload's getload() without an MGR server in front of it.
  *
  * mgrload(1) cannot be run outside a window, so the backend that produces its

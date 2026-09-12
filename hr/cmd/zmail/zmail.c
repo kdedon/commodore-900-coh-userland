@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zmail.c - a ZView mail client.
  *
  * The mail system it speaks is 7mail's (the command installed as /bin/mail):

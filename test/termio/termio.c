@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * termio -- does the 4.x termio tty (KTTY=termio, sys/drv/tty.c) honour a
  * termios round trip and VMIN/VTIME?
  *

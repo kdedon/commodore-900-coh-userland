@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * inet_chan.c -- client helper for the inet daemon's control channel.
  * See inet_chan.h.  Uses the raw syscalls _rawread/_rawwrite/_rawclose
  * (rawsys.s) so it never re-enters libsocket's read/write/close overrides.

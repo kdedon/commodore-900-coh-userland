@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * coh_ifconfig.c -- give an inet interface its IP address, and optionally a
  * default route, on COHERENT/Z8001.
  *

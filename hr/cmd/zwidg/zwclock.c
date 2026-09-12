@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zwclock.c - dock widget: the time of day.
  *
  * Started by zdock from an "@" catalog line (see zdock.c), never from a

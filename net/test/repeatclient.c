@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * repeatclient.c -- does a service answer the SECOND caller, and the TENTH?
  *
  *	repeatclient [-n rounds] host portspec [portspec ...]

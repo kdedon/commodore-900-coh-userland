@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * hostcompat.h -- force-included into every target source built here, so that
  * the source itself needs no edit.
  *

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * veldlg.c - Vellum's dialog STUBS: the ASKING half of every modal
  * dialog is veldlgm.c, the APPLY half (savefile, loadlib, object
  * mutation) is here.  That division is the whole point of the file and

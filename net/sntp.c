@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * sntp.c -- set this machine's clock from an SNTP (RFC 4330) server.
  *
  *	sntp [-q] [-v] [-t seconds] [-r tries] server [server...]

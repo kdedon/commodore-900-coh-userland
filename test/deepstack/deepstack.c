@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * deepstack.c -- does a process get the whole stack allowance, whatever size
  * its frames are, and does it fault cleanly when the allowance runs out?
  *

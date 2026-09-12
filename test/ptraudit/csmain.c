@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * Callee-saved registers across the assembly string routines.  Each cl*()
  * wrapper (calleesave.s) plants sentinels in R6..R12, calls one routine, and
  * returns the number of the first register that came back changed.

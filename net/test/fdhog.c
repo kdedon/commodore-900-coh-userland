@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * fdhog.c -- run a program with almost every descriptor already taken.
  *
  *	fdhog [-f free] program [argument ...]

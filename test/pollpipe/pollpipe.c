@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * pollpipe.c -- does select() wake for a write to an ANONYMOUS pipe?
  *
  * pollfifo.c asks this of a named FIFO.  This asks it of pipe(2), in the exact

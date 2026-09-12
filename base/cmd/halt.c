@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * halt -- bring the machine to a stop with every filesystem marked clean.
  *
  * 	/etc/halt [-n] [-u]

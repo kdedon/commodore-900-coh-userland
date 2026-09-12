@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * whoami.c
  * Usage: whoami
  * Print the login name of the EFFECTIVE user id.

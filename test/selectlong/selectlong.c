@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * selectlong.c -- does select() actually wait as long as it was asked to?
  *
  *	selectlong [seconds]		default 40

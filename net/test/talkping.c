@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * talkping.c -- does the ntalk service answer, and does it REMEMBER?
  *
  *	talkping [-k] [addr [caller callee tty]]  default 10.0.0.2 root guest ""

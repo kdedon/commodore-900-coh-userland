@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * discotime.c -- how long does hunt's driver discovery actually take?
  *
  *	discotime [seconds]		default 30

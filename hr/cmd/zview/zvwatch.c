@@ -1,28 +1,15 @@
 /*
- * zvwatch.c - zview's crash watchdog as a TINY separate program.
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * zvwatch -- restore the console after a zview crash.
  *
- * The watchdog is the process that outlives the server so a server death
- * never leaves the machine deaf (zview.c srvwatch has the full rationale:
- * /drv/hr owns the keyboard vector, so something must survive to unload
- * it).  It used to be the parent HALF OF A FORK of the server itself --
- * a full contiguous ~69 Kb copy of the zview image parked in RAM for the
- * whole session just to sit in wait().  srvwatch now execs this program
- * over that copy instead; it links libc only (a few Kb).
- *
- * Exec'd with exactly ONE child: the server (exec keeps children, and
- * srvwatch made SIGINT/SIGQUIT/SIGHUP ignored, which exec preserves --
- * they are re-ignored here only for belt and braces).  A clean quitwm()
- * exits 0 and has already unloaded the driver; anything else gets the
- * driver unloaded and the text console restored.
- *
- * A dead server is NOT a dead desktop: every client is a separate process
- * drawing straight into VRAM, and they all outlive the crash -- the old
- * symptom was a restored text console being painted over by the surviving
- * clock/terminals.  So before the driver goes, declare the session over
- * where every client looks: clear the tail magic (shmem.h HR_MAGIC) and
- * ring every event-ring doorbell.  A woken client finds the magic gone in
- * hr_evwait (hrlock.c) and exits; one parked in CIOEVWAIT is woken while
- * the driver still exists to wake it.  Only then unload.
+ * Inherit the server as the only child.  A zero exit means it has already
+ * cleaned up.  Otherwise clear HR_MAGIC, wake clients while the driver
+ * is available, unload /drv/hr and restore the text console.
+ * A separate executable keeps the waiting process small.
  */
 #include <signal.h>
 #include <errno.h>

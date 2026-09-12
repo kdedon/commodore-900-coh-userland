@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * rlecho.c -- the far end of an rlogin(1) session, without a login on it.
  *
  *	rlecho [port [seconds]]		default 513, the login service; the

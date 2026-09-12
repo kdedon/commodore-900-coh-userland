@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * strnlong -- the counted string routines against an operand longer than
  * 32767 bytes.
  *

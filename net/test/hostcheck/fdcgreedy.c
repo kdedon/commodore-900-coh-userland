@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * fdcgreedy.c -- the real cache with its reserve removed.
  *
  * coh_fdc.c is compiled alongside this with its own fdc_room() renamed away,

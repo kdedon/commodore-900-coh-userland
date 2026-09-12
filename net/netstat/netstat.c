@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * netstat -- report this machine's network state.
  *
  *	netstat			the interfaces, then the routing tables

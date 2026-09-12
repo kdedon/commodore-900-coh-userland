@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * ptraudit.c -- does a 32-bit return value survive the call?
  *
  * On the Z8001 an int is 16 bits, a long is 32, and a pointer is a 32-bit

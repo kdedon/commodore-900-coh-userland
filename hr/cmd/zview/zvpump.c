@@ -1,18 +1,14 @@
 /*
- * zvpump.c - zview's input pump as a TINY separate program.
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * zvpump -- forward keyboard and mouse input to zview.
  *
- * The pump used to run as a plain fork of the server (the V7 two-process
- * split, GUI.md sec 4.5/7: the pump blocks in CIOGETM while the server
- * blocks in read(), and neither needs select()).  But zview is linked as
- * ONE ~69 Kb software segment (no shared text, no separated I/D), so that
- * fork held a full contiguous copy of the whole server image for the life
- * of the desktop -- the same "fork clones the whole data/BSS" cost that
- * made zterm's pumps a separate program (hrpump.c).  This is the same cure:
- * zvpump links libc only (a few Kb), and startpump() (zview.c) execs it.
- *
- * It inherits the write end of the server's command pipe on HR_CMDFD
- * (startpump dup2's it) and forwards every keyboard/mouse event from the
- * driver as a C_INPUT record.  The driver draws the arrow cursor itself.
+ * Read CIOGETM events and write C_INPUT records to HR_CMDFD.
+ * The driver draws the cursor.  A separate executable keeps the blocking
+ * input process small while the server waits on its command pipe.
  */
 #include "smgr.h"
 #include "wire.h"
@@ -31,48 +27,15 @@ static int DEF_MOUSE[] = { 0x0000, 0x7ffe, 0x7ffc, 0x7ff8,
 			   0xfffe, 0xffff, 0xffff, 0xffff,
 			   0xffff, 0xf9ff, 0xe0ff, 0x007f };
 
-/* Scancode -> ASCII, ported verbatim from the historical hi-res keyboard
- * message layer (kev.c SM_Keyboard, GUI.md 5.3), so the server gets real
- * ASCII.  Moved here from zview.c with the pump itself.
+/*
+ * Translate keyboard scancodes to ASCII and HRK_* events.
+ * Navigation keys and modified function keys use MicroEMACS chords;
+ * keymap() lists the bindings.  F10 sends ^X ^C.
  *
- * ONE departure from the original tables: the cursor/nav block (the XT keypad
- * positions 0x47..0x53, which the original dropped -- it never tracked
- * numlock) now emits the MicroEMACS control codes:
- *     Up ^P  Down ^N  Left ^B  Right ^F   Home ^A  End ^E
- *     PgUp ESC v (M-v -- ^Z would be me's save-and-exit)   PgDn ^V
- *     keypad Del -> DEL
- * Ctrl+arrows double for the nav keys a small keyboard may lack, emitting
- * the SAME codes: Ctrl+Left = Home (^A), Ctrl+Right = End (^E),
- * Ctrl+Up = PgUp (ESC v), Ctrl+Down = PgDn (^V); Shift+arrows are the
- * word/buffer motions M-b M-f M-< M->.  keymap() below is the whole map.
- * The wire stays plain ASCII, so nothing downstream changes: an editor that
- * already binds the MicroEMACS set gets working arrows for free, a shell in a
- * zterm sees them as the control keys a user could have typed anyway (and
- * MicroEMACS running INSIDE a terminal window gets exactly the codes it
- * wants), and dialogs ignore them.  The keypad digits never worked here
- * (numlock was never handled), so nothing is lost.
- *
- * The FUNCTION keys deliver the HRK_* codes of wire.h (above ASCII):
- * F1-F10 at the XT positions 0x3B..0x44, and the C900 specials as F11-F15.
- * F10 is a second departure of the same kind as the nav block: it is remapped
- * in main() to the MicroEMACS QUIT chord ^X ^C (two IN_KEY records), so it
- * reads "quit" everywhere the nav keys read "move" -- zedit exits on it, and
- * MicroEMACS in a terminal window gets its own exit sequence.  (A shell sees
- * ^X, then the ^C a user could have typed anyway.)  HRK_F10 therefore never
- * reaches a client.  The full Shift and Ctrl layers of the function row
- * and specials are remapped the same way, each to a me(1) command's own
- * bytes -- the chord tables live in keymap() below, which lists every
- * chord with its me(1) meaning; an unlisted shifted F-key stays its
- * plain self.
- * Which scancodes the specials use on REAL hardware is only partly known:
- * Help is 0x54 (the hr driver's own Alt+Ctrl+Help hatch tests that code,
- * and the historical table has the C900's DEL right beside it at 0x55);
- * for Clear/Home, Pop/Push, Screen/Print and Stop/Continue we take the
- * gfx/kbd.h block 0x5A..0x5D (that header is otherwise unused, but it is
- * the one place those keys are named), plus 0x5F as an alternate Help.
- * The emulator front ends send exactly these, so under emulation all five
- * work; on the real machine F1-F10 and Help are certain, the rest are a
- * best guess in table slots that were dead anyway. */
+ * F1-F10 and Help (0x54) are known on hardware.  The other C900 specials
+ * use gfx/kbd.h slots 0x5A..0x5D, with 0x5F as alternate Help; those
+ * assignments work in the emulator but need hardware confirmation.
+ */
 #define KB_KEYUP	0x80
 #define KB_KEYSC	0x7f
 #define KB_LSHIFT	(0x2a-1)

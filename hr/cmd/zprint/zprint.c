@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zprint.c - a ZView print manager.
  *
  * The spooler it manages is the classical Coherent/V7 lpr one (cmd/lpr):

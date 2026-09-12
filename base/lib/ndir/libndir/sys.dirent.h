@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 1977-1995 Robert Swartz.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/*
 	COHERENT compatible
 	<sys/dirent.h>	- dirent defs. for use with libndir routines by
 			  D A Gwyn.

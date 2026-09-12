@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * udpecho.c -- a UDP datagram round trip, both ends in this process.
  *
  *	udpecho [addr]			default 10.0.0.2

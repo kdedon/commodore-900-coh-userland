@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * netdbstub.c -- the name and service lookups netdbtest expects, and libsocket's
  * setsockopt, supplied here so netdbtest.c can be run on the build machine.
  *

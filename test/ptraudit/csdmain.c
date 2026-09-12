@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * Callee-saved registers across the double runtime.  Driven through the
  * normal, zero and overflow paths so the retz and retinf epilogues are
  * exercised as well as the main one.

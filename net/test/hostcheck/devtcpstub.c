@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * devtcpstub.c -- a fake /dev/tcp, for proving that devtcp(8) notices a stack
  * that cannot tell it the local port it chose.
  *

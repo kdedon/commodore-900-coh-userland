@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * lptest -- is the Centronics printer driver dispatched on major 3?
  *
  * Opens /dev/rlp and reports what came back.  Three outcomes tell three

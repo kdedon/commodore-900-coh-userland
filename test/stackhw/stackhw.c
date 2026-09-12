@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * stackhw.c -- how much of its 32 KB stack allowance has each live process
  * actually touched?
  *

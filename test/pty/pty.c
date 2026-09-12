@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * pty.c -- master/slave round trip on a pseudo-terminal.
  *
  * The first gate for the pty driver (sys/drv/pty.c), and it needs no network:

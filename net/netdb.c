@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * netdb.c -- LOCAL host and service lookup for the BSD socket veneer.
  *
  * getservbyname/getservbyport, gethostname/sethostname, and the /etc/hosts half

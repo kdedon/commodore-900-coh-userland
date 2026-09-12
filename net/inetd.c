@@ -1,86 +1,22 @@
 /*
- * inetd.c -- the super-server: listen on the ports named in /etc/inetd.conf,
- * and run a program per connection.
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * inetd -- start services for ports named in /etc/inetd.conf.
  *
- *	inetd [-d] [-m maxchildren] [conffile]
+ * inetd [-d] [-m maxchildren] [conffile]
  *
- * THE NAME.  For the whole of this port /etc/inetd was the TCP/IP STACK -- the
- * Minix inet server, which owns every connection this machine has and reads no
- * service table at all.  It is now /etc/inet, which is what it is, and this
- * program has the name that describes it.  The two share no code: the stack is
- * net/inet/, and this is an ordinary client of it, linked against libsocket
- * like telnet or ping.
+ * External services communicate through pipes: libsocket framing state
+ * cannot survive exec.  A relay holds the socket, forwards stdin/stdout
+ * and sends service stderr to syslog.  Internal services use the socket
+ * in the child.  A datagram child owns the listening channel until exit;
+ * the parent drops its copy and rebinds after reaping.
  *
- * WHAT IT IS FOR: memory and process slots, not connections.  A listening port
- * on this machine IS an open channel to the stack, whether a super-server or a
- * standalone daemon holds it, so nothing here reclaims connections.  What it
- * reclaims is the resident cost of daemons that are waiting rather than
- * working -- telnetd, remshd and fingerd are about 132 KB of text between them
- * plus a proc slot and a u-area each, and none of them does anything until
- * somebody calls.
- *
- * WHY A CONNECTION CANNOT SIMPLY BE EXEC'D, AND WHAT IS DONE INSTEAD.  On BSD,
- * inetd dup2()s the accepted socket onto 0, 1 and 2 and execs the service: the
- * descriptor is the connection, and exec keeps descriptors.  Here it is not.  A
- * connection is two FIFOs plus the framing state in `struct ichan' that
- * sequences them, and that state lives in libsocket's data; exec throws it
- * away, so the new program's read(0) would fall through to the raw reply FIFO
- * and collect channel headers instead of the peer's bytes.  cmd/fingerd and
- * cmd/telnetd both say the same thing, which is why they carry their own
- * passive opens rather than expecting a super-server.
- *
- * So the service is exec'd on a PIPE, and a relay copies bytes between the pipe
- * and the socket.  A connection therefore costs two processes -- the relay,
- * which is this program after a fork and so already holds the channel, and the
- * service it exec'd -- and in exchange the service sees the ordinary
- * stdin/stdout contract every inetd-style daemon is written against.  What is
- * lost is that the service cannot getpeername() its own connection; what is
- * gained is that a program needs to know nothing about this stack to be served
- * by it.
- *
- * INTERNAL SERVICES cost neither the pipe nor the second process: the forked
- * child answers on the socket itself and exits.  echo, discard, daytime,
- * chargen and time are here for the reason BSD has them -- they are the
- * smallest thing that makes a machine answerable from outside, and they need
- * nothing else to be installed or ported first.
- *
- * AND ONE INTERNAL SERVICE IS A REAL DAEMON: ntalk (518/udp), which used to be
- * /etc/talkd.  A datagram service has no accept(), so what a child is given is
- * the LISTENING socket, and it keeps it: this process sockdrop()s its own copy
- * and binds a fresh one only once that child has exited, because a socket driven
- * by two processes leaves the other's `struct ichan' describing a channel that
- * has moved on.  net/talkserv.c holds the service and says where the invitation
- * table lives and why.  What it buys is a 41 KB program image and a standing
- * process slot that nothing occupies between calls; what it costs is this
- * program's text, which is shared with every child it forks anyway.
- *
- * WHERE A DIAGNOSTIC GOES: syslog(3), facility LOG_DAEMON, and standard error as
- * well when -d was given.  A service under a super-server has nowhere else to
- * complain -- on BSD its standard error IS the connection, and here the relay's
- * pipe would put it there too -- so the peer would collect a diagnostic as
- * protocol and an administrator would see nothing.  So the relay gives a service
- * a THIRD pipe for its standard error and files what arrives on it, a line at a
- * time, under the service's name.  NOTHING THIS PROGRAM OR A SERVICE WRITES AS A
- * DIAGNOSTIC REACHES THE CONNECTION.
- *
- * THE CEILING IS DESCRIPTORS, and it is low.  A socket costs this process TWO
- * of them (request FIFO and reply FIFO -- net/inet_chan.c), the per-process
- * table is NUFILE deep (<sys/param.h>, the same header the kernel sizes
- * u_filep[] with), and stdio holds three; accept() opens a fresh listening
- * channel before it hands the connection over, so THREE more have to be free
- * while it runs.  MAXSERV is that arithmetic written down rather than a number
- * somebody once did it to reach, and so is this process not keeping the log
- * open between messages.  The stack's own side of the same
- * limit is printed when it starts ("inet: ready, NN connections") and measured
- * by /bin/chanmax.
- *
- * SIGNAL NUMBERS ON THIS SYSTEM ARE NOT THE USUAL ONES: SIGTERM is 5, SIGPIPE
- * is 8, and there is NO SIGCLD at all (include/signal.h lists eleven
- * signals and that is all of them), nor any waitpid() or WNOHANG.  The missing
- * SIGCLD is why the reaping below is shaped the way it is: a child is collected
- * either as backpressure at the concurrency limit (reap()) or on an idle poll
- * timeout, where the only available non-blocking wait is a blocking one bounded
- * by alarm(2) (reapidle()).
+ * Reserve descriptors for accept and bound child count.  Without SIGCLD
+ * or nonblocking wait, reap at the child limit or during an idle poll,
+ * using alarm to bound the wait.
  */
 #include <sys/types.h>
 #include <sys/param.h>

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * zview.c - the ZView window server (GUI.md Phase 1).
  *
  * A single userland process that owns every pixel.  It draws through the

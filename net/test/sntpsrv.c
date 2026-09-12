@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kevin Dedon.
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
  * sntpsrv.c -- a fixed-answer SNTP server, so /etc/sntp can be tested with no
  * wire, no slip and no peer.
  *
