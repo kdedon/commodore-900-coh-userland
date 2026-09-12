@@ -1,5 +1,0 @@
-COHERENT.1/gunzip	gunzip	GNU utility to uncompress files
-COHERENT.1/gzip	gzip	GNU utility to compress files
-COHERENT.2/patch	patch	Patch a variable or flag within the kernel
-COHERENT.2/time.h	time.h	Give time-description structure
-COHERENT.2/unpack	unpack	GNU utility to uncompress files
