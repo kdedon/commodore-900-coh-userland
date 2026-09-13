@@ -74,8 +74,14 @@ flag_t	linkmsg = 0,			/* message if not all links found */
 	modtime = 1,			/* restore modtimes */
 	usecompress = 0,		/* z: pipe through compress/uncompress */
 	verbose = 0,
-	badarch = 0;			/* archive ended inside a member */
 	unixbug = 0;			/* avoid bug in U**X tar */
+/*
+ * The status the program exits with.  Every failure below records it here --
+ * an errno where the system supplied one, EIO where the archive itself is
+ * damaged -- so that what tar reports is what tar found, not whatever errno
+ * the last operation happened to leave behind.
+ */
+int	exstat = 0;
 FILE	*whether = (FILE *)NULL,	/* ask about each file */
 	*tarfile;
 char	tapedev[10] = '\0';
@@ -197,9 +203,10 @@ char	*argv[];
 	for (;  arg < argc;  arg++) {
 		dirhd_t	*argp;
 
-		if ((argp = newdirhd(argv[arg], strlen(argv[arg]))) == NULL)
+		if ((argp = newdirhd(argv[arg], strlen(argv[arg]))) == NULL) {
+			exstat = ENOMEM;
 			fprintf(stderr, "Tar: %s: out of memory\n", argv[arg]);
-		else
+		} else
 			args->t_cont[args->t_nlink++] = argp;
 	}
 
@@ -251,7 +258,7 @@ char	*argv[];
 	}
 	if (usecompress)
 		zclose();
-	exit(badarch ? EIO : errno);
+	exit(exstat);
 }
 
 /*
@@ -358,6 +365,8 @@ char	*args;
 		fprintf(stderr, "%r: Bad error number\n", &args);
 	else if (err)
 		fprintf(stderr, "%r: %s\n", &args, sys_errlist[err]);
+	if (err)
+		exstat = err;
 	return (err);
 }
 
@@ -464,7 +473,7 @@ register dirhd_t *args;
 					fprintf(stderr,
 					 "Tar: %s: unexpected end of archive\n",
 						name);
-					badarch = 1;
+					exstat = EIO;
 					break;
 				}
 				nbyte = size > sizeof (tarhd_t)
@@ -489,9 +498,11 @@ register dirhd_t *args;
 					header->th_link);
 			unlink(name);
 			mkparent(name);
-			if (link(header->th_link, name) < 0)
+			if (link(header->th_link, name) < 0) {
+				exstat = errno;
 				fprintf(stderr, "Tar: Can't link %s to %s\n",
 					name, header->th_link);
+			}
 		}
 		if (modtime)
 			utime(name, oldtime);
@@ -632,6 +643,7 @@ register dirhd_t *args;
 		args = (dirhd_t *) realloc((char *)args,
 			sizeof (dirhd_t) + (nfile-2)*sizeof (dirhd_t *));
 		if (args == NULL) {
+			exstat = ENOMEM;
 			fprintf(stderr, "Tar: %s: out of memory\n", name);
 			return (NULL);
 		}
@@ -657,16 +669,18 @@ register dirhd_t *args;
 			 || strcmp(dir_ent.d_name, "..") == 0)
 				continue;
 			else if ((arglen=strnlen(dir_ent.d_name, DIRSIZ))
-				 + namelen > 99)
+				 + namelen > 99) {
+				exstat = EINVAL;
 				fprintf(stderr,
 					"Tar: %s/%.*s: name too long\n",
 					name, DIRSIZ, dir_ent.d_name);
-			else if ((argp = newdirhd(dir_ent.d_name, arglen))
-				 == NULL)
+			} else if ((argp = newdirhd(dir_ent.d_name, arglen))
+				 == NULL) {
+				exstat = ENOMEM;
 				fprintf(stderr,
 					"Tar: %s/%.*s: out of memory\n",
 					name, DIRSIZ, dir_ent.d_name);
-			else
+			} else
 				args->t_cont[args->t_nlink++] = argp;
 			continue;
 		}
@@ -817,7 +831,7 @@ char	function,
 		case 'x':
 			if (function == 'a')
 				flushtar();
-			exit(errno);
+			exit(exstat);
 		case '\n':
 		case 'n':
 		case 'N':
@@ -866,10 +880,11 @@ readhdr()
 			sum = checksum(header->th_data, sizeof(tarhd_t));
 			for (i = 0; i < sizeof(saved); i++)
 				header->th_check[i] = saved[i];
-			if (sum != check)
+			if (sum != check) {
+				exstat = EIO;
 				fprintf(stderr, "Tar: %.100s: bad checksum\n",
 					header->th_name);
-			else
+			} else
 				break;
 		}
 	}
@@ -884,9 +899,15 @@ tarhd_t	*header;
 	if (ISLINK(header->th_islink))
 		return;
 	for (size = getoctl(header->th_size);
-		size > 0 && readblk() != NULL;
+		size > 0;
 		size -= sizeof (tarhd_t))
-		;
+		if (readblk() == NULL) {
+			exstat = EIO;
+			fprintf(stderr,
+				"Tar: %.100s: unexpected end of archive\n",
+				header->th_name);
+			return;
+		}
 }
 
 writehdr(name, args, link)
