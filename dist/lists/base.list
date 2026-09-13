@@ -286,6 +286,10 @@ f	/bin/du
 # somebody has to be able to read off the console.
 f	/bin/date
 f	/bin/time
+# who is here and not in the runtime fragment because the passwd file this
+# list ships names it: the `who' account runs /bin/who as its login program,
+# and login refuses an account whose program the image does not carry.
+f	/bin/who
 
 # --- the /bin versus /usr/bin split -----------------------------------------
 # /usr is a separate filesystem that only /etc/rc mounts, so nothing in

@@ -519,7 +519,6 @@ f	/bin/version
 # the reference disk ships it 4755 for the same reason.
 f	/etc/wall	4755 0 1
 f	/usr/bin/which
-f	/bin/who
 # whoami answers for the EFFECTIVE uid, which `who am i' does not: that reads
 # /etc/utmp, so it still names the login user after an su and says nothing at all
 # for a process with no terminal.
