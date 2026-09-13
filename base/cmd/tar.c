@@ -73,7 +73,8 @@ typedef	unsigned short	flag_t;		/* fastest type for machine */
 flag_t	linkmsg = 0,			/* message if not all links found */
 	modtime = 1,			/* restore modtimes */
 	usecompress = 0,		/* z: pipe through compress/uncompress */
-	verbose = 0;
+	verbose = 0,
+	badarch = 0;			/* archive ended inside a member */
 	unixbug = 0;			/* avoid bug in U**X tar */
 FILE	*whether = (FILE *)NULL,	/* ask about each file */
 	*tarfile;
@@ -250,7 +251,7 @@ char	*argv[];
 	}
 	if (usecompress)
 		zclose();
-	exit(errno);
+	exit(badarch ? EIO : errno);
 }
 
 /*
@@ -463,6 +464,7 @@ register dirhd_t *args;
 					fprintf(stderr,
 					 "Tar: %s: unexpected end of archive\n",
 						name);
+					badarch = 1;
 					break;
 				}
 				nbyte = size > sizeof (tarhd_t)

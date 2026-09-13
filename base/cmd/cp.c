@@ -45,7 +45,7 @@ char *argv[];
 {
 	register int i;
 	register int n;
-	register int status = 0;
+	register int status = TRUE;
 
 	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'd' && argv[1][2] == '\0') {
 		++dflag;
@@ -56,7 +56,7 @@ char *argv[];
 	if (namebuf == NULL)
 		return (cp(argv[1], target) ? 0 : 1);
 	for (i = 1; i <= n; ++i)
-		status |= cpdir(argv[i]);
+		status &= cpdir(argv[i]);
 	return (status ? 0 : 1);
 }
 
