@@ -87,6 +87,12 @@ PKGDIRECTIVES = ('package', 'role', 'conflict', 'kinds', 'system', 'userland',
 PKGROLES = ('base', 'optional', 'alternative', 'variant')
 PKGKINDS = ('bin', 'src', 'man', 'dev')
 
+# The owner an entry that states none is installed with: root:bin, the same
+# default the image packer (mkimage.py) gives a staged file, so a package and
+# an image place one file with one owner.  An entry that states `mode uid gid'
+# states all three, and that statement is what ships.
+DEFUID, DEFGID = 0, 1
+
 # The roots a list entry with no src= is looked for in: dist/userlands/*.uland.
 ULKEYS = ('drv', 'bin', 'root')
 DEFAULT_ULAND = 'coherent'
@@ -410,6 +416,32 @@ def read_list(rel, seen, entries):
                              keys, origin))
 
 
+_PLACED = None
+
+
+def placed_owners(dest):
+    """The owner(s) the component lists give <dest>, across every list.
+
+    A hard link names an inode another entry places, and that entry is often in
+    another component: editors links /usr/bin/emacs to the /usr/bin/me that
+    base installs.  The owner is that entry's, so it is looked up where it is
+    stated rather than assumed; when two lists place one path with two owners
+    the answer is both of them, and the caller refuses.
+    """
+    global _PLACED
+    if _PLACED is None:
+        _PLACED = {}
+        for rel in listnames():
+            ents = []
+            read_list(rel, set(), ents)
+            for e in ents:
+                if e.type != 'l':
+                    _PLACED.setdefault(e.dest, set()).add(
+                        (e.uid, e.gid) if e.uid is not None
+                        else (DEFUID, DEFGID))
+    return _PLACED.get(dest, set())
+
+
 def man_index():
     """{name: [section/page, ...]} from the assembled manual, or {}."""
     p = osp(os.path.join(MANTREE, 'man.index'))
@@ -644,6 +676,37 @@ class Component:
             return 0o755
         return 0o644
 
+    def owner_of(self, e):
+        """The (uid, gid) the image packer will give this entry: the declared
+        one, else root:bin.  A setuid program's owner IS its privilege -- the
+        printer set runs setuid daemon, /bin/hostfs and /usr/bin/atrun state
+        their own owner too -- so an owner is taken from the declaration and
+        never from a convention.
+
+        A hard link has no owner of its own: it is a second name for the `to='
+        entry's inode, and carries that entry's owner, wherever that entry is.
+        When no list places the target, or two place it differently, the owner
+        cannot be determined and the answer is a refusal rather than a
+        plausible root:bin."""
+        if e.type == 'l':
+            tgt = self._link_target(e)
+            if tgt is not None and tgt.type != 'l':
+                return self.owner_of(tgt)
+            want = e.keys.get('to')
+            owners = placed_owners(want)
+            if len(owners) != 1:
+                die("%s: %s links to %s, whose owner %s.\n"
+                    "  A link carries the owner of the inode it names, and an "
+                    "owner that cannot be\n  read off the entry that places it "
+                    "is not one to guess at."
+                    % (e.origin, e.dest, want,
+                       "no list states" if not owners
+                       else "the lists state %d ways" % len(owners)))
+            return owners.pop()
+        if e.uid is not None:
+            return e.uid, e.gid
+        return DEFUID, DEFGID
+
     def _link_target(self, e):
         want = e.keys.get('to')
         for o in self.entries:
@@ -850,8 +913,9 @@ def component_kind(name, kind, out):
     installing it means; a man package's are `<section>/<page>' as man.index
     spells them; a src package's are relative to this repository's root.
     """
-    def emit(typ, path, mode, src):
-        out.write("%s\t%s\t%o\t0\t1\t%s\n" % (typ, path, mode, src))
+    def emit(typ, path, mode, src, uid=DEFUID, gid=DEFGID):
+        out.write("%s\t%s\t%o\t%d\t%d\t%s\n"
+                  % (typ, path, mode, uid, gid, src))
     if kind not in PKGKINDS:
         die("no kind `%s' (%s)" % (kind, "|".join(PKGKINDS)))
     c = Component(name)
@@ -868,24 +932,28 @@ def component_kind(name, kind, out):
                 % (name, len(miss), miss[0]))
         for e in c.entries:
             src = c._src(e)
+            uid, gid = c.owner_of(e)
             if e.type == 'd':
-                emit('d', e.dest, e.mode if e.mode is not None else 0o755, '-')
+                emit('d', e.dest, e.mode if e.mode is not None else 0o755, '-',
+                     uid, gid)
             elif e.type == 'e':
-                emit('e', e.dest, e.mode if e.mode is not None else 0o644, '-')
+                emit('e', e.dest, e.mode if e.mode is not None else 0o644, '-',
+                     uid, gid)
             elif e.type == 'l':
-                emit('l', e.dest, 0, e.keys['to'])
+                emit('l', e.dest, 0, e.keys['to'], uid, gid)
             elif e.type == 'f':
-                emit('f', e.dest, c.mode_of(e, src), src)
+                emit('f', e.dest, c.mode_of(e, src), src, uid, gid)
             elif e.type == 't':
                 # A tree is DIRECTORY CONTENTS, and a package is a list of
                 # files: expanded here so what the package carries is nameable
                 # rather than "whatever that directory held".
-                emit('d', e.dest, 0o755, '-')
+                emit('d', e.dest, 0o755, '-', uid, gid)
                 for n in sorted(os.listdir(src)):
                     s = os.path.join(src, n)
                     if os.path.isfile(s):
                         emit('f', e.dest.rstrip('/') + '/' + n,
-                             0o755 if os.access(s, os.X_OK) else 0o644, s)
+                             0o755 if os.access(s, os.X_OK) else 0o644, s,
+                             uid, gid)
         return
     if kind == 'man':
         idx = man_index()
