@@ -78,6 +78,14 @@
 #define	LINESZ		1024
 
 /*
+ * Mailbox lock: LOCKTRY seconds is how long delivery waits for a lock another
+ * process holds before it gives the message up.  SPOOLTRY is how many names
+ * the spool tries before it reports that it has no spool to write in.
+ */
+#define	LOCKTRY		30
+#define	SPOOLTRY	32
+
+/*
  * Setup failure policy for the pre-forked children.  A child that cannot open,
  * configure or listen on its transport exits EX_SETUP; the parent retries it
  * SETUPTRY times, SETUPWAIT seconds apart, and then exits itself.  The retry is
@@ -119,6 +127,7 @@ static reply();
 static deliver();
 static mlock();
 static munlock();
+static FILE *spoolopen();
 static char *aliasof();
 
 main(argc, argv)
@@ -271,9 +280,8 @@ int out;
 	char *cp, *ep;
 	FILE *tf;
 	char tname[64];
-	int inbody;
+	int inbody, badspool;
 
-	sprintf(tname, "/tmp/smtp%d", getpid());
 	sender[0] = '\0';
 	nrcpt = 0;
 
@@ -337,7 +345,7 @@ int out;
 				netput(out, "503 need RCPT\r\n", 15);
 				continue;
 			}
-			if ((tf = fopen(tname, "w")) == (FILE *)0) {
+			if ((tf = spoolopen(tname)) == (FILE *)0) {
 				netput(out, "451 no spool\r\n", 14);
 				continue;
 			}
@@ -358,7 +366,10 @@ int out;
 					cp++;
 				fprintf(tf, "%s\n", cp);
 			}
-			fclose(tf);
+			(void) fflush(tf);
+			badspool = ferror(tf);
+			if (fclose(tf) != 0)
+				badspool = 1;
 			/*
 			 * RFC 821 accepts a message at the end-of-mail-data
 			 * line and nowhere else, so a body the sender stopped
@@ -396,11 +407,29 @@ int out;
 				nrcpt = 0;
 				return 0;
 			}
-			if (deliver(tname) == 0)
+			/*
+			 * 250 is a promise that the message is stored, so it
+			 * is answered only after every write, flush and close
+			 * has succeeded, and the spool is removed only then.
+			 * A message the spool or a mailbox refused stays in
+			 * /tmp under the name on standard error, and the
+			 * sender is told to send it again.
+			 */
+			if (badspool) {
+				unlink(tname);
+				netput(out, "451 spool write failed\r\n", 24);
+				nrcpt = 0;
+				continue;
+			}
+			if (deliver(tname) == 0) {
 				netput(out, "250 accepted\r\n", 14);
-			else
+				unlink(tname);
+			} else {
 				netput(out, "451 delivery failed\r\n", 21);
-			unlink(tname);
+				fprintf(stderr,
+					"%s: delivery failed, message held"
+					" in %s\n", prog_name, tname);
+			}
 			nrcpt = 0;
 			continue;
 		}
@@ -438,7 +467,7 @@ char *tname;
 	struct passwd *pwp;
 	char box[128];
 	long now;
-	int i, c;
+	int i, c, fd, bad;
 
 	for (i = 0; i < nrcpt; i++) {
 		if ((pwp = getpwnam(rcpt[i])) == (struct passwd *)0)
@@ -446,8 +475,20 @@ char *tname;
 		if ((in = fopen(tname, "r")) == (FILE *)0)
 			return 1;
 		sprintf(box, "%s%s", SPOOLDIR, rcpt[i]);
-		mlock(pwp->pw_uid);
-		if ((out = fopen(box, "a")) == (FILE *)0) {
+		if (mlock(pwp->pw_uid) != 0) {
+			fclose(in);
+			return 1;
+		}
+		/*
+		 * A mailbox this daemon creates is the recipient's alone: mail
+		 * is opened with the private mode rather than left to the
+		 * umask of whatever started the daemon.
+		 */
+		out = (FILE *)0;
+		if ((fd = open(box, O_WRONLY | O_CREAT | O_APPEND, 0600)) >= 0
+		    && (out = fdopen(fd, "a")) == (FILE *)0)
+			close(fd);
+		if (out == (FILE *)0) {
 			munlock();
 			fclose(in);
 			return 1;
@@ -458,27 +499,52 @@ char *tname;
 		while ((c = getc(in)) != EOF)
 			putc(c, out);
 		fprintf(out, "\1\1\n");
-		fclose(out);
+		/*
+		 * A buffered write reports its failure at the flush or the
+		 * close, so both are examined before this message counts as
+		 * stored; a mailbox that took only part of it is a failure.
+		 */
+		(void) fflush(out);
+		bad = ferror(out) || ferror(in);
+		if (fclose(out) != 0)
+			bad = 1;
+		fclose(in);
+		if (bad) {
+			munlock();
+			fprintf(stderr, "%s: %s: %s\n", prog_name, box,
+				strerror(errno));
+			return 1;
+		}
 		chown(box, pwp->pw_uid, pwp->pw_gid);
 		munlock();
-		fclose(in);
 	}
 	return 0;
 }
 
-/* mail(1)'s mailbox lock, same name and same protocol (cmd/mail/util.c). */
+/*
+ * mail(1)'s mailbox lock, same name and the same file (cmd/mail/util.c), taken
+ * with an exclusive create so that the holder is whoever made the file.  A lock
+ * another process holds is waited for, for LOCKTRY seconds, and then the
+ * message is given up: it is not broken, and munlock() removes only a lock this
+ * process created, because the process that made it is still using the box.
+ * Returns 0 holding the lock, -1 holding nothing.
+ */
 static mlock(uid)
 int uid;
 {
 	int fd, spun;
 
 	sprintf(lockname, "/tmp/maillock%d", uid);
-	for (spun = 0; access(lockname, 0) == 0 && spun < 30; spun++)
+	for (spun = 0; ; spun++) {
+		if ((fd = open(lockname, O_WRONLY | O_CREAT | O_EXCL, 0)) >= 0) {
+			close(fd);
+			locked = 1;
+			return 0;
+		}
+		if (errno != EEXIST || spun >= LOCKTRY)
+			return -1;
 		sleep(1);
-	if ((fd = creat(lockname, 0)) >= 0)
-		close(fd);
-	locked = 1;
-	return 0;
+	}
 }
 
 static munlock()
@@ -487,6 +553,40 @@ static munlock()
 		unlink(lockname);
 	locked = 0;
 	return 0;
+}
+
+/*
+ * The spool file that holds one message between the end of DATA and delivery.
+ * Created with an exclusive create and a private mode under a name that the
+ * caller cannot work out in advance, so a name planted in /tmp beforehand
+ * cannot become this file and the body is readable only by the daemon's owner.
+ * The name is left in `name' for the caller to unlink.
+ */
+static FILE *spoolopen(name)
+char *name;
+{
+	FILE *fp;
+	unsigned key;
+	int fd, try;
+	long now;
+
+	time(&now);
+	key = (unsigned) now ^ ((unsigned) getpid() << 3);
+	for (try = 0; try < SPOOLTRY; try++, key += 7919) {
+		sprintf(name, "/tmp/smtp%u", key);
+		if ((fd = open(name, O_WRONLY | O_CREAT | O_EXCL, 0600)) < 0) {
+			if (errno != EEXIST)
+				break;
+			continue;
+		}
+		if ((fp = fdopen(fd, "w")) != (FILE *)0)
+			return fp;
+		close(fd);
+		unlink(name);
+		break;
+	}
+	name[0] = '\0';
+	return (FILE *)0;
 }
 
 /* /usr/lib/mail/aliases: "name: target" one per line. */
@@ -535,7 +635,16 @@ char *code;
 	return 0;
 }
 
-/* Read one CRLF line off the connection. */
+/*
+ * Read one CRLF line off the connection.  A positive return is a whole line,
+ * terminated by the newline it ends with or by the size of the buffer; 0 is
+ * end of input and -1 is a read error, and in both of those the bytes that had
+ * arrived are no line at all.  The two are distinguished because a caller that
+ * cannot tell them apart reads a partial line as a complete one -- the buffer
+ * still holds the terminator of the line before it -- and a body cut short
+ * after a lone `.' would count as the end of DATA.  The buffer is terminated
+ * on every path so that no caller ever reads what the previous line left.
+ */
 static netline(fd, buf, size)
 int fd;
 char *buf;
@@ -547,8 +656,10 @@ int size;
 	i = 0;
 	while (i < size - 1) {
 		n = read(fd, &c, 1);
-		if (n <= 0)
-			return i > 0 ? i : n;
+		if (n <= 0) {
+			buf[i] = '\0';
+			return n < 0 ? -1 : 0;
+		}
 		buf[i++] = c;
 		if (c == '\n')
 			break;
