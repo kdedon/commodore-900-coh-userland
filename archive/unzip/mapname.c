@@ -67,7 +67,9 @@
 #define PERMS   0777
 #endif
 
-#ifndef NO_MKDIR
+#ifdef NO_MKDIR
+#define MKDIR(path,mode)   makedir(path,mode)
+#else
 #ifdef DOS_OS2
 #if (_MSC_VER >= 600)           /* have special MSC mkdir prototype */
 #include <direct.h>
@@ -78,7 +80,60 @@ int mkdir(const char *path);
 #else                           /* !DOS_OS2 */
 #define MKDIR(path,mode)   mkdir(path,mode)
 #endif
-#endif                          /* !NO_MKDIR */
+#endif                          /* ?NO_MKDIR */
+
+#ifdef NO_MKDIR
+
+/*
+ * Create one directory on a system with no mkdir(2).  /bin/mkdir is setuid and
+ * carries the privilege mknod(IFDIR) needs; it is executed directly, with the
+ * path as an argument of its own, so nothing in the path is interpreted as a
+ * command.  The child's diagnostics are discarded and the caller reports the
+ * failure.
+ */
+static int
+makedir(path, mode)
+    char *path;
+    int mode;
+{
+    int pid, wpid, status, omask;
+
+    if ((pid = fork()) == -1)
+        return (-1);
+    if (pid == 0) {
+        omask = umask(0);
+        umask(omask | (0777 & ~mode));
+        close(2);
+        open("/dev/null", 1);
+        execl("/bin/mkdir", "mkdir", path, (char *)NULL);
+        _exit(127);
+    }
+    while ((wpid = wait(&status)) != pid)
+        if (wpid == -1) {
+            errno = ECHILD;
+            return (-1);
+        }
+    if (status != 0) {
+        errno = EIO;
+        return (-1);
+    }
+    return (0);
+}
+
+#endif                          /* NO_MKDIR */
+
+/*
+ * A path component an archive must not be allowed to name:  an empty one (a
+ * leading '/' makes the path absolute), "." and "..".  Accepting any of them
+ * lets the archive place a file outside the directory being extracted into.
+ */
+static int
+badcomp(comp)
+    char *comp;
+{
+    return (*comp == '\0' || strcmp(comp, ".") == 0 ||
+            strcmp(comp, "..") == 0);
+}
 
 /***************************/
 /*  Function mapped_name() */
@@ -86,9 +141,6 @@ int mkdir(const char *path);
 
 mapped_name()
 {
-#ifdef NO_MKDIR
-    char command[FILNAMSIZ+40]; /* buffer for system() call */
-#endif
 #ifdef VMS
     int stat_val;               /* temp. holder for stat() return value */
     char *dp, *xp;              /* ptrs to directory name */
@@ -163,15 +215,20 @@ mapped_name()
                  * Special processing case:  if -d flag was specified on
                  * command line, create any necessary directories included
                  * in the pathname.  Creation of directories is straight-
-                 * forward on BSD and MS-DOS machines but requires use of
-                 * the system() command on SysV systems (or any others which
-                 * don't have mkdir()).  The stat() check is necessary with
+                 * forward on BSD and MS-DOS machines; a system with no
+                 * mkdir(2) goes through MKDIR() as well, which runs
+                 * /bin/mkdir directly.  The stat() check is necessary with
                  * MSC because it doesn't have an EEXIST errno, and it saves
-                 * the overhead of multiple system() calls on SysV machines.
+                 * the overhead of a process per component elsewhere.
                  */
 
                 if (dflag) {
                     *pp = '\0';
+                    if (badcomp(name)) {
+                        free(cdp);
+                        fprintf(stderr, "unable to process [%s]\n", filename);
+                        return (2);
+                    }
 #ifdef VMS
                     dp = name;
                     while (*++xp = *dp++)   /* copy name to cdp, while */
@@ -185,12 +242,7 @@ mapped_name()
                     strcat(cdp, name);
                     if (stat(cdp, &statbuf)) {  /* doesn't exist, so create */
 #endif
-#ifdef NO_MKDIR
-                        sprintf(command, "IFS=\" \t\n\" /bin/mkdir %s 2>/dev/null", cdp);
-                        if (system(command)) {
-#else
                         if (MKDIR(cdp, PERMS) == -1) {
-#endif
                             perror(cdp);
                             free(cdp);
                             fprintf(stderr, "Unable to process [%s]\n", filename);
@@ -256,7 +308,7 @@ mapped_name()
     create the extracted file, and other error msgs will result.
   ---------------------------------------------------------------------------*/
 
-    if (*name == '\0') {
+    if (badcomp(name)) {
         fprintf(stderr, "conversion of [%s] failed\n", filename);
         return (2);
     }
