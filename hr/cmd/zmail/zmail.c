@@ -115,6 +115,7 @@ char	mfrom[MAXMSG][NFROM];
 char	mdate[MAXMSG][NDATE];
 char	msubj[MAXMSG][NSUBJ];
 int	nmsg;
+int	boxmore;		/* 1 = the spool holds more than MAXMSG   */
 long	boxsize;		/* spool size as of the last scan         */
 int	selmsg = -1;		/* selected message, -1 = none            */
 int	ltop;			/* first visible list row                 */
@@ -513,6 +514,8 @@ drawbar()
 		strcpy(sbuf, "composing");
 	else if ( nmsg == 0 )
 		strcpy(sbuf, "no mail");
+	else if ( boxmore )
+		sprintf(sbuf, "%d shown, mailbox has more", nmsg);
 	else if ( (nd = ndeleted()) > 0 )
 		sprintf(sbuf, "%d messages, %d deleted", nmsg, nd);
 	else
@@ -808,6 +811,7 @@ rescan()
 	}
 	osel = (selmsg >= 0 && selmsg < nmsg) ? mseek[selmsg] : -1;
 	nmsg = 0;
+	boxmore = 0;
 	boxsize = 0;
 	if ( mfp != 0 )
 	{
@@ -832,7 +836,10 @@ rescan()
 		if ( strncmp(b, "From ", 5) == 0 )
 		{
 			if ( nmsg >= MAXMSG )
+			{
+				boxmore = 1;
 				break;
+			}
 			i = nmsg++;
 			mseek[i] = pos;
 			mend[i] = ftell(mfp);	/* grows as lines arrive */
@@ -1535,40 +1542,95 @@ dodelete()
 	return 0;
 }
 
-/* Copy [start,end) of the still-open old spool stream onto nfp. */
+/* 1 when the message that starts at byte offset pos carries a deletion
+ * mark in the message table, 0 for every other message -- including one
+ * the table never saw. */
 static
-mcopy(ifp, ofp, start, end)
-FILE *ifp, *ofp;
-long start, end;
+delmarked(pos)
+long pos;
 {
-	register int c;
+	register int i;
 
-	fseek(ifp, start, 0);
-	while ( start++ < end && (c = getc(ifp)) != EOF )
-		putc(c, ofp);
+	for ( i = 0; i < nmsg; i++ )
+		if ( mseek[i] == pos )
+			return mdel[i];
 	return 0;
 }
 
-/* Rewrite the spool without the deleted messages (7mail's mquit): the open
- * mfp still reads the OLD inode after the unlink, so the undeleted bytes are
- * copied from it into the fresh file, then everything is rescanned. */
+/* Copy ifp to ofp message by message, dropping only those whose start
+ * offset carries a deletion mark.  The input is read as it stands, so a
+ * message that arrived after the last scan, and every message beyond the
+ * table's ceiling, is carried across byte for byte. */
+static
+purgecopy(ifp, ofp)
+FILE *ifp, *ofp;
+{
+	char b[256];
+	register int i;
+	long pos;
+	int keep, atbol, len;
+
+	keep = 1;
+	atbol = 1;
+	fseek(ifp, 0L, 0);
+	for (;;)
+	{
+		pos = ftell(ifp);
+		if ( fgets(b, sizeof(b), ifp) == 0 )
+			break;
+		len = (int)(ftell(ifp) - pos);
+		if ( len <= 0 )
+			break;
+		if ( atbol && len >= 5 && strncmp(b, "From ", 5) == 0 )
+			keep = !delmarked(pos);
+		atbol = b[len - 1] == '\n';
+		if ( keep )
+			for ( i = 0; i < len; i++ )
+				putc(b[i], ofp);
+	}
+	return 0;
+}
+
+/* Rewrite the spool without the deleted messages (7mail's mquit).  The lock
+ * is taken first and the spool is read from a stream opened under it, so the
+ * rewrite is of the mailbox as it stands at this moment; the old inode stays
+ * readable through that stream after the unlink. */
 static
 dopurge()
 {
 	register int i;
-	FILE *nfp;
+	FILE *ifp, *nfp;
 	struct stat sb;
 
 	if ( composing || ndeleted() == 0 )
 		return 0;
 	if ( !confirm("Remove the deleted messages?") )
 		return 0;
-	if ( mfp == 0 || fstat(fileno(mfp), &sb) < 0 )
-		return 0;
 	mlock(myuid);
+	if ( (ifp = fopen(spoolname, "r")) == 0 )
+	{
+		munlock();
+		rescan();
+		notice("Cannot read the mailbox");
+		return 0;
+	}
+	if ( fstat(fileno(ifp), &sb) < 0 )
+	{
+		fclose(ifp);
+		munlock();
+		rescan();
+		notice("Cannot read the mailbox");
+		return 0;
+	}
+	if ( mfp != 0 )
+	{
+		fclose(mfp);
+		mfp = 0;
+	}
 	unlink(spoolname);
 	if ( (nfp = fopen(spoolname, "w")) == 0 )
 	{
+		fclose(ifp);
 		munlock();
 		rescan();
 		notice("Cannot rewrite the mailbox");
@@ -1576,10 +1638,9 @@ dopurge()
 	}
 	chown(spoolname, sb.st_uid, sb.st_gid);
 	chmod(spoolname, sb.st_mode & 0777);
-	for ( i = 0; i < nmsg; i++ )
-		if ( !mdel[i] )
-			mcopy(mfp, nfp, mseek[i], mend[i]);
+	purgecopy(ifp, nfp);
 	fclose(nfp);
+	fclose(ifp);
 	munlock();
 	sync();
 	/* The marks are consumed by the rewrite -- clear them BEFORE the
