@@ -37,9 +37,25 @@
  * parent computes the verdict from two things that outlive the child: the
  * record file it wrote on its way down, and the status wait(2) reports.
  * Each level writes its depth AND the address of its own frame with an
- * unbuffered write(2), so the first and last records in the file bracket
- * exactly how much stack the child really had, with no arithmetic about
- * frame sizes and no reliance on the child living long enough to report.
+ * unbuffered write(2), so the first and last records in the file bracket the
+ * span the recursion covered, with no arithmetic about frame sizes and no
+ * reliance on the child living long enough to report.
+ *
+ * That span is NOT the whole stack the process held: exec spends part of the
+ * same allowance on the argument region before the program starts, and the
+ * frames above the recursion spend more.  The allowance is therefore measured
+ * from the top of the argument region -- exec puts the argument and
+ * environment strings at the high end of the stack segment, so the highest
+ * byte of any of them is the stack's top -- and the recursion is asked to
+ * cover most of what was LEFT below where it began.  Measured from its own
+ * first frame instead, the span is short by however much was spent above it:
+ * the argument region and a frame or two here, and several kilobytes on a host
+ * standing in for this kernel, which spends part of the same allowance on a
+ * random gap below the argument region and on the frames its startup code
+ * takes before main.  At the bottom the span is short by up to two frames --
+ * the deepest one that wrote its record is not the deepest one taken -- so
+ * "most of" has to leave room for a frame size, which at 4096 bytes is most of
+ * what a small allowance holds.
  *
  * `frame-bytes' picks between four real frame sizes: one under the warning
  * page, one exactly its size, and two over it.
@@ -48,6 +64,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>		/* long strtol(): K&R would truncate it to int */
+#include <string.h>
 #include <unistd.h>		/* long lseek(): the same */
 
 #define MAXDEPTH	20000	/* a stop, not a target: see CAPPED below	*/
@@ -162,6 +179,34 @@ long *ap;
 	return *dp > 0;
 }
 
+/*
+ * The top of the stack: the highest byte of any argument or environment
+ * string.  exec writes that region at the high end of the stack segment, so
+ * nothing the process owns sits above it, and the parent's copy is at the same
+ * addresses as the child's.
+ */
+static long
+argtop(argc, argv, envp)
+int argc;
+char **argv;
+char **envp;
+{
+	long top, end;
+	int i;
+
+	top = 0;
+	for (i = 0; i < argc; i++)
+		if (argv[i] != (char *)0 &&
+		    (end = (long)argv[i] + (long)strlen(argv[i]) + 1L) > top)
+			top = end;
+	if (envp != (char **)0)
+		for (i = 0; envp[i] != (char *)0; i++)
+			if ((end = (long)envp[i] + (long)strlen(envp[i]) + 1L)
+			    > top)
+				top = end;
+	return top;
+}
+
 static void
 ck(what, got, want)
 char *what;
@@ -174,11 +219,12 @@ long got, want;
 	fflush(stdout);
 }
 
-int main(argc, argv)
+int main(argc, argv, envp)
 int argc;
 char **argv;
+char **envp;
 {
-	long size, hi, lo, used;
+	long size, hi, lo, used, top, spent, room;
 	int f, st, sig, dhi, dlo;
 
 	/* The argument selects a frame size; anything else is refused rather
@@ -273,6 +319,24 @@ char **argv;
 	printf("deepstack: level %d at 0x%lx, level %d at 0x%lx: %ld bytes\n",
 		dlo, hi, dhi, lo, used);
 
+	/* The stack the process actually held runs from the top of the
+	 * argument region down to the deepest frame; `spent' is the part of
+	 * the allowance that was gone before the recursion took its first
+	 * frame, and `room' is what it had left to cover. */
+	top = argtop(argc, argv, envp);
+	spent = top - hi;
+	if (spent <= 0 || spent >= ALLOWANCE) {
+		printf("deepstack: FAIL -- the argument region ends at 0x%lx,"
+			" which is not above the\n", top);
+		printf("deepstack: recursion's first frame at 0x%lx by less"
+			" than the allowance; the extent\n", hi);
+		printf("deepstack: below cannot be measured from it.\n");
+		return 1;
+	}
+	room = ALLOWANCE - spent;
+	printf("deepstack: top 0x%lx: %ld bytes spent above the recursion,"
+		" %ld left to it\n", top, spent, room);
+
 	/* Records are written one per level with no gaps, so the last depth and
 	 * the record count must agree: a mismatch means writes were lost, and
 	 * the extent above was then measured from the wrong frame. */
@@ -283,20 +347,23 @@ char **argv;
 	ck("the stack ran past the initial segment",
 		used > (long)ISTSIZE ? 1L : 0L, 1L);
 
-	/* And it ran to the neighbourhood of the whole allowance, not merely
-	 * past ISTSIZE.  This is the assertion that frame size cannot change:
-	 * a stack that is grown only when the frames happen to tread on the
-	 * warning page gets a few kilobytes at some sizes and everything at
-	 * others, and clears the check above either way. */
-	ck("  and reached most of the allowance",
-		used > ALLOWANCE / 2 ? 1L : 0L, 1L);
+	/* And it ran to the neighbourhood of what was left of the allowance,
+	 * not merely past ISTSIZE.  This is the assertion that frame size
+	 * cannot change: a stack that is grown only when the frames happen to
+	 * tread on the warning page gets a few kilobytes at some sizes and
+	 * everything at others, and clears the check above either way. */
+	ck("  and reached most of what was left", used > room / 2 ? 1L : 0L,
+		1L);
 
 	/* 2 -- THE ALLOWANCE HELD.  More than it means the kernel handed out
 	 * stack it never promised, and more than one segment means memory the
 	 * process cannot reach without wrapping the offset -- silent corruption
-	 * rather than depth. */
-	ck("and stopped within the allowance", used <= ALLOWANCE ? 1L : 0L, 1L);
-	ck("  which is inside one segment", used < CEILING ? 1L : 0L, 1L);
+	 * rather than depth.  Both are about the whole extent from the top of
+	 * the stack, which is what the allowance bounds. */
+	ck("and stopped within the allowance",
+		spent + used <= ALLOWANCE ? 1L : 0L, 1L);
+	ck("  which is inside one segment",
+		spent + used < CEILING ? 1L : 0L, 1L);
 
 	/* 3 -- and the fault took the child alone.  This parent still running
 	 * is the whole of that evidence, and it is worth saying out loud: the
