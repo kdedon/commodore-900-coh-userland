@@ -91,6 +91,14 @@
 /games/net/hunt/huntd/huntd
 /games/net/hunt/*/*.o
 
+# ---- generated sources ----------------------------------------------------
+# ckcpro.c is what wart (ckwart.c) makes of the ckcpro.w state-machine
+# description, and build-comms.sh remakes it whenever it is absent or older
+# than the .w.  A tracked copy is a second answer to the same question: the
+# build overwrites it, so any edit made to it -- a copyright notice included --
+# is lost the next time the .w moves.  The source is the .w.
+/comms/ckermit/ckcpro.c
+
 # ---- make deps ------------------------------------------------------------
 # Where `make deps' unpacks the pinned third-party release binaries DEPS names
 # (the emulator).  Our own repositories are cloned as SIBLINGS, outside this
