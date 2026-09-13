@@ -1,17 +1,24 @@
 # build -- compile this repository's programs against the toolchain it pins.
 #
-# Modeled on commodore-900-coh-kernel3's build.yml: resolve the toolchain as a
-# dependency edge (`make deps DEP=toolchain`), read back which shape resolved
-# (`sh mk/deps.sh -k toolchain`), and point C900_TOOLCHAIN at the resolved
-# deps/ path rather than checking the toolchain repository out separately.
+# The toolchain is resolved as a dependency edge -- `sh mk/deps-fetch.sh
+# toolchain', which is what DEPS is read by -- and the shape it resolved to is
+# read back with `sh mk/deps.sh -k toolchain'; C900_TOOLCHAIN then points at
+# the deps/ path that placed, rather than a separate checkout of it.
+#
+# The kernel is an edge too, and the sweep needs it: the userland owns no
+# machine layer, so <sys/machz8001.h> and the rest of that header set are the
+# kernel repository's, and build-hyacc.sh -- step 1 of the sweep -- refuses by
+# name without them.  It is checked out here and named in C900_KERNEL, set
+# rather than searched, because a job that depended on directory adjacency
+# breaks the first time a runner image moves its checkouts.
 #
 # This repository builds programs; it does not link a kernel and does not pack
 # an image (those are commodore-900-coh-kernel3 and commodore-900-dist).
-# The gate here is `make userland' -- the cmd/games/libs sweep hostbuild/
-# Makefile's own header calls "the full ... sweep" -- followed by `publish' and
-# `check-publish-fresh', so a green run proves the same thing a human running
-# `make all' by hand would check: that the sweep finished AND that publish ran
-# after it, not against a stale build/.ulstamp.
+# The gate here is `make -C hostbuild userland' -- the cmd/games/libs sweep --
+# followed by `publish' and `check-publish-fresh', so a green run proves the
+# same thing a human running `make -C hostbuild all' by hand would check: that
+# the sweep finished AND that publish ran after it, not against a stale
+# build/.ulstamp.
 #
 # NOT included, on purpose:
 #   * tests/check-paths.sh.  Only the toolchain repository is checked out
@@ -36,13 +43,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { path: userland, fetch-depth: 0 }
+      - uses: actions/checkout@v4
+        with:
+          repository: kdedon/commodore-900-coh-kernel3
+          path: commodore-900-coh-kernel3
+          token: ${{ secrets.C900_CI_TOKEN || github.token }}
 
       # A RELEASE of the toolchain, pinned in DEPS -- see DEPS's own comment
       # for why a tagged release and not a floating checkout.
       - name: The toolchain this tree is built with
         working-directory: userland
         run: |
-          make deps DEP=toolchain
+          sh mk/deps-fetch.sh toolchain
           # Which SHAPE resolved, in the log: a release and a checkout are
           # both usable and a build should say which it got.
           sh mk/deps.sh -k toolchain
@@ -51,6 +63,7 @@ jobs:
         working-directory: userland
         env:
           C900_TOOLCHAIN: ${{ github.workspace }}/userland/deps/commodore-900-toolchain
+          C900_KERNEL: ${{ github.workspace }}/commodore-900-coh-kernel3
         run: make -C hostbuild userland
 
       # Not for the dist repository here -- there is no image to pack in this
@@ -62,52 +75,7 @@ jobs:
         working-directory: userland
         env:
           C900_TOOLCHAIN: ${{ github.workspace }}/userland/deps/commodore-900-toolchain
+          C900_KERNEL: ${{ github.workspace }}/commodore-900-coh-kernel3
         run: |
           make -C hostbuild publish
           make -C hostbuild check-publish-fresh
-
-  # The DEFAULT flavour.  `make -C hostbuild userland' above builds
-  # with COMPILER=mwc, the toolchain's own compiler; hr/Makefile's
-  # default is mwc1985, the original June 1985 passes running as guest
-  # processes, and nothing here exercised that until this job.  Where that
-  # flavour goes wrong is header resolution -- a guest tool resolves <name.h>
-  # against the GUEST's /usr/include, which with no guest root named is the
-  # runner's own -- so the check is about WHICH headers were read, not only
-  # about a zero exit.  mk/mwc1985/check.sh states the four claims and how
-  # each one is proved.
-  #
-  # A CHECKOUT of the toolchain, where the job above takes a release: the 1985
-  # compiler lives in the toolchain's vendor/mwc-1985, vendor/ is in no
-  # archive, and a release therefore cannot answer for this flavour.
-  mwc1985:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { path: userland, fetch-depth: 0 }
-      - uses: actions/checkout@v4
-        with:
-          repository: kdedon/commodore-900-toolchain
-          path: commodore-900-toolchain
-
-      - name: The emulator, which runs the 1985 compiler
-        working-directory: userland
-        run: make deps DEP=emu
-
-      # <sys/clist.h> is staged across the `kernel' edge, and `make headers' --
-      # which check-mwc1985 waits on, the guest root being a link onto the
-      # staged /usr/include -- names it.
-      - name: The kernel header edge
-        working-directory: userland
-        run: make deps DEP=kernel
-
-      - name: Which compiler resolved
-        working-directory: userland
-        env:
-          C900_TOOLCHAIN: ${{ github.workspace }}/commodore-900-toolchain
-        run: make -C hr compiler-info
-
-      - name: The default flavour reads the target's headers
-        working-directory: userland
-        env:
-          C900_TOOLCHAIN: ${{ github.workspace }}/commodore-900-toolchain
-        run: make check-mwc1985

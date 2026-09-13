@@ -2,20 +2,18 @@
 #
 # Every other job sets C900_TOOLCHAIN, C900_DIST and C900_EMU explicitly, as it
 # must: a job that depended on directory adjacency breaks the first time a
-# runner image moves its checkouts.  That leaves the search lists untested --
-# and the bug this repository actually had is the one being tested for here:
-# mk/emulator.sh walked outward to `/', so on a runner it could find another
-# job's checkout, and on a laptop whatever is in $HOME, and report a false
-# success.  The walk is bounded at three parents now, which is exactly what
-# reaches the enclosing workspace from a repository staged at repos/<repo>.
+# runner image moves its checkouts.  That leaves the search lists untested, and
+# an unbounded search is a false success waiting to happen: a walk outward to
+# `/' finds another job's checkout on a runner and whatever is in $HOME on a
+# laptop.  The walk is bounded at three parents, which is exactly what reaches
+# the enclosing workspace from a repository staged at repos/<repo>, and this
+# job proves the bound holds.
 #
-# `kboot' was a fourth edge here until TASK-288 (2026-08-09): the loader moved
-# to commodore-900-coh-kboot and this repository stopped consuming a checkout
-# of it (mk/deps.sh no longer has a `kboot' case; hostbuild/kboot.sh and
-# kboot.mk are unreferenced from anywhere this repository builds).  `dist' is
-# the edge that replaced it in substance -- added the same day, for
-# commodore-900-dist, which the boot/net-test harnesses under net and
-# hostbuild now resolve through mk/dist.sh -- so it is tested here instead.
+# The edges tested are the ones this repository consumes: the emulator, the
+# toolchain, and commodore-900-dist, which the boot and net-test harnesses
+# under net and hostbuild resolve through mk/dist.sh.  The loader lives in
+# commodore-900-coh-kboot and is consumed by no checkout here, so mk/deps.sh
+# has no `kboot' case and there is no such edge to test.
 #
 # So: the repository ALONE, six levels deep, with an empty $HOME, nothing beside
 # it and no c900 on $PATH.  Each of the three edges must refuse BY NAME, and a
@@ -64,15 +62,18 @@ jobs:
       # The per-consumer resolvers are what the BUILD uses; mk/deps.sh only has
       # to agree with them.  These refuse at the point of use, so they are
       # exercised as the build exercises them: sourced, with the variable the
-      # sourcing convention needs set first.  toolchain.sh wants $OS (it lives
-      # under hostbuild); dist.sh wants $C900_ROOT (it lives under mk/, and
-      # is sourced by harnesses outside hostbuild too).
+      # sourcing convention needs set first.  Both want the repository root:
+      # toolchain.sh spells it $OS (it lives under hostbuild); dist.sh spells
+      # it $C900_ROOT (it lives under mk/, and is sourced by harnesses outside
+      # hostbuild too).
       - name: The build's own toolchain resolver refuses too
         working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
         run: |
+          set +e
           out=$(env -i HOME="$GITHUB_WORKSPACE/iso/home" PATH=/usr/bin:/bin \
-                sh -c 'OS=$PWD/os; . "$OS/hostbuild/toolchain.sh"' 2>&1)
+                sh -c 'OS=$PWD; . "$OS/hostbuild/toolchain.sh"' 2>&1)
           rc=$?
+          set -e
           echo "$out"
           test $rc -ne 0 || { echo "FAIL: toolchain.sh resolved something that is not there"; exit 1; }
           echo "$out" | grep -q "C900_TOOLCHAIN" || { echo "FAIL: toolchain.sh refusal does not name C900_TOOLCHAIN"; exit 1; }
@@ -80,9 +81,11 @@ jobs:
       - name: mk/dist.sh's dist_need refuses too
         working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
         run: |
+          set +e
           out=$(env -i HOME="$GITHUB_WORKSPACE/iso/home" PATH=/usr/bin:/bin \
                 sh -c 'C900_ROOT=$PWD; . "$C900_ROOT/mk/dist.sh"; dist_need "boot anything"' 2>&1)
           rc=$?
+          set -e
           echo "$out"
           test $rc -ne 0 || { echo "FAIL: dist_need proceeded without a dist checkout"; exit 1; }
           echo "$out" | grep -q "C900_DIST" || { echo "FAIL: dist_need's refusal does not name C900_DIST"; exit 1; }
@@ -101,22 +104,22 @@ jobs:
             echo "$out" | grep -q "/nonexistent/$d" || { echo "FAIL: $d refusal does not quote the value given"; exit 1; }
           done
 
-      # `make deps' is the answer those refusals point at, so it must run in the
+      # The fetcher is the answer those refusals point at, so it must run in the
       # same emptiness -- and it must place the emulator where the resolvers
       # were just shown to look, or the two halves do not agree.  Run twice:
       # the second time changes nothing.
-      - name: make deps places the pinned emulator, and is idempotent
+      - name: The fetcher places the pinned emulator, and is idempotent
         working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
         env:
           HOME_ISO: ${{ github.workspace }}/iso/home
         run: |
-          env -i HOME="$HOME_ISO" PATH=/usr/bin:/bin make deps DEP=emu
+          env -i HOME="$HOME_ISO" PATH=/usr/bin:/bin sh mk/deps-fetch.sh emu
           test -x deps/commodore-900-emulator/bin/c900 || { echo "FAIL: nothing was unpacked"; exit 1; }
           before=$(find deps -newermt '@0' | sort | md5sum)
-          out=$(env -i HOME="$HOME_ISO" PATH=/usr/bin:/bin make deps DEP=emu 2>&1)
+          out=$(env -i HOME="$HOME_ISO" PATH=/usr/bin:/bin sh mk/deps-fetch.sh emu 2>&1)
           echo "$out"
           after=$(find deps -newermt '@0' | sort | md5sum)
-          test "$before" = "$after" || { echo "FAIL: a second make deps changed deps/"; exit 1; }
+          test "$before" = "$after" || { echo "FAIL: a second fetch changed deps/"; exit 1; }
           env -i HOME="$HOME_ISO" PATH=/usr/bin:/bin sh mk/deps.sh emu \
             | grep -q "deps/commodore-900-emulator" \
-            || { echo "FAIL: make deps put it where no resolver looks"; exit 1; }
+            || { echo "FAIL: the fetcher put it where no resolver looks"; exit 1; }
