@@ -130,6 +130,12 @@ static munlock();
 static FILE *spoolopen();
 static char *aliasof();
 
+/*
+ * Read the options, then run in whichever mode the environment selects: one
+ * conversation on standard input and output under inetd, or the pre-forked
+ * listener otherwise.  In the listener the parent keeps opt_m children alive
+ * and applies the EX_SETUP retry policy.
+ */
 main(argc, argv)
 int argc;
 char *argv[];
@@ -216,6 +222,7 @@ reap:
 	}
 }
 
+/* Print the usage line and exit non-zero. */
 static usage()
 {
 	fprintf(stderr, "usage: %s [-d] [-m maxsessions] [-p service]\n",
@@ -223,6 +230,12 @@ static usage()
 	exit(1);
 }
 
+/*
+ * One pre-forked child: open the TCP device, configure it for a passive open
+ * on `port', wait for a connection, and run session() on it with the same
+ * descriptor for input and output.  Exits EX_SETUP if the transport cannot be
+ * opened, configured or listened on, which is what the parent retries.
+ */
 static serve(port)
 tcpport_t port;
 {
@@ -547,6 +560,7 @@ int uid;
 	}
 }
 
+/* Release a lock this process took; a lock it did not take is left alone. */
 static munlock()
 {
 	if (locked)
@@ -624,6 +638,7 @@ char *who;
 	return (char *)0;
 }
 
+/* Write the greeting line for `code' -- the 220 banner -- to `fd'. */
 static reply(fd, code)
 int fd;
 char *code;
@@ -668,6 +683,11 @@ int size;
 	return i;
 }
 
+/*
+ * Write `len' bytes to the connection, repeating on a short write.  Returns 0
+ * when all of them went out and -1 on the first write that fails, because a
+ * half-written answer is not an answer.
+ */
 static netput(fd, buf, len)
 int fd;
 char *buf;

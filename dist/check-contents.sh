@@ -22,14 +22,10 @@
 # answer to that is the manifest a release recorded (check-package.sh -b) or the
 # published checksum -- not a deeper hash in here.
 #
-# THIS IS A SECOND COPY of the same twenty lines the toolchain ships in its own
-# packages (host/check-contents.sh), and that is deliberate rather than
-# overlooked: a package must carry its check, this repository is the producer of
-# these packages, and the alternative is reaching into a dependency's checkout at
-# pack time for a file that would then ship under our name.  The FORMAT the two
-# agree on is written down once, in commodore-900-dist's os/dist/
-# PACKAGE-FORMAT, which is what stops them drifting into meaning different
-# things.
+# The toolchain ships the same check in its own packages
+# (host/check-contents.sh): a package carries its own check, and each producer
+# ships the copy that goes out under its name.  The FORMAT the two agree on is
+# written down once, in commodore-900-dist's os/dist/PACKAGE-FORMAT.
 set -e
 
 command -v md5sum >/dev/null 2>&1 || {

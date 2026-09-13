@@ -13,11 +13,10 @@
 # (a moved or renamed source drops out at read time, same as ulsrcmap.extra)
 # and it cannot mis-attribute -- the failure mode the search cannot rule out.
 #
-# Checked against every archive a link line named as of #<task370b>: MGR's
-# client library and the toolchain's curses/libterm resolve correctly through
-# the compile record today (their objects log beside or below them) and are
-# not listed here on purpose -- a row would just be a second, unreviewed copy
-# of a fact the record already states correctly.
+# MGR's client library and the toolchain's curses/libterm are not listed here
+# on purpose: their objects log beside or below the archive, so the compile
+# record names their members correctly, and a row would be a second,
+# unreviewed copy of a fact the record already states.
 #
 # Same format as ulsrcmap.extra: `<archive-basename> <TAB> <source path>...',
 # paths relative to os/, a path may be a file or a directory, `#' comments.

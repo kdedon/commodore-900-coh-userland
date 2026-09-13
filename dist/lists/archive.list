@@ -92,17 +92,6 @@ f	/usr/bin/rx		755 0 1	src=hostbuild/build/bin/rz
 f	/usr/bin/minirb		755 0 1	src=hostbuild/build/bin/minirb
 
 # C-Kermit 4E(072).  KERMIT protocol over a serial line, and the interactive
-# client (`kermit c') for a line cu(1) is not wanted on.  Both halves of the
-# objection that kept it off an image until now are settled:
-#
-#   SIZE.  It is 128334 bytes, 251 blocks.  The "279 blocks to spare" this
-#   entry used to cite was never the number: /usr is 34408 blocks free on
-#   hd42-coh and 2362 on the 21 MB media, so it fits with room over on both.
-#   TRANSFER.  It could not send a byte at all: ttoc(), conoc() and zchout()
-#   each take the address of a char PARAMETER, and the compiler retyped such a
-#   parameter to int, so `&c' addressed the high half of its promoted word --
-#   a NUL for every ASCII character (#324, the #321 defect class).  The
-#   compiler is fixed; the three sites copy the byte to a local as well, so
-#   the source is right under an older toolchain too.  A file now moves
-#   between two machines on one wire, verified end to end under the emulator.
+# client (`kermit c') for a line cu(1) is not wanted on.  128334 bytes, 251
+# blocks: it fits /usr on both the 21 MB and the 42 MB media.
 f	/usr/bin/kermit		755 0 1	src=hostbuild/build/bin/kermit
