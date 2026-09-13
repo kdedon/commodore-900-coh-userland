@@ -139,7 +139,7 @@ char *fn;
 {
 	register FILE *fp;
 	register int i;
-	int n, j;
+	int n, j, e;
 	char lb[220];
 
 	if ( (fp = fopen(fn, "w")) == (FILE *)0 )
@@ -164,7 +164,15 @@ char *fn;
 		if ( lb[0] )
 			fprintf(fp, "%s\n", lb);
 	}
-	fclose(fp);
+	/* Every write is judged: the error flag is sticky, so one test
+	 * covers the whole run of fprintf's, and the close carries the
+	 * final flush -- the one a full filesystem fails.  A drawing is
+	 * never reported written until the bytes are out. */
+	e = ferror(fp);
+	if ( fclose(fp) == EOF )
+		e = 1;
+	if ( e )
+		return -1;
 	sync();		/* a drawing SAVED should survive a power cut */
 	return 0;
 }
@@ -173,7 +181,7 @@ savefile(fn)
 char *fn;
 {
 	if ( writefile(fn) < 0 )
-		return -1;
+		return -1;	/* `modified' stays set: nothing is on disc */
 	modified = 0;
 	return 0;
 }

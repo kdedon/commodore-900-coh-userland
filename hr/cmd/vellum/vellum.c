@@ -2949,13 +2949,17 @@ sheetto(n, create)
 		if ( !confirm(m) )
 			return 0;
 	}
-	if ( modified && savefile(fname) < 0 )
-		return 0;		/* never walk away from unsaved work */
+	/* never walk away from unsaved work: a refused write puts the file
+	 * dialog up with the error on it, and only a save the user gets
+	 * through (or had already) lets the sheet change */
+	if ( modified && savefile(fname) < 0 && !filedlg(1) )
+		return 0;
 	if ( fresh )
 	{
 		clearmodel();
 		strcpy(fname, nn);
-		savefile(fname);	/* the new sheet exists at once */
+		if ( savefile(fname) < 0 )	/* the new sheet exists at once */
+			filedlg(1);
 	}
 	else
 	{

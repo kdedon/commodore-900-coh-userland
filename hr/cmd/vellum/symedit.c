@@ -1727,7 +1727,7 @@ savelib()
 	register FILE *fp;
 	register CSYM *c;
 	register short *p;
-	int sl, i;
+	int sl, i, e;
 
 	commit();
 	if ( (fp = fopen(libfile, "w")) == (FILE *)0 )
@@ -1780,7 +1780,15 @@ savelib()
 		}
 		fprintf(fp, "end\n");
 	}
-	fclose(fp);
+	/* Every write is judged: the error flag is sticky, so one test
+	 * covers the whole run of fprintf's, and the close carries the
+	 * final flush -- the one a full filesystem fails.  `edited' stays
+	 * set unless the bytes are out. */
+	e = ferror(fp);
+	if ( fclose(fp) == EOF )
+		e = 1;
+	if ( e )
+		return -1;
 	sync();		/* a library SAVED should survive a power cut */
 	edited = 0;
 	return 0;
@@ -1789,6 +1797,43 @@ savelib()
 /* ------------------------------------------------------------------ */
 /* dialogs                                                            */
 /* ------------------------------------------------------------------ */
+
+/* A failure the user has to see (a refused write above all): message
+ * and one button. */
+char	emsg[40];
+
+HRWIDGET ewg[] = {
+    { DW_LABEL,   12,  20,   0,  0, emsg },
+    { DW_BUTTON,  95,  56,  70, DLG_BTNH, "OK",     0, 0, (char *)0, 0,
+      DWF_DEF | DWF_CANCEL | DWF_END },
+};
+#define	NEWG	(sizeof(ewg) / sizeof(ewg[0]))
+
+static
+errdlg(m)
+char *m;
+{
+	int w, h, r;
+
+	strncpy(emsg, m, sizeof(emsg) - 1);
+	emsg[sizeof(emsg) - 1] = 0;
+	w = 264;
+	h = 96;
+	r = hr_dlgopen(&w, &h);
+	if ( r == -2 )
+		exit(0);
+	if ( r < 0 )
+		return 0;
+	hr_dlgdraw(ewg, NEWG);
+	if ( hr_dlgrun(ewg, NEWG) == -1 )
+	{
+		hr_dlgclose();
+		exit(0);
+	}
+	hr_dlgclose();
+	statdirty = 1;
+	return 0;
+}
 
 char	ncode[8], npfx[4];
 char	dmsg[36];
@@ -3144,7 +3189,10 @@ char **argv;
 				{
 				case HRM_NEW:	donew();	break;
 				case HRM_OPEN:	doopen();	break;
-				case HRM_SAVE:	savelib();	break;
+				case HRM_SAVE:
+					if ( savelib() < 0 )
+						errdlg("Cannot write the library");
+					break;
 				case HRM_HELP:	dohelp();	break;
 				}
 				statdirty = 1;
