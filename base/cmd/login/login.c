@@ -44,9 +44,11 @@ static char _version[]="login version 3.2.1";
  *		f) sets USER to the user name matched in /etc/passwd.
  *		g) sets HOME to the home directory specified in /etc/passwd.
  *		h) sets SHELL to the shell specified in /etc/passwd.
- *		i) exec's /bin/sh as "-sh" if and only if the shell
- *		   specified in /etc/passwd is either blank or /bin/sh,
- *		   otherwise as "+sh"; the "+/-" is for the benefit of /bin/sh.
+ *		i) exec's the program named in /etc/passwd with a login
+ *		   argv[0] (its base name preceded by "-", for the benefit
+ *		   of the shell).  An entry naming no program gets /bin/sh;
+ *		   an entry naming a program that cannot be executed is
+ *		   refused a session and logged to /usr/adm/failed.
  *
  * All other connect procedures and initializations should be performed by
  * including them in /etc/profile or $HOME/.profile which the shell will
@@ -175,6 +177,7 @@ main(argc, argv) int argc; char *argv[];
 	char *s_shell;			/* user shell, saved in eshell[] */
 	int s_uid;			/* user id */
 	int s_gid;			/* group id */
+	int s_named = FALSE;		/* entry names a login program */
 	extern int timeout();		/* Login attempt alarm function */
 	extern char *crypt();
 	extern char *getpass();
@@ -292,8 +295,8 @@ again:	failed = TRUE;	/* assume attempt will fail */
 	      s_uid = pwp->pw_uid;		/* save uid */
 	      s_gid = pwp->pw_gid;		/* save gid */	
 	      strcpy(s_dir, pwp->pw_dir);	/* save directory */
-	      strcpy(s_shell, (*pwp->pw_shell == '\0') ? "/bin/sh"
-						       : pwp->pw_shell);
+	      s_named = (*pwp->pw_shell != '\0');
+	      strcpy(s_shell, s_named ? pwp->pw_shell : "/bin/sh");
 	   }
 	}
  	else			/* second pass, remote access password */
@@ -350,6 +353,12 @@ ok:	alarm(0);	/* turn off login alarm timeout */
 		perror(s_dir);
 		slowexit(1);
 	}
+	if (s_named && !executable(s_shell)) {	/* named program unusable */
+		fprintf(stderr, "%s: %s: cannot execute, login refused.\n",
+			argv0, s_shell);
+		setutmp(s_tty, buff, faillog, FALSE);
+		slowexit(1);
+	}
 	setutmp(s_tty, buff, goodlog, TRUE);	/* successful login */
 #ifdef BBS
 /*
@@ -376,25 +385,50 @@ ok:	alarm(0);	/* turn off login alarm timeout */
 			write(2, buff, i);
 		close(fd);
 	}
-	/*
-	 * Run the passwd shell with a login argv[0].  If it cannot execute,
-	 * fall back to /bin/sh.
-	 */
-	{
-		register char *cp, *bp;
-		static char sh0[NBUF];
-
-		for (bp = cp = s_shell; *cp; cp++)
-			if (*cp == '/')
-				bp = cp + 1;
-		sh0[0] = '-';
-		strncpy(sh0 + 1, bp, NBUF - 2);
-		execle(s_shell, sh0, NULL, s_uid == 0 ? defenv0 : defenvn);
-		fprintf(stderr, "No %s, using /bin/sh.\n", s_shell);
-	}
-	execle("/bin/sh", "-sh", NULL, s_uid == 0 ? defenv0 : defenvn);
-	fprintf(stderr, "No /bin/sh.\n");
+	startshell(s_shell, s_named, s_uid);
 	slowexit(1);
+}
+
+/*
+ * Report whether 'file' is a plain file carrying an execute bit.
+ */
+executable(file)
+char *file;
+{
+	struct stat st;
+
+	if (stat(file, &st) < 0)
+		return (FALSE);
+	if ((st.st_mode & S_IFMT) != S_IFREG)
+		return (FALSE);
+	return ((st.st_mode & 0111) != 0);
+}
+
+/*
+ * Execute the login shell 'shell' with a login argv[0].  'named' says the
+ * password file entry names this program: such an entry gets that program
+ * and no other, so a failure to execute it ends the session.  An entry that
+ * names no program at all is the one that gets /bin/sh.
+ */
+startshell(shell, named, uid)
+char *shell;
+{
+	register char *cp, *bp;
+	static char sh0[NBUF];
+
+	for (bp = cp = shell; *cp; cp++)
+		if (*cp == '/')
+			bp = cp + 1;
+	sh0[0] = '-';
+	strncpy(sh0 + 1, bp, NBUF - 2);
+	execle(shell, sh0, NULL, uid == 0 ? defenv0 : defenvn);
+	if (named) {
+		fprintf(stderr, "%s: %s: cannot execute, login refused.\n",
+			argv0, shell);
+		return;
+	}
+	execle("/bin/sh", "-sh", NULL, uid == 0 ? defenv0 : defenvn);
+	fprintf(stderr, "No /bin/sh.\n");
 }
 
 /*
