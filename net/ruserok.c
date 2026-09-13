@@ -24,6 +24,19 @@
  * with no reverse mapping can still be named.  There is no NIS and no netgroup
  * syntax here, so a leading `+' or `-' is not special and is matched literally
  * -- it can only ever fail to match a real host name.
+ *
+ * A caller's address maps to whatever name the owner of that address's reverse
+ * zone says it maps to, and that owner is the caller.  The name is therefore
+ * FORWARD-CONFIRMED before it is allowed to match anything: it is resolved back
+ * and the caller's address must be among the answers.  A name that does not
+ * confirm is discarded entirely -- the caller then has no name, and only a
+ * dotted-quad entry can name it -- so a machine that controls its own reverse
+ * zone cannot claim another machine's trust by answering with its name.
+ *
+ * Both lookups answer from one static hostent, so the forward answer replaces
+ * the reverse one; the confirmed name is kept in the caller's own buffer and
+ * the aliases matched are the forward answer's, which belong to the address
+ * that was confirmed.
  */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -44,6 +57,7 @@
 
 static int rhosts_file();
 static int host_matches();
+static int addr_listed();
 
 /*
  * Returns 0 if `ruser' on the machine at `raddr' may become `luser' here, and
@@ -60,18 +74,32 @@ char *luser;
 	struct hostent *hp;
 	char *hname;
 	char rhosts[256];
+	char hbuf[256];
 
 	if ((pw= getpwnam(luser)) == (struct passwd *)0)
 		return -1;
 
 	/*
-	 * The caller's name, once.  A machine with no reverse mapping has no
-	 * name at all, and then only a dotted-quad entry can match it.
+	 * The caller's name, once, and only if it confirms.  A machine with no
+	 * reverse mapping -- or one whose reverse mapping does not resolve back
+	 * to it -- has no name at all here, and then only a dotted-quad entry
+	 * can match it.
 	 */
 	hname= (char *)0;
 	hp= gethostbyaddr((char *)&raddr, sizeof(raddr), AF_INET);
-	if (hp != (struct hostent *)0)
-		hname= hp->h_name;
+	if (hp != (struct hostent *)0 && hp->h_name != (char *)0 &&
+	    strlen(hp->h_name) < sizeof(hbuf))
+	{
+		strcpy(hbuf, hp->h_name);
+		hp= gethostbyname(hbuf);
+		if (hp != (struct hostent *)0 &&
+		    addr_listed(hp, (ipaddr_t)raddr))
+			hname= hbuf;
+		else
+			hp= (struct hostent *)0;
+	}
+	else
+		hp= (struct hostent *)0;
 
 	if (!superuser && rhosts_file(HOSTS_EQUIV, (ipaddr_t)raddr, hname, hp,
 				      luser, ruser, 1) == 0)
@@ -196,8 +224,31 @@ int equiv;
 	return -1;
 }
 
+/*
+ * Is `raddr' one of the addresses this lookup answered with?  The answer is
+ * what makes a name usable: a name resolves back to the machine that claims
+ * it, or it names nothing here.
+ */
+static int addr_listed(hp, raddr)
+struct hostent *hp;
+ipaddr_t raddr;
+{
+	char **ap;
+	ipaddr_t a;
+
+	if (hp->h_addrtype != AF_INET || hp->h_length != sizeof(a))
+		return 0;
+	for (ap= hp->h_addr_list; ap && *ap; ap++)
+	{
+		memcpy((char *)&a, *ap, sizeof(a));
+		if (a == raddr)
+			return 1;
+	}
+	return 0;
+}
+
 /* Does one file entry name the calling machine?  By address if the entry is a
- * dotted quad, otherwise by canonical name or by any alias of it. */
+ * dotted quad, otherwise by the forward-confirmed name or by an alias of it. */
 static int host_matches(entry, raddr, hname, hp)
 char *entry;
 ipaddr_t raddr;
