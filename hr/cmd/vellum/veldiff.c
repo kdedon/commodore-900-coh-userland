@@ -316,12 +316,21 @@ dodiff(mark)
 /* change review on the wall next to the old print, produced by make.  */
 /* ------------------------------------------------------------------ */
 
+/* A markup drawing missing an object is not the answer: say which one
+ * and fail, rather than print a drawing that is quietly short. */
+static
+dtoobig(i)
+{
+	fprintf(stderr, "veldiff: object %d does not fit the .d format\n", i);
+	return -1;
+}
+
 static
 domark()
 {
 	register int i;
 	int n, j;
-	char lb[220];
+	char lb[DLINE];
 
 	printf("vellum1\n");
 	if ( unum != 1 || uname[0] )
@@ -340,7 +349,8 @@ domark()
 				n++;
 			printf("G %d\n", n);
 		}
-		fmtobj(i, lb);
+		if ( fmtobj(i, lb, sizeof(lb)) < 0 )
+			return dtoobig(i);
 		if ( lb[0] )
 			printf("%s\n", lb);
 	}
@@ -354,7 +364,8 @@ domark()
 		obj[i].o_layer = 1;
 		obj[i].o_flags = (obj[i].o_flags & ~OF_STYLE) | OF_DASH;
 		obj[i].o_grp = 0;
-		fmtobj(i, lb);
+		if ( fmtobj(i, lb, sizeof(lb)) < 0 )
+			return dtoobig(i);
 		if ( lb[0] )
 			printf("%s\n", lb);
 	}

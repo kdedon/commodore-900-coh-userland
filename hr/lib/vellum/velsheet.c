@@ -29,7 +29,7 @@
 loadstdin()
 {
 	register int i;
-	char lb[220];
+	char lb[DLINE];
 	int e;
 
 	selclear();

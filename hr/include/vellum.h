@@ -128,6 +128,13 @@ extern int	njunc;
 /* ---- polyline point pool ---- */
 #define	PPOOL	600
 #define	PMAXPT	20
+
+/* One .d LINE, NUL included: what fmtobj may emit and what the readers
+ * take back.  The longest line the format holds is a PMAXPT polyline at
+ * the extremes of a short -- "P 20" and twenty " -32768 -32768" pairs,
+ * 284 bytes, plus the attribute token -- so a buffer smaller than this
+ * cannot hold a valid drawing's every object, and fmtobj refuses one. */
+#define	DLINE	320
 extern short	ppool[PPOOL];
 extern int	ppuse;
 
@@ -377,7 +384,7 @@ extern int	loadlib();	/* velfile.c: one .sym library file       */
 extern int	libdrop;	/* ... symbols it dropped (pool full)     */
 extern char	*libpool;	/* ... which pool filled, named           */
 extern int	loadsyms();	/* velfile.c: LIBLIST + user scratch      */
-extern int	fmtobj();	/* velfile.c: object -> .d line           */
+extern int	fmtobj();	/* velfile.c: object -> .d line, bounded  */
 extern int	writefile();	/* velfile.c: save, modified untouched    */
 extern int	savefile();	/* velfile.c: save + clear modified       */
 extern int	parsereset();	/* velfile.c: reset the line parser       */

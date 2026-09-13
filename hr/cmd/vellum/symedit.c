@@ -2293,7 +2293,7 @@ impdraw(path)
 char *path;
 {
 	register FILE *fp;
-	char lb[128];
+	char lb[320];		/* a .d line: a 20-point P line is 292 */
 	char *p, *t, *keep;
 	int i, n, x[2 * 20], v, lay;		/* PMAXPT points */
 	long dx, dy;

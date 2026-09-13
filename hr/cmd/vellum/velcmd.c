@@ -221,7 +221,7 @@ doalign(op)
 
 docopy()
 {
-	char lb[224];
+	char lb[DLINE + 1];	/* fmtobj's line, and room for the '\n' */
 	register int i;
 
 	if ( nsel == 0 )
@@ -233,7 +233,13 @@ docopy()
 	{
 		if ( !osel[i] )
 			continue;
-		fmtobj(i, lb);
+		/* An object the format cannot hold is a failed COPY: the
+		 * cut that follows must not delete what was never taken. */
+		if ( fmtobj(i, lb, sizeof(lb) - 1) < 0 )
+		{
+			hr_clipclose();
+			return 0;
+		}
 		if ( lb[0] == 0 )
 			continue;
 		strcat(lb, "\n");
@@ -258,7 +264,7 @@ docut()
  * to the clipboard when no selection is up. */
 dopaste(gx, gy, clip)
 {
-	char lb[224];
+	char lb[DLINE + 2];
 	register int i;
 	long len, off;
 	int n0, ll, e, x0, y0, x1, y1, mx, my, got;
@@ -418,7 +424,7 @@ dostamp()
 	register FILE *fp;
 	register int i;
 	int n0;
-	char lb[220];
+	char lb[DLINE];
 
 	if ( (fp = fopen(FRAMED, "r")) == (FILE *)0 )
 		return 0;

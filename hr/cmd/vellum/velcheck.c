@@ -111,7 +111,7 @@ chkcodes(fn)
 char *fn;
 {
 	register FILE *fp;
-	char lb[220];
+	char lb[DLINE];
 	char *p, *t;
 
 	if ( (fp = fopen(fn, "r")) == (FILE *)0 )

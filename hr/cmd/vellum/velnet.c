@@ -134,7 +134,7 @@ dorenum(base)
 	register int i, j;
 	short ix[MAXOBJ];
 	int n, k, t;
-	char lb[220];
+	char lb[DLINE];
 
 	n = 0;
 	for ( i = 0; i < nobj; i++ )
@@ -183,7 +183,15 @@ dorenum(base)
 				k++;
 			printf("G %d\n", k);
 		}
-		fmtobj(i, lb);
+		/* A renumbered drawing missing an object would overwrite
+		 * the original with less than it held: fail instead. */
+		if ( fmtobj(i, lb, sizeof(lb)) < 0 )
+		{
+			fprintf(stderr,
+			    "velnet: object %d does not fit the .d format\n",
+				i);
+			return -1;
+		}
 		if ( lb[0] )
 			printf("%s\n", lb);
 	}

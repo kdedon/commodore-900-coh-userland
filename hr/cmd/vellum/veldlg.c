@@ -354,11 +354,11 @@ mksymdlg()
 	static char pfx[4] = "";
 	static char scl[4] = "1";
 	static char lib[44] = "";
-	char cmd[160], lb[224], msg[40];
+	char cmd[160], lb[DLINE], msg[40];
 	register char *p, *q;
 	register int i;
 	register FILE *fp;
-	int pid, st, n;
+	int pid, st, n, big;
 	unsigned left;
 
 	if ( nsel == 0 )
@@ -416,15 +416,26 @@ mksymdlg()
 			continue;
 		}
 		fprintf(fp, "vellum1\n");
+		big = 0;
 		for ( i = 0; i < nobj; i++ )
 		{
 			if ( !osel[i] )
 				continue;
-			fmtobj(i, lb);
+			if ( fmtobj(i, lb, sizeof(lb)) < 0 )
+			{
+				big = 1;
+				break;
+			}
 			if ( lb[0] )
 				fprintf(fp, "%s\n", lb);
 		}
 		fclose(fp);
+		if ( big )		/* a symbol cut from a short drawing
+					 * is the wrong symbol */
+		{
+			strcpy(msg, "Object too big");
+			continue;
+		}
 		sprintf(cmd,
 		    "%s -pfx %s -scale %s %s %s >>%s",
 			VELSYM, pfx[0] ? pfx : "-", scl, code, MKTMP, lib);

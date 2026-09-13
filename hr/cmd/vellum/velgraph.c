@@ -219,7 +219,7 @@ register short *px, *py;
 main(argc, argv)
 char **argv;
 {
-	char lb[120], tb[24];
+	char lb[DLINE], tb[24];
 	char *p;
 	register char *t;
 	register int i;
@@ -354,7 +354,13 @@ char **argv;
 	printf("vellum1\n");
 	for ( i = 0; i < nobj; i++ )
 	{
-		fmtobj(i, lb);
+		if ( fmtobj(i, lb, sizeof(lb)) < 0 )
+		{
+			fprintf(stderr,
+			    "velgraph: object %d does not fit the .d format\n",
+				i);
+			exit(1);
+		}
 		if ( lb[0] )
 			printf("%s\n", lb);
 	}

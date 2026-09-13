@@ -29,61 +29,101 @@ char	*shname[] = { "box", "rbox", "diamond", "oval", "par",
 		      "drum", "doc", "circle", "ellipse" };
 char	*csname[] = { "hv", "line", "arrow", "harrow" };
 
-/* Append the optional " /flags.layer" attribute token (old readers read
- * their fixed fields and ignore it). */
+/* Append the whole of s to lb, which holds lbsz bytes: 0 when it fit,
+ * -1 when it did not and lb is left exactly as it was.  Refusing beats
+ * truncating -- half a coordinate pair is not a line any reader can
+ * take back, and the caller turns the refusal into a failed save. */
 static
-attrcat(o, lb)
-register DOBJ *o;
+lbcat(lb, lbsz, s)
 char *lb;
+char *s;
 {
-	if ( o->o_flags || o->o_layer )
-		sprintf(lb + strlen(lb), " /%d.%d", o->o_flags & 0xff,
-			o->o_layer);
+	register int n;
+
+	n = strlen(lb);
+	if ( n + strlen(s) + 1 > lbsz )
+		return -1;
+	strcpy(lb + n, s);
 	return 0;
 }
 
-/* Format object i as one .d line (no newline) into lb (>= 220 bytes).
- * Shared by Save, the clipboard serializer and the autosave. */
-fmtobj(i, lb)
+/* Append the optional " /flags.layer" attribute token (old readers read
+ * their fixed fields and ignore it). */
+static
+attrcat(o, lb, lbsz)
+register DOBJ *o;
+char *lb;
+{
+	char tb[16];
+
+	if ( o->o_flags || o->o_layer )
+	{
+		sprintf(tb, " /%d.%d", o->o_flags & 0xff, o->o_layer);
+		return lbcat(lb, lbsz, tb);
+	}
+	return 0;
+}
+
+/* Format object i as one .d line (no newline) into lb, which holds lbsz
+ * bytes.  0 when the line is there, -1 when the object does not fit the
+ * format or the buffer, and then lb is empty: a caller writes whole
+ * lines or none.  Shared by Save, the clipboard serializer and the
+ * autosave. */
+fmtobj(i, lb, lbsz)
 char *lb;
 {
 	register DOBJ *o;
 	register int k;
+	char tb[96];
+	int r;
 
+	if ( lbsz < 1 )
+		return -1;
 	o = &obj[i];
 	lb[0] = 0;
+	r = 0;
 	switch ( o->o_type )
 	{
 	case OT_SYM:
-		sprintf(lb, "Y %s %d %d %d %d %s %s",
-			symtab[o->o_sym].sy_code, o->o_x, o->o_y,
-			o->o_rot, o->o_mir,
-			o->o_name[0] ? o->o_name : "-",
-			o->o_val[0] ? o->o_val : "-");
-		attrcat(o, lb);
+		r |= lbcat(lb, lbsz, "Y ");
+		r |= lbcat(lb, lbsz, symtab[o->o_sym].sy_code);
+		sprintf(tb, " %d %d %d %d ", o->o_x, o->o_y,
+			o->o_rot, o->o_mir);
+		r |= lbcat(lb, lbsz, tb);
+		r |= lbcat(lb, lbsz, o->o_name[0] ? o->o_name : "-");
+		r |= lbcat(lb, lbsz, " ");
+		r |= lbcat(lb, lbsz, o->o_val[0] ? o->o_val : "-");
+		r |= attrcat(o, lb, lbsz);
 		break;
 	case OT_WIRE:
 	case OT_LINE:
 	case OT_BOX:
 	case OT_CIRC:
-		sprintf(lb, "%c %d %d %d %d",
+		sprintf(tb, "%c %d %d %d %d",
 			o->o_type == OT_WIRE ? 'W' :
 			o->o_type == OT_LINE ? 'L' :
 			o->o_type == OT_BOX ? 'B' : 'C',
 			o->o_x, o->o_y, o->o_x2, o->o_y2);
-		attrcat(o, lb);
+		r |= lbcat(lb, lbsz, tb);
+		r |= attrcat(o, lb, lbsz);
 		break;
 	case OT_TEXT:
-		sprintf(lb, "T %d %d s%d", o->o_x, o->o_y, o->o_rot);
-		attrcat(o, lb);
-		sprintf(lb + strlen(lb), " %s", oval(o));
+		sprintf(tb, "T %d %d s%d", o->o_x, o->o_y, o->o_rot);
+		r |= lbcat(lb, lbsz, tb);
+		r |= attrcat(o, lb, lbsz);
+		r |= lbcat(lb, lbsz, " ");
+		r |= lbcat(lb, lbsz, oval(o));
 		break;
 	case OT_SHAPE:
-		sprintf(lb, "S %s %d %d %d %d", shname[o->o_sym],
+		sprintf(tb, "S %s %d %d %d %d", shname[o->o_sym],
 			o->o_x, o->o_y, o->o_x2, o->o_y2);
-		attrcat(o, lb);
+		r |= lbcat(lb, lbsz, tb);
+		r |= attrcat(o, lb, lbsz);
 		if ( oval(o)[0] )
-			sprintf(lb + strlen(lb), " %s", oval(o));
+		{
+			r |= lbcat(lb, lbsz, " ");
+			r |= lbcat(lb, lbsz, oval(o));
+		}
 		break;
 	case OT_CONN:
 		{
@@ -99,35 +139,58 @@ char *lb;
 				else
 					strcpy(ab[e], "-");
 			}
-			sprintf(lb, "K %s %d %d %d %d %s %s",
+			sprintf(tb, "K %s %d %d %d %d %s %s",
 				csname[o->o_sym], o->o_x, o->o_y,
 				o->o_x2, o->o_y2, ab[0], ab[1]);
-			attrcat(o, lb);
+			r |= lbcat(lb, lbsz, tb);
+			r |= attrcat(o, lb, lbsz);
 		}
 		break;
 	case OT_POLY:
-		sprintf(lb, "P %d", o->o_sym);
+		/* A polyline the format cannot express -- more points than
+		 * the pool's parser will read back -- is refused whole. */
+		if ( o->o_sym < 0 || o->o_sym > PMAXPT )
+		{
+			r = -1;
+			break;
+		}
+		sprintf(tb, "P %d", o->o_sym);
+		r |= lbcat(lb, lbsz, tb);
 		for ( k = 0; k < o->o_sym; k++ )
-			sprintf(lb + strlen(lb), " %d %d",
-				ppool[o->o_x2 + 2*k],
+		{
+			sprintf(tb, " %d %d", ppool[o->o_x2 + 2*k],
 				ppool[o->o_x2 + 2*k + 1]);
-		attrcat(o, lb);
+			r |= lbcat(lb, lbsz, tb);
+		}
+		r |= attrcat(o, lb, lbsz);
 		break;
 	case OT_ARC:
-		sprintf(lb, "A %d %d %d %d %d", o->o_x, o->o_y, o->o_x2,
+		sprintf(tb, "A %d %d %d %d %d", o->o_x, o->o_y, o->o_x2,
 			OA0(o), OA1(o));
-		attrcat(o, lb);
+		r |= lbcat(lb, lbsz, tb);
+		r |= attrcat(o, lb, lbsz);
 		break;
 	case OT_NNAME:
-		sprintf(lb, "N %d %d %s", o->o_x, o->o_y, o->o_name);
+		sprintf(tb, "N %d %d ", o->o_x, o->o_y);
+		r |= lbcat(lb, lbsz, tb);
+		r |= lbcat(lb, lbsz, o->o_name);
 		break;
 	case OT_DIM:
-		sprintf(lb, "D %d %d %d %d", o->o_x, o->o_y,
+		sprintf(tb, "D %d %d %d %d", o->o_x, o->o_y,
 			o->o_x2, o->o_y2);
-		attrcat(o, lb);
+		r |= lbcat(lb, lbsz, tb);
+		r |= attrcat(o, lb, lbsz);
 		if ( oval(o)[0] )
-			sprintf(lb + strlen(lb), " %s", oval(o));
+		{
+			r |= lbcat(lb, lbsz, " ");
+			r |= lbcat(lb, lbsz, oval(o));
+		}
 		break;
+	}
+	if ( r )
+	{
+		lb[0] = 0;
+		return -1;
 	}
 	return 0;
 }
@@ -140,7 +203,7 @@ char *fn;
 	register FILE *fp;
 	register int i;
 	int n, j, e;
-	char lb[220];
+	char lb[DLINE];
 
 	if ( (fp = fopen(fn, "w")) == (FILE *)0 )
 		return -1;
@@ -160,7 +223,14 @@ char *fn;
 				n++;
 			fprintf(fp, "G %d\n", n);
 		}
-		fmtobj(i, lb);
+		/* An object the format cannot hold is a FAILED save, not a
+		 * silently dropped line: stop here and let the refusal
+		 * reach the caller with everything else that can fail. */
+		if ( fmtobj(i, lb, sizeof(lb)) < 0 )
+		{
+			fclose(fp);
+			return -1;
+		}
 		if ( lb[0] )
 			fprintf(fp, "%s\n", lb);
 	}
@@ -599,7 +669,7 @@ char *fn;
 {
 	register FILE *fp;
 	register int i;
-	char lb[220];
+	char lb[DLINE];
 	int e;
 
 	if ( (fp = fopen(fn, "r")) == (FILE *)0 )
