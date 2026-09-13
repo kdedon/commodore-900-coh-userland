@@ -143,9 +143,12 @@ net: $(NETSTAMP)
 # four levels down.
 NETSRC := $(shell find $(OS)/net \( -name '*.c' -o -name '*.s' -o -name '*.h' \) \
 	    2>/dev/null)
-$(NETSTAMP): $(TCSTAMP) $(LIBCSTAMP) $(HERE)/build-net.sh $(NETSRC)
+# Grouped, like the curses archives: this step produces libsocket.a as well as
+# the stamp, so a consumer that links the archive can name the archive.
+$(NETSTAMP) $(OS)/net/libsocket.a &: \
+		$(TCSTAMP) $(LIBCSTAMP) $(HERE)/build-net.sh $(NETSRC)
 	sh $(HERE)/build-net.sh
-	@mkdir -p $(dir $@) && touch $@
+	@mkdir -p $(dir $(NETSTAMP)) && touch $(NETSTAMP)
 
 # hunt(6): needs both net (libsocket) and curses (the client draws the maze),
 # which is why it is its own target rather than part of the games sweep.

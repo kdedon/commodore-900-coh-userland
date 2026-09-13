@@ -59,11 +59,21 @@ COBJS	= hunt/hunt.o hunt/connect.o hunt/playit.o huntd/pathname.o \
 # huntd/ is a directory.
 all:	huntd/huntd hunt/hunt
 
-huntd/huntd:	$(DOBJS)
+# LIBS is the archives the caller links in: libsocket for the driver, and
+# libcurses + libterm as well for the client.  They are inputs to the LINK, so
+# each binary names them and a rebuilt archive relinks the program that took it.
+huntd/huntd:	$(DOBJS) $(LIBS)
 	$(CC) $(LFLAGS) -o huntd/huntd $(DOBJS) $(LIBS)
 
-hunt/hunt:	$(COBJS)
+hunt/hunt:	$(COBJS) $(LIBS)
 	$(CC) $(LFLAGS) -o hunt/hunt $(COBJS) $(LIBS)
+
+# What the objects read.  compat.c and pathname.c include neither header.
+HDRS	= huntd/hunt.h huntd/bsd.h
+huntd/answer.o huntd/draw.o huntd/driver.o huntd/execute.o huntd/expl.o \
+huntd/extern.o huntd/faketalk.o huntd/makemaze.o huntd/shots.o \
+huntd/terminal.o hunt/connect.o hunt/hunt.o hunt/playit.o:	$(HDRS)
+huntd/faketalk.o:	huntd/talk_ctl.h
 
 # INCS BEFORE CFLAGS: the curses header has to be found in
 # base/lib/libcurses, not the terminfo one in include/ (see INCS above),

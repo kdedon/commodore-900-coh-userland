@@ -238,6 +238,68 @@ psipping:	test/psipping.o $(CHAN)
 ichanprobe:	test/ichanprobe.o libsocket.a
 	$(CC) $(LFLAGS) -o ichanprobe test/ichanprobe.o libsocket.a
 
+# What the objects read.  A traditional make discovers no include, so each
+# object names the headers this tree gives it; system headers come from the
+# toolchain and are not inputs this makefile can see.  H is the directory
+# -Iinclude puts on the search path, and the lists are transitive -- net/ioctl.h
+# reads minix/ioctl.h, inet.h reads most of net/gen.
+H	= include
+
+coh_ifconfig.o: $(H)/inet_chan.h $(H)/inet_ipc.h $(H)/minix/ioctl.h \
+		$(H)/net/gen/in.h $(H)/net/gen/ip_io.h $(H)/net/gen/route.h \
+		$(H)/net/ioctl.h
+coh_ppp.o coh_slip.o test/psipping.o: $(H)/inet_chan.h $(H)/inet_ipc.h
+gethostby.o netdb.o: $(H)/netdb.h $(H)/netdb_priv.h
+inet_chan.o: $(H)/errno.h $(H)/inet_chan.h $(H)/inet_ipc.h
+inetd.o sntp.o test/netdbtest.o: $(H)/errno.h $(H)/netdb.h
+libsocket.o: $(H)/errno.h $(H)/inet_chan.h $(H)/minix/ioctl.h \
+		$(H)/net/gen/in.h $(H)/net/gen/ip_io.h \
+		$(H)/net/gen/psip_io.h $(H)/net/gen/route.h \
+		$(H)/net/gen/tcp.h $(H)/net/gen/tcp_io.h $(H)/net/gen/udp.h \
+		$(H)/net/gen/udp_hdr.h $(H)/net/gen/udp_io.h \
+		$(H)/net/ioctl.h
+rcmd.o: $(H)/ansi.h $(H)/errno.h $(H)/minix/config.h $(H)/minix/ioctl.h \
+		$(H)/net/gen/in.h $(H)/net/gen/netdb.h $(H)/net/gen/tcp.h \
+		$(H)/net/gen/tcp_io.h $(H)/net/hton.h $(H)/net/ioctl.h \
+		$(H)/net/netlib.h
+ruserok.o: $(H)/ansi.h $(H)/errno.h $(H)/net/gen/in.h $(H)/net/gen/inet.h \
+		$(H)/net/gen/netdb.h $(H)/net/gen/socket.h \
+		$(H)/net/netlib.h
+talkserv.o: $(H)/errno.h $(H)/netdb.h $(H)/netdb_priv.h talk.h
+
+resolv/gethnmadr.o: $(H)/ansi.h $(H)/errno.h $(H)/minix/config.h \
+		$(H)/net/gen/in.h $(H)/net/gen/inet.h \
+		$(H)/net/gen/nameser.h $(H)/net/gen/netdb.h \
+		$(H)/net/gen/resolv.h $(H)/net/gen/socket.h $(H)/net/hton.h
+resolv/res_comp.o: $(H)/ansi.h $(H)/net/gen/in.h $(H)/net/gen/nameser.h \
+		$(H)/net/gen/resolv.h
+resolv/res_init.o: $(H)/ansi.h $(H)/minix/config.h $(H)/net/gen/in.h \
+		$(H)/net/gen/inet.h $(H)/net/gen/nameser.h \
+		$(H)/net/gen/netdb.h $(H)/net/gen/resolv.h $(H)/net/hton.h
+resolv/res_mkquery.o: $(H)/ansi.h $(H)/minix/config.h $(H)/net/gen/in.h \
+		$(H)/net/gen/nameser.h $(H)/net/gen/resolv.h \
+		$(H)/net/hton.h
+resolv/res_query.o: $(H)/ansi.h $(H)/errno.h $(H)/minix/config.h \
+		$(H)/net/gen/in.h $(H)/net/gen/nameser.h \
+		$(H)/net/gen/netdb.h $(H)/net/gen/resolv.h $(H)/net/hton.h
+resolv/res_send.o: $(H)/ansi.h $(H)/errno.h $(H)/net/gen/in.h \
+		$(H)/net/gen/inet.h $(H)/net/gen/nameser.h \
+		$(H)/net/gen/netdb.h $(H)/net/gen/resolv.h \
+		$(H)/net/gen/tcp.h $(H)/net/gen/udp.h $(H)/net/netlib.h
+
+test/acceptmany.o test/chanmax.o test/discotime.o test/dropclient.o \
+test/echoclient.o test/echoserver.o test/ephport.o test/fdhog.o \
+test/rlecho.o test/sntpsrv.o test/sockcycle.o test/udpecho.o \
+test/udppoll.o test/udpserver.o: $(H)/errno.h
+test/devtcp.o: $(H)/errno.h $(H)/minix/ioctl.h $(H)/net/gen/in.h \
+		$(H)/net/gen/tcp.h $(H)/net/gen/tcp_io.h $(H)/net/ioctl.h
+test/ichanprobe.o: $(H)/inet_chan.h $(H)/inet_ipc.h $(H)/minix/ioctl.h \
+		$(H)/net/gen/in.h $(H)/net/gen/ip_io.h $(H)/net/ioctl.h
+test/portholder.o: $(H)/errno.h $(H)/minix/config.h $(H)/minix/ioctl.h \
+		$(H)/net/gen/in.h $(H)/net/gen/tcp.h $(H)/net/gen/tcp_io.h \
+		$(H)/net/hton.h $(H)/net/ioctl.h
+test/repeatclient.o test/talkping.o: $(H)/errno.h talk.h
+
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $<
 
