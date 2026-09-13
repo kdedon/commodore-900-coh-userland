@@ -4,12 +4,14 @@
     python3 ulsrcmap.py [-o OUT] [-q] [<record>]
 
 Read C900_BUILD_MAP or build/compiled-programs.log by default.  Union records
-across builds and include linked objects, recipes, headers, libc and startup
-sources.  Carry small source directories whole; list compiled files from large
-ones.  Prefix paths needed for source packages but not binary freshness with
-"+".  Drop missing local paths; retain external toolchain source requirements."""
+across builds and include linked objects, recipes and the helpers they read,
+headers, libc, startup and linked-library sources.  Carry small source
+directories whole; list compiled files from large ones.  Prefix paths needed
+for source packages but not binary freshness with "+".  Drop missing local
+paths; retain external toolchain source requirements."""
 
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +37,84 @@ CARRIED = ['hostbuild/Makefile']
 # a package cut without the library it links is not the complete corresponding
 # source it claims to be.
 ELSEWHERE = ['src/include', 'src/libc', 'src/csu']
+
+
+# WHAT A RECIPE ITSELF READS.  A build script is source the same way a .c file
+# is, and it does not stand alone: it sources the toolchain resolver, which
+# runs the dependency search, and some scripts run a sibling first to make a
+# parser generator or a library.  A package holding the script and not what the
+# script reads holds a recipe that cannot run, so the closure below travels
+# with every recipe the record names -- a file a script SOURCES or RUNS,
+# transitively.
+#
+# THE CLOSURE STOPS AT ANOTHER RECIPE.  A script the record itself names as a
+# recipe is carried for the programs it built and for no others, so the walk
+# neither adds it nor descends into it: build-all-userland.sh runs three dozen
+# siblings, and following them would put the editors' recipe in gzip's package
+# and say nothing about what gzip needed.  A sibling that is nobody's recipe --
+# the parser generator a compile runs first -- is a helper and travels.
+#
+# Read out of the script text, at the paths a script in this tree can spell:
+# $OS is the repository root and $HERE the script's own directory, and a
+# variable assigned from either carries the same resolution (`_c9deps=
+# "$_c9root/mk/deps.sh"').  A path that resolves through anything else is not
+# this tree's to name -- $TC is the toolchain -- and is left alone.
+#
+# MARKED (`+', see the header comment), like the entry point: what a stamp
+# depends on is the recipe named by the record, so an edit to a helper rebuilds
+# nothing and no artifact can be behind it.
+ASSIGN = re.compile(r'^[ \t]*(\w+)=("[^"]*"|\'[^\']*\'|\S*)', re.M)
+RUNS = re.compile(r'(?:^|[\s;&|(])(?:\.|source|sh|bash|ksh|python3?|perl)'
+                  r'[ \t]+(?:-\S+[ \t]+)*("[^"]*"|\'[^\']*\'|\S+)')
+VAR = re.compile(r'\$\{(\w+)\}|\$(\w+)')
+
+
+def subst(tok, v):
+    """`tok' with its shell variables expanded, or None if one is not known."""
+    tok = tok.strip('"\'')
+    out = VAR.sub(lambda m: v.get(m.group(1) or m.group(2), '\0'), tok)
+    return None if '\0' in out or '$' in out or '`' in out else out
+
+
+def helpers(path, recipes, _seen={}):
+    """Every file this one sources or runs, transitively, relative to the root.
+
+    `recipes' is every path the record names as a recipe; the walk stops at
+    one, which is carried by the rows whose programs it built.
+    """
+    if path in _seen:
+        return _seen[path]
+    _seen[path] = out = set()
+    try:
+        text = open(path, errors='replace').read()
+    except OSError:
+        return out
+    # Assignments first, so a command naming a variable resolves like one
+    # naming the path outright.  Two passes: a path is commonly built from a
+    # variable assigned above it.
+    v = {'OS': OS, 'HERE': os.path.dirname(path)}
+    for _ in range(2):
+        for m in ASSIGN.finditer(text):
+            r = subst(m.group(2), v)
+            if r:
+                v[m.group(1)] = r
+    for line in text.split('\n'):
+        line = re.sub(r'(^|\s)#.*', '', line)
+        for m in RUNS.finditer(line):
+            r = subst(m.group(1), v)
+            if r is None:
+                continue
+            f = os.path.normpath(os.path.join(os.path.dirname(path), r))
+            d = rel(f)
+            if (d is None or not os.path.isfile(f) or d in recipes
+                    or d.startswith(
+                        os.path.join('hostbuild', 'build') + os.sep)):
+                continue
+            out.add(d)
+            out |= helpers(f, recipes)
+    out.discard(rel(path))
+    return out
+
 
 # Where the published programs are (publish-userland.sh's own set), less the one
 # subtree in it that is not published: build/mgr/host holds bitmaptoc and
@@ -138,8 +218,11 @@ def main(argv):
             os.path.normpath(os.path.join(cwd, i)) for i in e['in'])
 
     def expand(cwd, inputs, seen):
-        """The source files behind a link's inputs."""
-        srcs, ext = set(), set()
+        """The source files behind a link's inputs.
+
+        (in this tree, outside every record, declared in another repository).
+        """
+        srcs, ext, dec = set(), set(), set()
         for i in inputs:
             a = os.path.normpath(os.path.join(cwd, i))
             if a in seen:
@@ -147,19 +230,25 @@ def main(argv):
             seen.add(a)
             if i.endswith('.o'):
                 if a in objsrc:
-                    s, x = expand(cwd, sorted(objsrc[a]), seen)
-                    srcs |= s; ext |= x
+                    s, x, d = expand(cwd, sorted(objsrc[a]), seen)
+                    srcs |= s; ext |= x; dec |= d
                 else:
                     ext.add(a)
             elif i.endswith('.a') and os.path.basename(a) in libmap:
                 # A DECLARED library (ulsrcmap.libs) -- trusted ahead of the
                 # object-record search below, which cannot tell an archive
                 # nobody recompiled this run from one that was never near any
-                # source at all.
+                # source at all.  A declared path this tree does not hold is
+                # one ANOTHER REPOSITORY publishes, and is named exactly as
+                # ELSEWHERE names the C library: unconditionally, for the
+                # programs that link it, and resolved by the consumer over the
+                # whole search path.
                 for p in libmap[os.path.basename(a)]:
                     f = os.path.join(OS, p)
                     if os.path.exists(f):
                         srcs.add(os.path.normpath(f))
+                    else:
+                        dec.add(p)
             elif i.endswith('.a'):
                 # An ARCHIVE names no members on the link line and `ar' is not
                 # this record's business, so its members are taken to be the
@@ -196,7 +285,7 @@ def main(argv):
                     ext.add(a)
             else:
                 srcs.add(a)
-        return srcs, ext
+        return srcs, ext, dec
 
     # One entry per program name.  A record whose output is an object or an
     # archive is not a program; everything else is, and is keyed by the name the
@@ -205,10 +294,11 @@ def main(argv):
     for (cwd, o), e in sorted(inv.items()):
         if o.endswith('.o') or o.endswith('.a'):
             continue
-        srcs, ext = expand(cwd, e['in'], set())
+        srcs, ext, dec = expand(cwd, e['in'], set())
         p = progname(o)
-        d = progs.setdefault(p, {'src': set(), 'recipe': set()})
+        d = progs.setdefault(p, {'src': set(), 'recipe': set(), 'dec': set()})
         d['src'] |= srcs
+        d['dec'] |= dec
         for r in e['recipe']:
             # The record is APPEND-ONLY and holds rows written against earlier
             # layouts of this tree, so a recipe path is checked for existence
@@ -268,6 +358,11 @@ def main(argv):
             expand_to[d] = sorted(keep) if (dirty and tracked) else [d]
         return expand_to[d]
 
+    # Every path the record names as a recipe, anywhere: what the helper walk
+    # stops at, so a recipe reaches only the rows whose programs it built.
+    allrecipes = set(rel(r) for q in progs.values() for r in q['recipe'])
+    allrecipes.discard(None)
+
     lines, unmapped = [], []
     for p in sorted(progs):
         paths, dirs = set(), set()
@@ -292,8 +387,10 @@ def main(argv):
                 # so naming both would say the same thing twice.
                 paths = set(x for x in paths
                             if os.path.dirname(x) != d) | set(whole(d))
+        paths |= set(rel(r) for r in progs[p]['recipe'])
         for r in sorted(progs[p]['recipe']):
-            paths.add(rel(r))
+            paths.update('+' + h for h in helpers(r, allrecipes))
+        paths |= progs[p]['dec']
         for a in CARRIED:
             if os.path.exists(os.path.join(OS, a)):
                 paths.update('+' + x for x in
