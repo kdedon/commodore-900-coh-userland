@@ -38,11 +38,11 @@ static int chan_seq;
  * Codes 1..34 are numerically identical in both systems, so they pass through.
  * Past that the sets diverge -- Minix 38 is ENOSYS where COHERENT 38 is EDATTN,
  * "device needs attention", which would be an actively misleading thing to
- * report -- and COHERENT 3.2 predates sockets, so it has no networking errnos
- * at all.  The mapping below is therefore explicit and numeric, naming both
- * sides in the comments, rather than relying on which <errno.h> won the include
- * search: net/include/errno.h shadows COHERENT's for anything built with
- * -Inet/include, which includes this file.
+ * report -- and the two systems number the networking errnos differently:
+ * ECONNREFUSED is 59 there and 45 here.  The mapping below is explicit and
+ * numeric, naming both sides in the comments, rather than relying on which
+ * <errno.h> won the include search: net/include/errno.h shadows COHERENT's for
+ * anything built with -Inet/include, which includes this file.
  */
 /*
  * Read exactly `n' bytes, looping over short reads.
