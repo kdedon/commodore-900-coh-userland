@@ -9,8 +9,21 @@ B="$HERE/build"
 . "$HERE/provenance.sh"
 
 # Source trees and build scripts included in the freshness check.
-SCOPE="base games mgr net test archive comms hr man
-       hostbuild/build.sh"
+# Every component source tree, named by pattern rather than one by one, so a
+# component added later is in scope the moment it exists: a program built from
+# a tree outside this scope is published under a source identity that does not
+# move when its source does, and reads as fresh forever.  dist/ (image and
+# package descriptors) and mk/ (dependency resolution) build nothing here and
+# are read from this checkout directly by the consuming repository, so no
+# published artifact can be behind them; hostbuild enters as its scripts.
+SCOPE="hostbuild/build.sh"
+for d in "$OS"/*/; do
+	d=${d%/}
+	case "${d##*/}" in
+	dist|mk|hostbuild) continue;;
+	esac
+	SCOPE="$SCOPE ${d##*/}"
+done
 # Every build-*.sh, named by pattern rather than one by one: a new sweep script
 # is part of the scope the moment it exists, without anybody remembering.
 for s in "$HERE"/build-*.sh; do
