@@ -24,18 +24,6 @@
 #include "talk.h"
 #include "net.h"
 
-/*
- * A refused connect is how the other end says "I am no longer waiting", and it
- * is the one connect failure this program recovers from rather than reports.
- * The channel layer cannot report it under that name: COHERENT 3.2 has no
- * networking errnos, so inet_chan.c's ichan_fail() collapses the whole
- * connection-failure family (refused, reset, timed out, unreachable) onto EIO.
- * Comparing errno against the stack's own ECONNREFUSED never matches, because
- * <errno.h> here is net/include/errno.h -- the stack's internal numbering.
- */
-#undef ECONNREFUSED
-#define	ECONNREFUSED	EIO
-
 _PROTOTYPE(void TimeOut, (int sig));
 
 static unsigned char buffer[8192];

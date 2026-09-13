@@ -23,15 +23,6 @@
 #define PTY_LAST	'v'
 #define PTY_NDIGIT	16		/* channels per letter		   */
 
-/*
- * The kernel's error for an exclusive device already held (include/errno.h).
- * <net/include/errno.h> comes first on this include path and has no name for
- * it, and a pty master is exclusive.
- */
-#ifndef EDBUSY
-#define EDBUSY		39
-#endif
-
 char *pty_reason = "";			/* why the last get_pty() failed   */
 
 static char reason[80];

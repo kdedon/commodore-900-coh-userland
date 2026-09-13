@@ -29,15 +29,33 @@ mkdir -p "$OUT" "$HERE/logs" "$OBJ"
 
 [ -f "$LIBSOCKET" ] || { echo "== netcmds FAILED: no $LIBSOCKET (run build-net.sh)"; exit 1; }
 
-# OUR headers first.  net/include holds the stack's <net/gen/*> and <net/ioctl.h>
-# -- which is why it is on the path at all, and the ioctl codes must be the ones
-# the daemon answers -- but it ALSO has a top-level errno.h, the Minix one, whose
-# network errnos differ from ours: EURG is 62 there and 42 here.  A client
-# compiled against it tests for a value the runtime never sets (inet_chan.c
-# ichan_fail sets COHERENT's), so `if (errno == EURG)' was dead code in both
-# arms.  errno.h is the only name that collides; everything the clients want from
-# net/include is still found below.
-INC="-Iinclude -Iinclude/sys -Inet/include"
+# THE TARGET'S OWN HEADERS FIRST.  net/include holds the stack's <net/gen/*> and
+# <net/ioctl.h> -- which is why it is on the path at all, and the ioctl codes
+# must be the ones the daemon answers -- but it ALSO has a top-level errno.h,
+# the Minix one, whose network errnos differ from ours: EURG is 62 there and 42
+# here, ECONNREFUSED 59 there and 45 here, and EADDRINUSE and ENOURG likewise.
+# A client compiled against those tests for a value the runtime never sets --
+# inet_chan.c's ichan_fail translates the stack's status to the COHERENT number
+# -- so `if (errno == EURG)' is dead code in both arms.  errno.h is the only
+# name the two sets share, and nothing here needs a Minix-only errno: everything
+# else the clients want from net/include is still found below it.
+#
+# The COHERENT set is the toolchain's, resolved the way ccz itself resolves it:
+# src/include in a checkout, usr/include in an unpacked release.  ccz appends
+# the same directories to every compile, but it appends them LAST, which is
+# where net/include won.
+if [ -d "$C900_TOOLCHAIN/native" ]; then
+	TCSYSINC="$C900_TOOLCHAIN/usr/include"
+else
+	TCSYSINC="$C900_TOOLCHAIN/src/include"
+fi
+[ -f "$TCSYSINC/errno.h" ] || {
+	echo "== netcmds FAILED: no errno.h at $TCSYSINC -- the toolchain did not"
+	echo "  resolve, or its layout changed.  Refusing rather than compiling the"
+	echo "  clients against the stack's error numbers."
+	exit 1
+}
+INC="-I$TCSYSINC -Inet/include"
 
 ok=0; bad=0
 for name in telnet telnetd ftp host rlogin finger talk ping \
