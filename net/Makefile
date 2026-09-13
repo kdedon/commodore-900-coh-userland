@@ -24,7 +24,30 @@
 CC	= cc
 AS	= as
 AR	= ar
+
+# TWO include orders, because two different <errno.h> answer to that name and
+# each half of this directory needs a different one.
+#
+# include/errno.h is Minix's, and it is here because the stack is Minix code:
+# its network error numbers are the ones the inet daemon puts in a reply status
+# (ECONNREFUSED 59, EADDRINUSE 58).  COHERENT's own <errno.h> numbers the same
+# names differently (45 and 44), and that is what the libc a user program links
+# sets and what perror() prints.
+#
+# CFLAGS puts include/ first, and is the stack's order.  It is what inet/ builds
+# with -- that sub-make takes CFLAGS from here, and adds _SYSTEM so the same
+# numbers come out negative for the protocol core -- and it is also what the two
+# files that handle stack reply statuses want: inet_chan.c, which owns the
+# translation, and libsocket.c, which feeds statuses into it.
+#
+# UCFLAGS puts COHERENT's headers first, and is what everything else in this
+# directory is compiled with, because the errno those files set or test is the
+# one a CALLER reads: the resolver, the r-command support, the daemons and the
+# test clients.  cc searches SYSINC last of its own accord, which is where
+# include/errno.h won for them.
+SYSINC	= /usr/include
 CFLAGS	= -O -Iinclude
+UCFLAGS	= -O -I$(SYSINC) -Iinclude
 LFLAGS	= -i			# separated I/D
 
 # The channel client + raw-syscall stubs that every net client links.
@@ -250,14 +273,16 @@ coh_ifconfig.o: $(H)/inet_chan.h $(H)/inet_ipc.h $(H)/minix/ioctl.h \
 		$(H)/net/ioctl.h
 coh_ppp.o coh_slip.o test/psipping.o: $(H)/inet_chan.h $(H)/inet_ipc.h
 gethostby.o netdb.o: $(H)/netdb.h $(H)/netdb_priv.h
-inet_chan.o: $(H)/errno.h $(H)/inet_chan.h $(H)/inet_ipc.h
+inet_chan.o: inet_chan.c $(H)/errno.h $(H)/inet_chan.h $(H)/inet_ipc.h
+	$(CC) $(CFLAGS) -c -o inet_chan.o inet_chan.c
 inetd.o sntp.o test/netdbtest.o: $(H)/errno.h $(H)/netdb.h
-libsocket.o: $(H)/errno.h $(H)/inet_chan.h $(H)/minix/ioctl.h \
+libsocket.o: libsocket.c $(H)/errno.h $(H)/inet_chan.h $(H)/minix/ioctl.h \
 		$(H)/net/gen/in.h $(H)/net/gen/ip_io.h \
 		$(H)/net/gen/psip_io.h $(H)/net/gen/route.h \
 		$(H)/net/gen/tcp.h $(H)/net/gen/tcp_io.h $(H)/net/gen/udp.h \
 		$(H)/net/gen/udp_hdr.h $(H)/net/gen/udp_io.h \
 		$(H)/net/ioctl.h
+	$(CC) $(CFLAGS) -c -o libsocket.o libsocket.c
 rcmd.o: $(H)/ansi.h $(H)/errno.h $(H)/minix/config.h $(H)/minix/ioctl.h \
 		$(H)/net/gen/in.h $(H)/net/gen/netdb.h $(H)/net/gen/tcp.h \
 		$(H)/net/gen/tcp_io.h $(H)/net/hton.h $(H)/net/ioctl.h \
@@ -301,7 +326,7 @@ test/portholder.o: $(H)/errno.h $(H)/minix/config.h $(H)/minix/ioctl.h \
 test/repeatclient.o test/talkping.o: $(H)/errno.h talk.h
 
 .c.o:
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(UCFLAGS) -c -o $@ $<
 
 .s.o:
 	$(AS) -o $@ $<

@@ -22,18 +22,21 @@
 
 /* COHERENT/Z8001 inet port: the inet stack is a _SYSTEM component and relies on
  * the Minix convention of NEGATIVE internal error codes (callers test for < 0),
- * so the stack's build defines _SYSTEM -- see inet/Makefile's CFLAGS.
+ * so the stack's build defines _SYSTEM -- see inet/Makefile's CFLAGS.  It must
+ * NOT be defined in this header: doing that gave user programs a NEGATIVE
+ * errno, and perror() indexes sys_errlist[] without a lower-bound check, so a
+ * failed socket call read wild memory.
  *
- * This header shadows COHERENT's <errno.h> for anything compiled with
- * -Inet/include, which is the CLIENT side too (libsocket, inet_chan, slip, ppp,
- * ifconfig).  It must NOT define _SYSTEM itself: doing that gave user programs a
- * NEGATIVE errno, and perror() indexes sys_errlist[] without a lower-bound check,
- * so a failed socket call read wild memory.  Client code sees the positive form,
- * which agrees with COHERENT numerically for codes 1..34.
+ * The numbers here are the stack's, which is what this header is for: they are
+ * the statuses the inet daemon puts in a reply.  They agree with COHERENT for
+ * codes 1..34 and diverge past that -- ECONNREFUSED is 59 here and 45 there --
+ * so a raw stack status is never assigned to errno; ichan_fail() in inet_chan.c
+ * translates it.
  *
- * Beyond 34 the two sets diverge and COHERENT 3.2 has no networking errnos at
- * all, so error codes arriving from the stack are translated -- ichan_errno() in
- * inet_chan.c.  Do not assign a raw stack status to errno. */
+ * Outside inet/ this header is on the include path ahead of COHERENT's for the
+ * two files that handle those statuses, inet_chan.c and libsocket.c.  Every
+ * other file in net/ is compiled with COHERENT's <errno.h> first, because the
+ * errno it sets or tests is one a caller reads.  net/Makefile draws that line. */
 
 /* Now define _SIGN as "" or "-" depending on _SYSTEM. */
 #ifdef _SYSTEM

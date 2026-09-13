@@ -49,15 +49,11 @@ static char sccsid[] = "@(#)rcmd.c	5.22 (Berkeley) 6/1/90";
 
 /*
  * The reserved-port scan walks 512..1023 until one is free, and "already in
- * use" is the answer it steps on, so this name has to hold the value errno
- * actually carries.  That value is COHERENT's 44: ichan_fail() translates the
- * stack's own EADDRINUSE (58, a Minix number) into it.  The name is pinned
- * numerically here because two different <errno.h> can win the include search
- * -- net/include/errno.h forces the stack's internal numbering on anything
- * built with -Inet/include, and that copy is on the path for this file.
+ * use" is the answer it steps on, so EADDRINUSE here has to be the value errno
+ * actually carries: COHERENT's 44, which ichan_fail() translates the stack's
+ * own 58 into.  This file is compiled with COHERENT's <errno.h> ahead of the
+ * stack's -- see net/Makefile.
  */
-#undef EADDRINUSE
-#define	EADDRINUSE	44
 
 extern	errno;
 
