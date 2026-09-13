@@ -309,8 +309,29 @@ package:
 	sh $(OS)/dist/pack-component.sh -o $(PKGOUT) $(PKG)
 
 # Attempt each available component kind and report successes and refusals.
+# A refusal is a component that publishes nothing, so the sweep fails on one:
+# an install set short of a component is not an install set.
 packages:
-	@mkdir -p $(PKGOUT); ok=0; skip=0; 	$(COMPONENT) components | awk '$$2 ~ /^bin/ {print $$1, $$2}' | 	while read -r n kinds; do 		for k in $$(echo "$$kinds" | tr ',' ' '); do 			if sh $(OS)/dist/pack-component.sh -o $(PKGOUT) "$$n" "$$k" 			   2>$(PKGOUT)/.why; then ok=$$((ok+1)); 			else skip=$$((skip+1)); 			   echo "-- $$n-$$k not cut: $$(head -2 $(PKGOUT)/.why | tr '\n' ' ')"; 			fi; 		done; 		echo "$$ok $$skip" > $(PKGOUT)/.count; 	done; rm -f $(PKGOUT)/.why; 	read -r ok skip < $(PKGOUT)/.count; rm -f $(PKGOUT)/.count; 	echo "== packages: $$ok cut, $$skip refused, in $(PKGOUT)"; 	ls -1 $(PKGOUT)/*.tar.gz 2>/dev/null | wc -l | 	    xargs -I{} echo "== {} archive(s) present"
+	@mkdir -p $(PKGOUT); ok=0; skip=0; \
+	$(COMPONENT) components | awk '$$2 ~ /^bin/ {print $$1, $$2}' | \
+	while read -r n kinds; do \
+		for k in $$(echo "$$kinds" | tr ',' ' '); do \
+			if sh $(OS)/dist/pack-component.sh -o $(PKGOUT) "$$n" "$$k" \
+			   2>$(PKGOUT)/.why; then ok=$$((ok+1)); \
+			else skip=$$((skip+1)); \
+			   echo "-- $$n-$$k not cut: $$(head -2 $(PKGOUT)/.why | tr '\n' ' ')"; \
+			fi; \
+		done; \
+		echo "$$ok $$skip" > $(PKGOUT)/.count; \
+	done; rm -f $(PKGOUT)/.why; \
+	test -s $(PKGOUT)/.count || { \
+	    echo "== packages: no component kind was attempted" >&2; exit 1; }; \
+	read -r ok skip < $(PKGOUT)/.count; rm -f $(PKGOUT)/.count; \
+	echo "== packages: $$ok cut, $$skip refused, in $(PKGOUT)"; \
+	ls -1 $(PKGOUT)/*.tar.gz 2>/dev/null | wc -l | \
+	    xargs -I{} echo "== {} archive(s) present"; \
+	test "$$skip" -eq 0 || { \
+	    echo "== packages: $$skip component-kind(s) published nothing" >&2; exit 1; }
 	@$(PYTHON) $(OS)/dist/licences.py --collect $(B)/licences
 
 package-list:

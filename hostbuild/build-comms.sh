@@ -72,8 +72,20 @@ if [ ! -f "$C/ckermit/ckcpro.c" ] || [ "$C/ckermit/ckcpro.w" -nt "$C/ckermit/ckc
 	# description), so it is build output like any other and belongs under
 	# the build tree; a fixed /tmp name is shared by every checkout on the
 	# machine and survives no CI step.
-	cc -w -o "$HERE/build/ckwart" "$C/ckermit/ckwart.c" 2>/dev/null &&
-		(cd "$C/ckermit" && "$HERE/build/ckwart" ckcpro.w ckcpro.c >/dev/null)
+	#
+	# A parser that was not generated is the previous one, so kermit would
+	# be built from a state machine this tree no longer describes: the
+	# generation is fatal, not advisory.
+	if cc -w -o "$HERE/build/ckwart" "$C/ckermit/ckwart.c" \
+	    >"$LOGD"/co-ckwart.log 2>&1 &&
+	   (cd "$C/ckermit" && "$HERE/build/ckwart" ckcpro.w ckcpro.c \
+	    >/dev/null 2>>"$LOGD"/co-ckwart.log); then
+		:
+	else
+		echo "  ckcpro.c: FAIL -- not generated from ckcpro.w, see $LOGD/co-ckwart.log"
+		echo "== comms: $ok linked, ckcpro.c not generated"
+		exit 1
+	fi
 fi
 build kermit "$C/ckermit" -DBSD29 -DDEBUG -DTLOG -DBIT_16 \
 	-- $CKSRC
