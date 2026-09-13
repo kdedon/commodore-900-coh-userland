@@ -20,7 +20,11 @@
 # manifest.tab is the whole of the installation instruction: `<type> <path>
 # <mode> <uid> <gid>', the six columns of `component.py component', minus the
 # source column, which named a path on the machine that packed it and means
-# nothing afterwards.  A tar archive cannot carry a COHERENT uid/gid or a setuid bit
+# nothing afterwards.  An `l' row keeps a sixth column, the path its name is a
+# hard link to: that target is not a packing detail but the whole of what the
+# name means.  files/ carries the link itself where it carries the target, so an
+# unpack puts those names on one inode; a target another component installs is
+# named and linked where both names land.  A tar archive cannot carry a COHERENT uid/gid or a setuid bit
 # through an unpack on somebody's Linux box, so the modes are DATA here and the
 # installer applies them; an installer that reads the tar bits alone would give
 # /usr/bin/screen 0755 instead of 6511 and it would silently not work.

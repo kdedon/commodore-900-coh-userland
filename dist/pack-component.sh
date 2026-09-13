@@ -89,17 +89,36 @@ mkdir -p "$T/files"
 
 # manifest.tab: the installation instruction.  The same columns component.py
 # emits, minus the source column, which named a path on the machine that packed
-# it and means nothing afterwards.  Space-separated, which is the list format's
-# own spelling (`f /bin/ls 755 3 1'), so an installer that already reads one
-# reads this and awk needs no -F.
+# it and means nothing afterwards -- except on an `l' row, where that column is
+# the TARGET the second name shares an inode with, which is the whole of what
+# installing that name means.  Space-separated, which is the list format's own
+# spelling (`f /bin/ls 755 3 1'), so an installer that already reads one reads
+# this and awk needs no -F.
 : > "$T/manifest.tab"
+: > "$W/links"
 nf=0
 while IFS='	' read -r typ path mode uid gid src; do
 	[ -n "${typ:-}" ] || continue
+	case "$typ" in
+	l)
+		# A HARD LINK IS ITS TARGET.  A row that does not name one is a
+		# second name for nothing: /usr/bin/vi, /usr/bin/ex and
+		# /usr/bin/view are elvis, and a package that cannot say so
+		# installs three names that are not there.  Refused, not packed.
+		[ -n "${src:-}" ] && [ "$src" != "-" ] || {
+			echo "pack-component.sh: $path is a hard link whose target this package cannot express." >&2
+			echo "  A link that cannot be recreated on unpacking loses the program it names." >&2
+			exit 1
+		}
+		printf 'l %s %s %s %s %s\n' "$path" "$mode" "$uid" "$gid" \
+			"$src" >> "$T/manifest.tab"
+		printf '%s\t%s\n' "$path" "$src" >> "$W/links"
+		continue ;;
+	esac
 	printf '%s %s %s %s %s\n' "$typ" "$path" "$mode" "$uid" "$gid" \
 		>> "$T/manifest.tab"
 	case "$typ" in
-	d|e|l) continue ;;			# no payload of their own
+	d|e) continue ;;			# no payload of their own
 	esac
 	[ "$src" = "-" ] && continue		# generated below (man.index)
 	d="$T/files/$(dirname "$path")"
@@ -107,6 +126,21 @@ while IFS='	' read -r typ path mode uid gid src; do
 	cp -p "$src" "$T/files/$path"
 	nf=$((nf + 1))
 done < "$W/set"
+
+# The links, made once every target is in place so the order the set arrives in
+# does not matter.  They go in as LINKS, so tar records them as links and an
+# unpack gives the target and its other names one inode rather than a copy each.
+# A target another component installs -- editors' /usr/bin/emacs onto base's
+# /usr/bin/me -- is not in this package to link to, and there the manifest row
+# naming the target is the whole instruction: the link is made where both names
+# land, after the package that carries the inode is installed.
+while IFS='	' read -r path tgt; do
+	[ -n "${path:-}" ] || continue
+	[ -f "$T/files/$tgt" ] || continue
+	mkdir -p "$T/files/$(dirname "$path")"
+	ln "$T/files/$tgt" "$T/files/$path"
+	nf=$((nf + 1))
+done < "$W/links"
 
 # man.index: GENERATED with exactly the pages packed.
 NPROG=$("$PYTHON" "$COMPPY" components | awk -v c="$COMP" '$1==c{print $4}')

@@ -51,6 +51,37 @@ for c in $(find . -name .contents | LC_ALL=C sort); do
 	n=$((n + $(grep -c . "$c")))
 done
 
+# WHAT THE PACKAGE SAYS IT CARRIES.  .contents describes the files that ARE
+# here and cannot see one that should be and is not, so the manifest is read
+# back against files/: an `f' row with no payload, and an `l' row with no target
+# or whose two names are not one inode, are a package installing a hole.
+if [ -f manifest.tab ]; then
+	bad=0
+	while read -r typ path mode uid gid tgt; do
+		case "$typ" in
+		f)	[ -f "files/$path" ] || {
+				echo "*** check-contents: manifest.tab declares $path and files/$path is not here." >&2
+				bad=$((bad + 1)); } ;;
+		l)	a=$(ls -di "files/$path" 2>/dev/null | awk '{print $1}')
+			b=$(ls -di "files/$tgt" 2>/dev/null | awk '{print $1}')
+			if [ -z "${tgt:-}" ]; then
+				echo "*** check-contents: manifest.tab gives $path no link target, so nothing can recreate it." >&2
+				bad=$((bad + 1))
+			elif [ -n "$b" ] && [ "$a" != "$b" ]; then
+				echo "*** check-contents: $path and the target $tgt beside it are not one inode." >&2
+				bad=$((bad + 1))
+			elif [ -z "$b" ] && [ -n "$a" ]; then
+				echo "*** check-contents: $path is a copy here, and $tgt, the inode it must share, is in another package." >&2
+				bad=$((bad + 1))
+			fi ;;
+		esac
+	done < manifest.tab
+	[ "$bad" -eq 0 ] || {
+		echo "*** check-contents: $bad manifest row(s) name files this package does not carry." >&2
+		exit 1
+	}
+fi
+
 # No listing at all is not a pass: it is this check having nothing to check,
 # which is the shape of every gate this project has shipped that could not fail.
 [ "$found" -gt 0 ] || {
