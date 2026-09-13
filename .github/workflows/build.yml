@@ -1,7 +1,7 @@
 # build -- compile this repository's programs against the toolchain it pins.
 #
-# The toolchain is resolved as a dependency edge -- `sh mk/deps-fetch.sh
-# toolchain', which is what DEPS is read by -- and the shape it resolved to is
+# The toolchain is resolved as a dependency edge -- `make deps DEP=toolchain',
+# which is what DEPS is read by -- and the shape it resolved to is
 # read back with `sh mk/deps.sh -k toolchain'; C900_TOOLCHAIN then points at
 # the deps/ path that placed, rather than a separate checkout of it.
 #
@@ -54,7 +54,7 @@ jobs:
       - name: The toolchain this tree is built with
         working-directory: userland
         run: |
-          sh mk/deps-fetch.sh toolchain
+          make deps DEP=toolchain
           # Which SHAPE resolved, in the log: a release and a checkout are
           # both usable and a build should say which it got.
           sh mk/deps.sh -k toolchain

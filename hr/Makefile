@@ -488,7 +488,7 @@ $(KERNEL_STAGE):
 	@echo "  Wanted $(KIMG)"
 	@echo "     and $(KDRVSTAMP)"
 	@echo "  C900_KERNEL = $(if $(C900_KERNEL),$(C900_KERNEL),<unset: run \`sh ../mk/deps.sh -n kernel' for the paths tried>)"
-	@echo "  Run \`make kernel drivers' in that repository, or \`make deps DEP=kernel' here."
+	@echo "  Run \`make kernel drivers' in that repository, or \`make deps DEP=kernel' at this repository's root."
 	@exit 2
 
 else
@@ -1068,7 +1068,7 @@ $(DRVDIR)/hr:
 	@echo "     and $(KDRVCONF)"
 	@echo "     and $(KDRVCC0)"
 	@echo "  C900_KERNEL = $(if $(C900_KERNEL),$(C900_KERNEL),<unset: run \`sh ../mk/deps.sh -n kernel' for the paths tried>)"
-	@echo "  Run \`make kernel drivers' in that repository, or \`make deps DEP=kernel' here."
+	@echo "  Run \`make kernel drivers' in that repository, or \`make deps DEP=kernel' at this repository's root."
 	@exit 2
 
 else
