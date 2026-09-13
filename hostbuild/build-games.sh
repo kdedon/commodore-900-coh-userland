@@ -64,21 +64,39 @@ done
 # -- quiz opens the paths the index gives it, so the placeholder has to become
 # the target path here and not the host one.  index.in and the upstream
 # Makefrag are inputs and are not staged.
+#
+# Staged per category and not as a unit: each file is copied when the staged
+# tree has not got it or the source is newer, so an edited answer reaches the
+# image and a category deleted from under the staged tree comes back.
 QD=/usr/games/lib/quiz.db
-if [ ! -f "$R/quiz.db/index" -o "$OS/games/lib/quiz.db/index.in" -nt "$R/quiz.db/index" ]; then
-	mkdir -p "$R/quiz.db"
-	if for c in "$OS"/games/lib/quiz.db/*; do
-		case "$(basename "$c")" in index.in|Makefrag) continue;; esac
-		cp "$c" "$R/quiz.db/" || exit 1
-	   done &&
-	   sed "s|@quiz_dir@|$QD|g" "$OS/games/lib/quiz.db/index.in" \
+mkdir -p "$R/quiz.db"
+quizfail=0; quizstaged=0
+for c in "$OS"/games/lib/quiz.db/*; do
+	b="$(basename "$c")"
+	case "$b" in index.in|Makefrag) continue;; esac
+	if [ ! -f "$R/quiz.db/$b" -o "$c" -nt "$R/quiz.db/$b" ]; then
+		if cp "$c" "$R/quiz.db/$b"; then
+			quizstaged=$((quizstaged+1))
+		else
+			quizfail=1
+		fi
+	fi
+done
+if [ ! -f "$R/quiz.db/index" -o \
+     "$OS/games/lib/quiz.db/index.in" -nt "$R/quiz.db/index" ]; then
+	if sed "s|@quiz_dir@|$QD|g" "$OS/games/lib/quiz.db/index.in" \
 		> "$R/quiz.db/index"
 	then
-		echo "== quiz: $(ls "$R/quiz.db" | wc -l) datfiles staged"
+		quizstaged=$((quizstaged+1))
 	else
-		fortunefail=1
-		echo "== quiz: quiz.db FAILED"
+		quizfail=1
 	fi
+fi
+if [ "$quizfail" -ne 0 ]; then
+	fortunefail=1
+	echo "== quiz: quiz.db FAILED"
+elif [ "$quizstaged" -ne 0 ]; then
+	echo "== quiz: $quizstaged of $(ls "$R/quiz.db" | wc -l) datfiles staged"
 fi
 
 # adventure: tables.c + games/lib/adventure.msg are generated (checked in);
