@@ -145,7 +145,7 @@ lic nawk           n y y base/cmd/nawk/awk.h                 Hirabayashi     naw
 # Each of these is on an image today.  Read the `what' before changing a `?'.
 
 # UnZip 4.1 as held forbids commercial use outright and forbids redistributing a
-# MODIFIED copy -- and unzip.c and unzip.h here ARE modified.  Info-ZIP's own
+# MODIFIED copy -- and unzip.c, unzip.h and mapname.c here ARE modified.  Info-ZIP's own
 # COPYING.OLD records Smith saying in 1994 that he had no objection to Info-ZIP
 # carrying his code and wanted it to stay freely distributable, while noting the
 # commercial stipulation still binds a company.  That is a statement of intent
