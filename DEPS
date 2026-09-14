@@ -33,6 +33,6 @@
 #              resolves to a headers-only release satisfies the compiles and
 #              not the staging, which then refuses by name.
 #
-toolchain  release  https://github.com/kdedon/commodore-900-toolchain  v0.1.4  c900-toolchain-@REF@-@HOST@  commodore-900-toolchain
+toolchain  release  https://github.com/kdedon/commodore-900-toolchain  v0.1.6  c900-toolchain-@REF@-@HOST@  commodore-900-toolchain
 emu        release  https://github.com/kdedon/commodore-900-emulator   v0.1  c900-@REF@-@HOST@
 kernel     git      https://github.com/kdedon/commodore-900-coh-kernel3  main
