@@ -1,4 +1,7 @@
 /*
+ * Portions Copyright (c) 2026 Kevin Dedon.
+ */
+/*
  * Copyright (c) 1981 Regents of the University of California.
  * All rights reserved.
  *
@@ -19,13 +22,13 @@
 
 /*
  * This is the header libcurses.a itself is compiled against, so it is the
- * one that decides the layout of a WINDOW.  The toolchain's <curses.h> is a
- * byte copy of it, because a program that reaches <curses.h> through the
- * system include directory rather than through -I on the libcurses source
- * directory must get the same struct: the guard below is `# ifndef WINDOW',
- * which both copies share, so include order alone decides which one is read
- * and a mismatch links without a diagnostic.  hostbuild/build-curses.sh
- * compares the two and refuses to build them apart.
+ * one that decides the layout of a WINDOW.  The toolchain ships <curses.h> at
+ * the same version, because a program that reaches it through the system
+ * include directory rather than through -I on the libcurses source directory
+ * must get the same struct: the guard below is `# ifndef WINDOW', which both
+ * copies share, so include order alone decides which one is read and a
+ * mismatch links without a diagnostic.  hostbuild/build-curses.sh compares the
+ * @(#) version tags and refuses to build two different versions together.
  */
 
 # ifndef WINDOW

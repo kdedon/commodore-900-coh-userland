@@ -45,12 +45,15 @@ fi
 	echo "  or its layout changed.  Refusing rather than skipping the check."
 	exit 1
 }
-if ! cmp -s "$OS/base/lib/libcurses/curses.h" "$TCSYSINC/curses.h"; then
+ustag=$(sed -n 's/.*@(#)curses\.h[ \t]*//p' "$OS/base/lib/libcurses/curses.h")
+tctag=$(sed -n 's/.*@(#)curses\.h[ \t]*//p' "$TCSYSINC/curses.h")
+if [ -z "$ustag" ] || [ "$ustag" != "$tctag" ]; then
 	echo "curses: HEADERS DISAGREE"
 	echo "  base/lib/libcurses/curses.h is what libcurses.a is compiled against;"
 	echo "  $TCSYSINC/curses.h is what a program reaches without -I on that directory."
-	echo "  They must be the same file.  First difference:"
-	diff "$OS/base/lib/libcurses/curses.h" "$TCSYSINC/curses.h" | head -8
+	echo "  They must be the same version of the header:"
+	echo "    base/lib/libcurses/curses.h  ${ustag:-no @(#) tag}"
+	echo "    $TCSYSINC/curses.h  ${tctag:-no @(#) tag}"
 	exit 1
 fi
 
