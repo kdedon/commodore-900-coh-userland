@@ -88,12 +88,17 @@ publish: $(SWEEP)
 	sh $(HERE)/publish-userland.sh
 
 # Check that publication followed every build output.  Exclude .tcstamp
-# and .tcid, which toolchain.mk maintains while parsing this Makefile.
+# and .tcid, which toolchain.mk maintains while parsing this Makefile -- the
+# gate's own invocation rewrites them, so they cannot be evidence about it.
+# Exclude the two directories `packages' owns as well: they are derived FROM
+# the published tree rather than inputs to it, so publish has nothing to say
+# about them and `all' followed by `packages' is the order packages requires.
 .PHONY: check-publish-fresh
 check-publish-fresh:
 	@test -f "$(B)/.ulstamp" || \
 	    { echo "check-publish-fresh: no $(B)/.ulstamp -- publish never ran"; exit 1; }
-	@newer=$$(find "$(B)" -type f ! -name .ulstamp ! -name .tcstamp ! -name .tcid -newer "$(B)/.ulstamp" | head -1); \
+	@newer=$$(find "$(B)" -type f ! -name .ulstamp ! -name .tcstamp ! -name .tcid \
+	    ! -path "$(PKGOUT)/*" ! -path "$(B)/licences/*" -newer "$(B)/.ulstamp" | head -1); \
 	if [ -n "$$newer" ]; then \
 	    echo "check-publish-fresh: $$newer is newer than $(B)/.ulstamp"; \
 	    echo "check-publish-fresh: publish did not run after this build finished"; \
