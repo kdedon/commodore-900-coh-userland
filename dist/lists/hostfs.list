@@ -12,7 +12,12 @@
 # listed here because device tables are per-dist (.devices files) and the
 # shipped one must not change; hostfs(1) creates both nodes on first use.
 #
-# Built by hostbuild/build-hostfs.sh into build/drv and build/bin.
+# /drv/hostfs is the kernel repository's, linked against its kernel by that
+# repository's build-drivers.sh into build/drv.  /bin/hostfs is this
+# repository's, base/cmd/hostfs/hostfs.c built into hostbuild/build/bin; its
+# src= names that file so that the driver of the same name in the kernel's
+# build/drv, which the search for an entry with no src= reaches first, is
+# never taken for it.
 #
 # Under the emulator a host directory needs none of this: it is a filesystem
 # image on the stock /dev/fd1 floppy, written and read back on the host.
@@ -27,4 +32,4 @@ role     optional
 kinds    src
 
 f	/drv/hostfs	755 0 1
-f	/bin/hostfs	755 3 1
+f	/bin/hostfs	755 3 1	src=hostbuild/build/bin/hostfs

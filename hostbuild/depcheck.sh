@@ -68,8 +68,8 @@ isolate() {	# isolate <target> : echoes the -o flags to use for it
 # stamp cannot see it.  The directory a case stands for is what matters, so the
 # file chosen inside it is arbitrary and the case name says the directory.
 #
-# sys, hrtty and the kernel-linked half of base/cmd/hostfs are not cases
-# here any more: the kernel and its loadable drivers are in a separate
+# sys, hrtty and the hostfs driver are not cases here: the kernel and its
+# loadable drivers are in a separate
 # repository, and $HERE/kobj/kernel.out and $HERE/build/drv/{hrtty,hostfs}
 # are not targets this Makefile builds.
 CASES="
