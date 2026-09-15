@@ -1,6 +1,6 @@
 /*
  * c900.h -- COHERENT 3.2 / Z8001 (Commodore 900) emulation for the generic
- * MGR 0.69 sources, in the manner of MGR's own include/coherent/ shims for
+ * MGR 0.69 sources, in the manner of upstream MGR's own shims for
  * COHERENT 4.0.  Pulled in from <mgr/bitblit.h> and, for the few server
  * files that do not include it, by hand.  Everything here supplies a name
  * this system lacks; nothing here changes behaviour that already works.
