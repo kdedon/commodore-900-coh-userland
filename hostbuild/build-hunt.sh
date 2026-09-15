@@ -6,10 +6,9 @@
 # this only supplies the cross-compiler and the libraries.
 #
 # huntd links against libsocket alone.  hunt also needs libcurses + libterm,
-# and its includes must find base/lib/libcurses/curses.h BEFORE
-# include/curses.h -- the port's Makefile puts -Ihuntd and the curses directory
-# ahead of CFLAGS for exactly that reason (the 4.x terminfo header has neither
-# _tty_ch nor the capability strings the game drives directly).
+# and compiles against the toolchain's src/include/curses.h, found on ccz's
+# default include path: the 4.3BSD/sgtty header that carries _tty_ch and the
+# terminal capability strings the game drives directly.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OS="$HERE/.."

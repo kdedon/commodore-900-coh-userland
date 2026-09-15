@@ -78,7 +78,7 @@ $OS/base/cmd/ps.c|$HERE/build/.stamp-userland|base/cmd -- ps(1), compiled by bui
 $OS/base/cmd/pr.c|$HERE/build/.stamp-userland|base/cmd -- pr(1), compiled by build-extra-userland.sh
 $OS/base/cmd/enable.c|$HERE/build/.stamp-userland|base/cmd -- the command set
 $OS/base/lib/regexp/regexp.c|$HERE/build/.stamp-userland|base/cmd -- the regexp more(1) and less(1) link
-$OS/base/lib/libcurses/curses.h|$HERE/build/.stamp-userland|base/lib -- the libraries the sweep links
+$OS/base/lib/libcurses/addch.c|$HERE/build/.stamp-userland|base/lib -- the libraries the sweep links
 $OS/games/bsd/fish.c|$HERE/build/.stamp-userland|games -- a game
 $OS/games/bsd/quiz/quiz.c|$HERE/build/.stamp-userland|games -- a multi-file game
 $OS/games/lib/fortunes|$HERE/build/.stamp-userland|games/lib -- a DATA file staged into the image
