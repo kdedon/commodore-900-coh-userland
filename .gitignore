@@ -98,6 +98,11 @@
 # build overwrites it, so any edit made to it -- a copyright notice included --
 # is lost the next time the .w moves.  The source is the .w.
 /comms/ckermit/ckcpro.c
+# tables.c is what games/bsd/adventure/host/dumper.c.host makes of glorkz by
+# running the original startup scan, and build-games.sh remakes it whenever it
+# is absent or older than glorkz or anything in host/.  The message file the
+# same run writes goes straight to the staged tree.  The source is glorkz.
+/games/bsd/adventure/tables.c
 
 # ---- make deps ------------------------------------------------------------
 # Where `make deps' unpacks the pinned third-party release binaries DEPS names

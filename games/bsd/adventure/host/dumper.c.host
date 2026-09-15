@@ -6,6 +6,10 @@
 #include "hdr.h"
 #include "extern.h"
 
+/* setup's encryption of glorkz, ending in the 0 setup appends */
+#include "data.c"
+static int data_size = sizeof data_file - 1;
+
 static long off(struct text *t) { return t->seekadr ? (long)(t->seekadr - data_file) : -1L; }
 
 static void dump_text(FILE *f, const char *name, struct text *t, int n)
@@ -25,7 +29,7 @@ int main(void)
 	rdata();
 
 	f = fopen("adventure.msg", "wb");
-	extern int data_size; fwrite(data_file, 1, data_size, f);
+	fwrite(data_file, 1, data_size, f);
 	fclose(f);
 
 	f = fopen("tables.c", "w");

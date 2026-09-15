@@ -38,12 +38,49 @@ if [ ! -f "$R/fortunes" -o "$OS/games/lib/fortunes" -nt "$R/fortunes" ]; then
 	fi
 fi
 
+# adventure: the original game scans its whole database out of an encrypted
+# copy of glorkz at every start.  Here that scan runs once, on the HOST:
+# games/bsd/adventure/host/dumper.c.host links the pristine bsd-games scan
+# sources beside it with setup's encryption of glorkz, runs rdata(), and writes
+# the message image adventure reads by offset from /usr/games/lib/adventure.msg
+# and the tables.c that indexes it.  tables.c goes beside the game's sources,
+# where the sweep below compiles it; adventure.msg goes straight to the staged
+# tree.  Both are remade whenever either is absent or anything they are made
+# from is newer.  A game linked against tables that were not regenerated would
+# index a message file it does not match, so a failed generation is fatal.
+A="$OS/games/bsd/adventure"; AG="$HERE/build/adventure"
+advgen=0
+[ -f "$A/tables.c" ] && [ -f "$R/adventure.msg" ] || advgen=1
+for i in "$A/glorkz" "$A"/host/*; do
+	if [ "$i" -nt "$A/tables.c" ] || [ "$i" -nt "$R/adventure.msg" ]; then
+		advgen=1
+	fi
+done
+if [ "$advgen" -ne 0 ]; then
+	mkdir -p "$AG"
+	if cc -w -x c -o "$AG/setup" "$A/host/setup.c.host" >"$AG/gen.log" 2>&1 &&
+	   "$AG/setup" "$A/glorkz" >"$AG/data.c" 2>>"$AG/gen.log" &&
+	   cc -w -D'__RCSID(x)=' -D'__COPYRIGHT(x)=' -I "$AG" -x c \
+	      -o "$AG/dumper" "$A/host/dumper.c.host" "$A/host/io.c.host" \
+	      "$A/host/vocab.c.host" "$A/host/init.c.host" \
+	      "$A/host/wizard.c.host" "$A/host/save.c.host" \
+	      "$A/host/crc.c.host" >>"$AG/gen.log" 2>&1 &&
+	   (cd "$AG" && ./dumper) 2>>"$AG/gen.log" &&
+	   mv -f "$AG/tables.c" "$A/tables.c" &&
+	   mv -f "$AG/adventure.msg" "$R/adventure.msg"; then
+		echo "== adventure: tables.c and adventure.msg ($(wc -c < "$R/adventure.msg") B) generated"
+	else
+		echo "== adventure: FAIL -- not generated from glorkz, see $AG/gen.log"
+		exit 1
+	fi
+fi
+
 # The other games that read a data file out of /usr/games/lib by absolute path.
 # Each name is the path its program opens, so a file absent here is a program
-# that runs and then cannot do the one thing the file is for: adventure exits
-# ("Sorry, I can't open ..."), wump and fish print their apology instead of the
-# instructions.  Counted with fortune's, for fortune's reason.
-for d in adventure.msg wump.info fish.instr; do
+# that runs and then cannot do the one thing the file is for: wump and fish
+# print their apology instead of the instructions, as adventure (above) exits
+# without its message file.  Counted with fortune's, for fortune's reason.
+for d in wump.info fish.instr; do
 	if [ ! -f "$R/$d" -o "$OS/games/lib/$d" -nt "$R/$d" ]; then
 		if cp "$OS/games/lib/$d" "$R/$d"; then
 			echo "== data: $d staged ($(wc -c < "$R/$d") B)"
@@ -99,9 +136,6 @@ elif [ "$quizstaged" -ne 0 ]; then
 	echo "== quiz: $quizstaged of $(ls "$R/quiz.db" | wc -l) datfiles staged"
 fi
 
-# adventure: tables.c + games/lib/adventure.msg are generated (checked in);
-# regenerate with dumper.c.host over the pristine NetBSD sources +
-# setup.c.host + glorkz.
 ok=0; failed=0; faillist=""; skipped=""
 # Curses games are built by build-curses-games.sh, which puts libcurses on the
 # link line; skip them here rather than reporting a link failure for a game that

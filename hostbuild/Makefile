@@ -120,9 +120,13 @@ ULDIRS = $(OS)/base/cmd $(OS)/base/lib $(OS)/editors $(OS)/archive/gzip \
 $(call dirs-exist,ULDIRS,$(ULDIRS))
 ULSRC := $(shell find $(ULDIRS) \
 	   \( -name '*.c' -o -name '*.h' -o -name '*.s' -o -name '*.y' \))
-# Game data and the curses selection list also affect the staged tree.
+# Game data and the curses selection list also affect the staged tree, and
+# adventure's tables and message file are generated from glorkz by the host
+# generator in games/bsd/adventure/host.
 ULSRC += $(wildcard $(OS)/games/bsd/CURSES.list) \
-	 $(shell find $(OS)/games/lib -type f 2>/dev/null)
+	 $(shell find $(OS)/games/lib -type f 2>/dev/null) \
+	 $(wildcard $(OS)/games/bsd/adventure/glorkz \
+		    $(OS)/games/bsd/adventure/host/*)
 # Where build-hunt.sh finds libcurses/libterm: the OS's own archives, staged
 # in the toolchain's build directory beside libc-z8001.a, where ccz looks.
 CURSESDIR := $(TCB)/curses
@@ -368,7 +372,8 @@ clean-work:
 	rm -rf $(B)/work
 
 # Remove everything the build writes: the build and log directories, the
-# Python cache the packer leaves, the generated ckcpro.c, and the objects and
+# Python cache the packer leaves, the generated ckcpro.c and adventure's
+# tables.c, and the objects and
 # programs net, hunt and the tests build beside their sources, through each
 # directory's own `clean'.  A test directory without a Makefile holds one
 # program, named for the directory, which build-tests.sh links in place.
@@ -388,5 +393,5 @@ clean:
 			echo "rm -f $$d$$n $$d.$$n.new"; rm -f $$d$$n $$d.$$n.new; \
 		fi; \
 	done
-	rm -f $(OS)/comms/ckermit/ckcpro.c
+	rm -f $(OS)/comms/ckermit/ckcpro.c $(OS)/games/bsd/adventure/tables.c
 	rm -rf $(B) $(HERE)/logs $(HERE)/__pycache__

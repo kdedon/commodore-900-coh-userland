@@ -20,14 +20,15 @@ BERKELEY / NetBSD, on the terms in ../bsd/COPYING
     wump.info           BSD games/wump/wump.info
     monop.inp           BSD games/monop/cards.inp
 
-    adventure.msg       NOT a copy -- generated here from ../bsd/adventure/
-                        glorkz by dumper.c.host, and checked in.  Its parent
-                        is BSD adventure, which per ../bsd/COPYING is the
-                        FOUR-clause BSD form (with the advertising clause)
-                        plus Copyright (c) 1997 Christos Zoulas.  That is the
-                        strictest term in the games tree, and being a binary
-                        blob this file gives no sign of it.  Noted for that
-                        reason.
+    adventure.msg       NOT in this directory -- the games build generates it
+                        from ../bsd/adventure/glorkz with the generator in
+                        ../bsd/adventure/host and stages it straight into
+                        /usr/games/lib.  Its parent is BSD adventure, which
+                        per ../bsd/COPYING is the FOUR-clause BSD form (with
+                        the advertising clause) plus Copyright (c) 1997
+                        Christos Zoulas.  That is the strictest term in the
+                        games tree, and being a binary blob the staged file
+                        gives no sign of it.  Noted for that reason.
 
 
 quiz.db/Makefrag carries its own grant
