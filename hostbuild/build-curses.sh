@@ -31,15 +31,9 @@ mkdir -p "$OUT/obj"; : > "$LOG"
 # compile or link time.  Building the archive while the two disagree is what
 # makes that possible, so it is refused here.
 #
-# The system copy is the one ccz appends to every compile, resolved the way
-# ccz itself resolves it: src/include in a checkout, usr/include in an
-# unpacked release.  Naming a path this build does not actually compile
-# against would make this check answer for a file nobody reads.
-if [ -d "$C900_TOOLCHAIN/native" ]; then
-	TCSYSINC="$C900_TOOLCHAIN/usr/include"
-else
-	TCSYSINC="$C900_TOOLCHAIN/src/include"
-fi
+# $TCSYSINC is the system copy ccz appends to every compile; toolchain.sh
+# resolves it.  Naming a path this build does not actually compile against
+# would make this check answer for a file nobody reads.
 [ -f "$TCSYSINC/curses.h" ] || {
 	echo "curses: no curses.h at $TCSYSINC -- the toolchain did not resolve,"
 	echo "  or its layout changed.  Refusing rather than skipping the check."

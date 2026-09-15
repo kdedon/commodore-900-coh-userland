@@ -658,13 +658,16 @@ $(HRGUIBIN)/ptytest: $(HRGUIOBJ)/test/ptytest/ptytest.o $(CRT) $(LIBC)
 # which <sys/proc.h> includes and the toolchain has not got; its other headers
 # are the toolchain's own, byte for byte.
 #
-# THE MACHINE LAYER COMES LAST, which is the order the kernel's own driver
-# build uses.  First, it holds 0.7.3-era copies of names the toolchain also
-# carries -- l.out.h, types.h, proc.h, seg.h -- and its <l.out.h> includes the
-# unqualified <types.h> beside it, which then satisfies the include guard that
-# <sys/types.h> uses and leaves faddr_t and fsize_t undeclared for every header
-# after it.
-$(HRGUIOBJ)/cmd/zmon/zmon.o: HRGFXCFLAGS += -I$(KINC) -I$(KMINC)
+# THE MACHINE LAYER COMES LAST AND THE TOOLCHAIN COMES BEFORE IT, which is the
+# order the kernel's own driver build uses and the order $(KDRVINC) spells.  The
+# machine layer holds 0.7.3-era copies of names the toolchain also carries --
+# l.out.h, types.h, proc.h, seg.h -- and its <l.out.h> includes the unqualified
+# <types.h> beside it, which then satisfies the include guard that <sys/types.h>
+# uses and leaves faddr_t and fsize_t undeclared for every header after it.
+# Naming $(TCINC) here rather than leaving those names to the compiler's own
+# system directory is what keeps the stale copies unread: that directory is
+# searched after every -I, so the machine layer would otherwise win.
+$(HRGUIOBJ)/cmd/zmon/zmon.o: HRGFXCFLAGS += -I$(KINC) -I$(TCINC) -I$(TCINC)/sys -I$(KMINC)
 
 # --- the GUI applications ---
 # Every one of these is the same kind of program: it declares its window to the

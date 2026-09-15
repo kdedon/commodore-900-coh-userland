@@ -26,7 +26,7 @@ mkdir -p "$BIN"
 # runner that cleans /tmp between steps loses the one thing a failure
 # leaves behind.  $LOGD names them; the FAIL lines quote the path.
 LOGD="$HERE/logs"; mkdir -p "$LOGD"
-# libmisc (base/lib/misc) -- cgrep and other misc-lib users need it
+# libmisc -- cgrep and other misc-lib users need it; the toolchain owns it
 [ -f "$LIBMISC" ] || sh "$TC/build-libmisc-z8001.sh" >/dev/null 2>&1
 # libterm (base/lib/libterm) -- termcap users (more) need it
 [ -f "$LIBTERM" ] || sh "$HERE/build-curses.sh" >/dev/null 2>&1
@@ -102,7 +102,7 @@ build test      -- "$OS/base/cmd/test.c"
 # second name needs no source row of its own.
 [ -f "$BIN/test" ] && cp "$BIN/test" "$BIN/["
 # cgrep: context grep (SysV regexp); pulls the misc lib (alloc/fatal/usage/regexp)
-build cgrep -I "$OS/base/lib/misc" -- "$OS/base/cmd/cgrep.c" "$LIBMISC"
+build cgrep -- "$OS/base/cmd/cgrep.c" "$LIBMISC"
 # env: env.c + its execvep helper
 build env       -- "$OS/base/cmd/env.c" "$OS/base/cmd/execvep.c"
 # mail: 3-file client (cmd/mail)

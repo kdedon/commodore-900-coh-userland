@@ -13,24 +13,24 @@
 #   - y6.c: skip frlset() -- its bulk-free of the lookahead sets dereferences a
 #     union slot uninitialised on LP64 (ng_lset/ng_rel overlap); cleanup-only, so
 #     skipping it just leaks in this one-shot generator (emitted parser unaffected).
-# <sys/mdata.h> -- the 3.x yacc.h includes it -- belongs to the KERNEL, and is
-# taken from $KINC, the kernel repository's include directory resolved in
-# toolchain.sh.  This tree used to keep a copy under include; it never
-# had one, so every yacc-grammar command (awk, find, sh, bc, ...) failed here.
+# <sys/mdata.h> -- the 3.x yacc.h includes it -- is the TOOLCHAIN's, and is
+# taken from $TCSYSINC, the toolchain's include directory resolved in
+# toolchain.sh.  No copy of it lives in this tree, so without that resolution
+# every yacc-grammar command (awk, find, sh, bc, ...) fails here.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OS="$HERE/.."
-. "$OS/hostbuild/toolchain.sh"		# sets $KINC: the kernel's header set
+. "$OS/hostbuild/toolchain.sh"		# sets $TCSYSINC: the toolchain's headers
 YACC="$OS/base/cmd/yacc"
 OUT="$HERE/build/hyacc"
 mkdir -p "$HERE/build"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/inc/sys" "$T/src"
-if [ -z "$KINC" ] || [ ! -f "$KINC/sys/mdata.h" ]; then
-	echo "hyacc: <sys/mdata.h> is the kernel's; sh mk/deps.sh -n kernel"
+if [ -z "${TCSYSINC:-}" ] || [ ! -f "$TCSYSINC/sys/mdata.h" ]; then
+	echo "hyacc: <sys/mdata.h> is the toolchain's; sh mk/deps.sh -n toolchain"
 	exit 1
 fi
-cp "$KINC/sys/mdata.h" "$T/inc/sys/"
+cp "$TCSYSINC/sys/mdata.h" "$T/inc/sys/"
 cp "$YACC"/y?.c "$YACC"/yacc.h "$YACC"/assert.h "$YACC"/action.h "$T/src/"
 sed "s#\"/lib/yyparse.c\"#\"$YACC/yyparse.c\"#" "$YACC/y0.c" > "$T/src/y0.c"
 sed 's/"rwb"/"w+b"/' "$YACC/y1.c" > "$T/src/y1.c"

@@ -130,15 +130,15 @@ build_top() {
 		echo "== top FAILED: no Z8001 msig.h reachable via \$KINC (KINC='${KINC:-}'); need <kernel>/os/sys/z8001/h/msig.h"
 		return
 	fi
-	# <signal.h> comes from the kernel too, and for the same reason as msig.h:
-	# the signal numbers are the kernel's, not the C library's.  sigsel.awk
+	# <signal.h> is the toolchain's, and it is the machine's signal numbers
+	# that matter here rather than the C library's use of them.  sigsel.awk
 	# wants the file with BOTH arms in it -- it strips the _I386 one itself --
-	# so this must be the conditional header, which is what $KINC/signal.h is.
+	# so this must be the conditional header, which is what $TCSYSINC/signal.h is.
 	SIGH=""
-	[ -n "${KINC:-}" ] && [ -f "$KINC/signal.h" ] && SIGH="$KINC/signal.h"
+	[ -n "${TCSYSINC:-}" ] && [ -f "$TCSYSINC/signal.h" ] && SIGH="$TCSYSINC/signal.h"
 	if [ -z "$SIGH" ]; then
 		fail=$((fail+1)); fl="$fl top"
-		echo "== top FAILED: no signal.h reachable via \$KINC (KINC='${KINC:-}'); sigsel.awk needs <kernel>/os/include/signal.h"
+		echo "== top FAILED: no signal.h reachable via \$TCSYSINC (TCSYSINC='${TCSYSINC:-}'); sigsel.awk needs the toolchain's signal.h"
 		return
 	fi
 	if ! { awk -f "$TOPSRC/sigsel.awk" "$SIGH"; \

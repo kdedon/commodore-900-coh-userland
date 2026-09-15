@@ -79,6 +79,17 @@ TC="$C900_TOOLCHAIN/host"
 TCB="${C900_TC_BUILD:-$TC/build}"
 COHERENT_OS=$(cd "$OS" && pwd)
 
+# $TCSYSINC: the toolchain's system headers -- the set ccz appends to every
+# compile, resolved the way ccz resolves it: src/include in a checkout,
+# usr/include in an unpacked release.  A script that needs to READ one of
+# those headers rather than compile against it takes the path from here, so
+# there is one answer to where they are.
+if [ -d "$C900_TOOLCHAIN/native" ]; then
+	TCSYSINC="$C900_TOOLCHAIN/usr/include"
+else
+	TCSYSINC="$C900_TOOLCHAIN/src/include"
+fi
+
 # $KINC: the KERNEL's header set, resolved through mk/deps.sh's `kernel' edge.
 #
 # The userland does not own the machine layer and must not keep a copy of it.
@@ -165,5 +176,6 @@ C900_BUILD_RECIPE="${C900_BUILD_RECIPE:+$C900_BUILD_RECIPE }$0"
 export C900_BUILD_RECIPE
 export TCID
 export C900_TOOLCHAIN COHERENT_OS C900_TC_SHAPE C900_TC_REPORTED C900_TC_BUILD
+export TCSYSINC
 unset _c9root _c9deps _c9tc
 # end of toolchain.sh
