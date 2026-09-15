@@ -1,8 +1,8 @@
 #!/bin/sh
-# build-awk.sh -- awk needs its yacc grammar (awk.y) turned into a C parser (the
-# committed y.tab.h uses Coherent yacc's `_'-suffixed token names no host yacc
-# reproduces), plus libm.  Generate the parser with the host Coherent yacc
-# (build-hyacc.sh), then cross-compile awk0..6 + that parser + libm-z8001.a.
+# build-awk.sh -- awk needs its yacc grammar (awk.y) turned into a C parser, plus
+# libm.  Generate the parser with the host Coherent yacc (build-hyacc.sh), which
+# gives awk.y's tokens the `_'-suffixed names awk's sources use, then
+# cross-compile awk0..6 + that parser + libm-z8001.a.
 # Prereqs: build-libc-z8001.sh, build-libm-z8001.sh (libm-z8001.a), the toolchain.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -28,8 +28,9 @@ if ! grep -q 'yyparse' "$T/y.tab.c" 2>/dev/null; then
 fi
 cp "$T/y.tab.c" "$T/awkparse.c"
 
-# ---- cross-compile + link.  The generated y.tab.h matches the committed one; awk1.c
-# includes "y.tab.h" via -I cmd/awk (the committed copy), consistent with this parser. ----
+# ---- cross-compile + link.  awk0..5 include "y.tab.h" from cmd/awk, a header
+# maintained by hand; the parser includes the y.tab.h yacc wrote beside it in $T.
+# The two carry the same token numbers. ----
 if CCZ_VAR=800000020800 "$CCZ" -s -i -L \
      -I "$AWK" -I "$OS/include" -I "$OS/include/sys" \
      -o "$BIN/awk" \

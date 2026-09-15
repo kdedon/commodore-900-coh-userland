@@ -3,7 +3,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#line 27 "find.y"
+/*
+ * y.tab.h -- the token values and value-stack type of find's grammar, find.y.
+ * This header is source, maintained by hand.  It must agree with find.y's
+ * %union and with the token numbers Coherent yacc assigns to find.y's %token
+ * declarations.  No source in this directory includes it: find is built from
+ * find.y alone, and the parser generated from it includes none of this.
+ */
 typedef union {
 	NODE  *nodeptr;
 	} YYSTYPE;

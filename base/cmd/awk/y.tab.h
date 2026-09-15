@@ -3,7 +3,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#line 24 "awk.y"
+/*
+ * y.tab.h -- the token values and value-stack type of awk's grammar, awk.y,
+ * for awk0.c..awk5.c.  This header is source, maintained by hand: the awk
+ * sources include it from this directory and the build compiles it as it is
+ * here.  It must agree with awk.y's %union and with the token numbers Coherent
+ * yacc assigns to awk.y's %token declarations.  The parser the build generates
+ * from awk.y includes the y.tab.h that yacc writes beside it, not this one.
+ */
 typedef union {
 	int	u_char;
 	CHAR	*u_charp;
