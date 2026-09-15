@@ -553,9 +553,9 @@ fi
 # fails the run: that is what stops a new probe being merged as decoration.
 # --------------------------------------------------------------------------
 UNCOVERED="
-bigtext:a build-and-run probe for text past 64K -- what it measures is the
-bigtext:  target linker and loader, and a host build cannot be given that defect.
-multiseg:the same, for multi-segment data; its own Makefile builds it.
+multiseg:build-and-run probes for text past 64K -- what they measure is the
+multiseg:  target linker and loader, and a host build cannot be given that
+multiseg:  defect.  Its own Makefile builds it.
 cmd:emulator command scripts, not programs.  Nothing to mutate.
 mkfsgetlink:the subject is the name-matching loop inside mkfs(1M)'s getlink(),
 mkfsgetlink:  which is pure string comparison -- it makes no system call, so

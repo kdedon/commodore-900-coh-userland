@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""gen.py [outdir] -- generate the N-segment text probes t3 and t4.
+"""bigtext.py [outdir] -- generate the N-segment text probes t3 and t4.
 
 t3 matches ttycity's size profile: ~190K of text, three hardware segments
 (3,4,5) with the third nearly full, data in segment 6.  t4 crosses into a
@@ -13,8 +13,8 @@ A probe that merely loads and dies cannot fake a pass.
 Markers go out with raw write(2), never stdio: a probe that dies mid-way
 must not lose output to an unflushed buffer.
 
-Module placement is by link order; Makefile comments give the intended
-segment of each special module.
+Module placement is by link order; the Makefile's comments give the link
+order of each special module.
 """
 import os
 import sys

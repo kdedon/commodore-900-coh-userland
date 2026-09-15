@@ -1,6 +1,6 @@
 # ttycity -- Micropolis (SimCity) for the terminal, on COHERENT 3.5 / Z8001.
-# The linked text is 189,808 bytes: three hardware segments (tests/bigtext
-# probes that shape).
+# The linked text is 189,808 bytes: three hardware segments (test/multiseg's
+# t3 probes that shape).
 #
 # Driven from the host cross toolchain, so the entry point is a variable and not
 # a hard-coded path; hostbuild's game rule should set CCZ, OBJ and BIN and then
