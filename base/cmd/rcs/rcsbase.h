@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 
 /*
  *                     RCS common definitions and data structures

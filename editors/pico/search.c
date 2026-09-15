@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 #if	!defined(lint) && !defined(DOS)
 static char rcsid[] = "$Id: search.c,v 4.3 1993/06/15 21:14:23 erez Exp $";
 #endif

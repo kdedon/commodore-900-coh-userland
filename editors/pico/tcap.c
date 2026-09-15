@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 #if	!defined(lint) && !defined(DOS)
 static char rcsid[] = "$Id: tcap.c,v 4.10 1993/10/04 16:59:45 mikes Exp $";
 #endif

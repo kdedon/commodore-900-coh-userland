@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 /*	$NetBSD: list.c,v 1.6 2003/08/07 09:36:54 agc Exp $	*/
 
 /*-

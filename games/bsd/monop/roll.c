@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 /*	$NetBSD: roll.c,v 1.9 2003/08/07 09:37:29 agc Exp $	*/
 
 /*

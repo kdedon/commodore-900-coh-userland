@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 #if	!defined(lint) && !defined(DOS)
 static char rcsid[] = "$Id: line.c,v 4.4 1993/09/29 16:46:45 mikes Exp $";
 #endif

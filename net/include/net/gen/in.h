@@ -1,7 +1,4 @@
 /*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
-/*
 server/ip/gen/in.h
 */
 

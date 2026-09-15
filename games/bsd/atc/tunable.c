@@ -1,6 +1,3 @@
-/*
- * Portions Copyright (c) 2026 Kevin Dedon.
- */
 /*	$NetBSD: tunable.c,v 1.5 2003/08/07 09:36:55 agc Exp $	*/
 
 /*-
