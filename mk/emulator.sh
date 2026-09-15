@@ -15,7 +15,7 @@
 #				its console.
 #
 #   $C900_EMU	the c900 BINARY.  Unset, the first candidate that has a
-#		bin/c900 in it wins: the pinned release `make deps' unpacks
+#		bin/c900 in it wins: the release `make deps' unpacks
 #		into deps/, then a `c900' on $PATH, then a checkout beside this
 #		repository or beside one of its three enclosing directories,
 #		then one inside a `repos/' directory beside it.  Either the
@@ -37,7 +37,7 @@ if [ -z "${C900_ROOT:-}" ] || [ ! -d "$C900_ROOT/mk" ]; then
 	exit 2
 fi
 
-# Candidates, in order: the pinned release deps/ holds, a c900 on $PATH, a
+# Candidates, in order: the release deps/ holds, a c900 on $PATH, a
 # checkout beside this repository or beside one of its three enclosing
 # directories, then one inside a `repos/' directory beside it.  Walking outward
 # is what lets the same list serve a side-by-side clone and a staging layout,

@@ -17,11 +17,12 @@
 #                 lockfile.  Four repositories are edited in the same
 #                 afternoon; a pin would record what a build should have used,
 #                 and the release stamp already records what it did.
-#   kind release  a third-party BINARY.  <ref> is a TAG, unpacked into
-#                 deps/<basename of url>/, which is gitignored.  Pinned
-#                 because we cannot fix it and nothing about a binary is
-#                 recoverable from our own history: "which one ran this" has
-#                 to be a number chosen in advance.  <asset> is the release
+#   kind release  a published BINARY.  <ref> is a TAG, or `latest' for the
+#                 newest published release, unpacked into deps/<dir>/, which
+#                 is gitignored.  The archive carries its own VERSION, which
+#                 is what the build reports as the shape it used, so "which
+#                 one ran this" is recorded rather than chosen in advance.
+#                 <asset> is the release
 #                 asset's file name, with @REF@ standing for the tag and
 #                 @HOST@ for the platform suffix INCLUDING the archive
 #                 extension -- the two axes are not independent, since a
@@ -73,6 +74,12 @@ fetch_git() {
 	git clone --branch "$3" "$2" "$4" || return 1
 }
 
+# The newest published release's tag, from the repository's release list.
+latest_tag() {
+	curl -fsL "https://api.github.com/repos/${1#https://github.com/}/releases/latest" |
+	sed -n 's/^[ \t]*"tag_name"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' | sed 1q
+}
+
 fetch_release() {
 	# $1 name  $2 url  $3 ref  $4 dest  $5 asset
 	if [ -d "$4" ]; then
@@ -80,11 +87,16 @@ fetch_release() {
 		return 0
 	fi
 	[ -n "$5" ] || { echo "$1: a release line needs an asset name" >&2; return 1; }
-	# @HOST@ is resolved only for an asset that USES it.  It used to be resolved
-	# first and consulted afterwards, so an unrecognised `uname -s' refused
-	# every release edge -- including a HOST-INDEPENDENT one, whose asset is the
-	# same file on every machine, and the refusal was in the one place a
-	# reader of the row would not look.
+	# `latest' names no tag, so the newest published one is asked for: the
+	# asset name and the download path both carry it.
+	if [ "$3" = latest ]; then
+		set -- "$1" "$2" "$(latest_tag "$2")" "$4" "$5"
+		[ -n "$3" ] || { echo "$1: no published release at $2" >&2; return 1; }
+		echo "$1: latest release is $3"
+	fi
+	# @HOST@ is resolved only for an asset that USES it, so an unrecognised
+	# `uname -s' refuses only a per-host edge and never a HOST-INDEPENDENT
+	# one, whose asset is the same file on every machine.
 	case "$5" in
 	*@HOST@*)
 		case $(uname -s) in
@@ -106,8 +118,7 @@ fetch_release() {
 	if ! curl -fL --retry 2 -o "$tmp/$asset" "$from"; then
 		rm -rf "$tmp"
 		echo "$1: no release asset at $from" >&2
-		echo "  The tag in DEPS is the pin: it is deliberate and bumped by hand," >&2
-		echo "  so a missing one means that release has not been published yet." >&2
+		echo "  A missing asset means that release has not been published yet." >&2
 		echo "  Until it is, build the dependency yourself and name it by variable;" >&2
 		echo "  the resolver's refusal says which variable." >&2
 		return 1

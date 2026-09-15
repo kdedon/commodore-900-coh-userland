@@ -21,7 +21,7 @@ COMPILER ?= $(C900_CC_DEFAULT)
 C900_MKDIR2 := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 C900_ROOT   := $(abspath $(C900_MKDIR2)/..)
 
-# The toolchain: deps/ for a pinned release, then a checkout beside this
+# The toolchain: deps/ for a release, then a checkout beside this
 # repository, then one inside a `repos/' directory beside it.  The list is
 # mk/deps.sh's, not a fourth copy of it -- `make deps' places things where that
 # file looks, so a search here that differed from it would be a lie about what

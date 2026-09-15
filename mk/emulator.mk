@@ -14,7 +14,7 @@
 #                 somewhere else.  The search is a list because this
 #                 repository is consumed both as a sibling checkout and from
 #                 inside a `repos/' staging directory.  Same paths, same order,
-#                 as emulator.sh: the pinned release in deps/, a c900 on $$PATH,
+#                 as emulator.sh: the release in deps/, a c900 on $$PATH,
 #                 a checkout beside this repository or beside one of its THREE
 #                 enclosing directories, then one under `repos/'.  Three is
 #                 what reaches the enclosing workspace from a repository staged

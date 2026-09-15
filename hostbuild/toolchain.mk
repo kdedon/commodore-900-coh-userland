@@ -7,7 +7,7 @@
 # shapes of it: a source CHECKOUT, or an unpacked RELEASE archive.
 #
 #   $(C900_TOOLCHAIN)  the toolchain.  Unset, mk/deps.sh searches -- deps/ for
-#                      the pinned release, then a checkout beside this
+#                      the release, then a checkout beside this
 #                      repository, then one inside a `repos/' staging
 #                      directory.  Override it (on the command line or in the
 #                      environment) to build against something else; a value
@@ -63,6 +63,11 @@ TCB := $(if $(C900_TC_BUILD),$(abspath $(C900_TC_BUILD)),$(TC)/build)
 # compiling against whatever else happens to be reachable.
 C900_KERNEL_DIR := $(shell C900_KERNEL='$(C900_KERNEL)' sh $(C900_DEPS) kernel 2>/dev/null)
 KINC := $(or $(wildcard $(C900_KERNEL_DIR)/os/include),$(wildcard $(C900_KERNEL_DIR)/include))
+# $(KDIR): the kernel's EXPORT, holding kobj/kernel.out and build/drv -- the
+# make-side twin of toolchain.sh's $KDIR.  os/hostbuild in a checkout; the
+# c900-kernel-v<V> release's own hostbuild/ view carries the same two paths.
+# Empty for a headers-only release, which has no linked kernel.
+KDIR := $(patsubst %/kobj/kernel.out,%,$(firstword $(wildcard $(C900_KERNEL_DIR)/os/hostbuild/kobj/kernel.out $(C900_KERNEL_DIR)/hostbuild/kobj/kernel.out)))
 # An empty shape is the "did not resolve" answer, whether nothing was found or
 # $(C900_TOOLCHAIN) named something that is neither shape.
 #

@@ -7,7 +7,7 @@
 # indistinguishable to all three, so they version together, apart from any OS.
 # This tree consumes one of two shapes of it.
 #
-#   $C900_TOOLCHAIN   the toolchain.  Unset, mk/deps.sh searches: the pinned
+#   $C900_TOOLCHAIN   the toolchain.  Unset, mk/deps.sh searches: the
 #                     release unpacked in deps/, then a checkout beside this
 #                     repository (at most three parents out), then one inside a
 #                     `repos/' directory beside it.  The search lives THERE and
@@ -105,20 +105,25 @@ fi
 # scripts that DO need it refuse by name, quoting deps.sh's own message,
 # rather than compiling against whatever else happens to be reachable.
 #
-# $KDIR is the same edge answered as a CHECKOUT rather than a header set: the
-# kernel repository's own build tree, holding the linked kernel a probe reads a
-# namelist out of and the stamp checker that says which link an image carries.
-# A headers release has neither, so $KDIR is empty for one, and a harness that
-# needs the build tree refuses by name on that.
+# $KDIR is the same edge answered as the kernel's EXPORT rather than its header
+# set: the directory holding kobj/kernel.out, the linked kernel a probe reads a
+# namelist out of, and build/drv, its paired drivers.  A checkout has it at
+# os/hostbuild; the c900-kernel-v<V> release lays out a hostbuild/ view of its
+# own with the same two paths.  A headers-only release has neither, so $KDIR is
+# empty for one, and a harness that needs the linked kernel refuses by name.
 _c9k=$(C900_KERNEL="${C900_KERNEL:-}" sh "$_c9deps" kernel 2>/dev/null || :)
 KDIR=""
 if [ -n "$_c9k" ] && [ -d "$_c9k/os/include" ]; then
 	KINC="$_c9k/os/include"		# a checkout
-	KDIR="$_c9k"
 elif [ -n "$_c9k" ] && [ -d "$_c9k/include" ]; then
-	KINC="$_c9k/include"		# an unpacked headers release
+	KINC="$_c9k/include"		# an unpacked release
 else
 	KINC=""
+fi
+if [ -n "$_c9k" ] && [ -f "$_c9k/os/hostbuild/kobj/kernel.out" ]; then
+	KDIR="$_c9k/os/hostbuild"
+elif [ -n "$_c9k" ] && [ -f "$_c9k/hostbuild/kobj/kernel.out" ]; then
+	KDIR="$_c9k/hostbuild"
 fi
 # $TCID: the compiler's source id, alone in a file, for the makefiles to
 # depend on -- the shell equivalent of toolchain.mk's, naming the same path.

@@ -24,8 +24,8 @@
 # passing without them:
 #   - a Z8001 guest runner, for -runexec: the C emulator,
 #	make mutate N2=$$(sh $(C900_TOOLCHAIN)/host/runner.sh)
-#   - a linked kernel, for its namelist:	the kernel repository's
-#	os/hostbuild/kobj/kernel.out
+#   - a linked kernel, for its namelist:	kobj/kernel.out in the kernel's
+#	export, which the c900-kernel-v<V> release `make deps' places carries
 #   - the target top, from the userland build:	../../hostbuild/build/bin/top
 # Nothing here relinks the kernel or rebuilds top; both are read as they stand.
 #
@@ -44,9 +44,9 @@ include ../../hostbuild/toolchain.mk
 CCZ	= $(TC)/ccz
 N2	= /tmp/n2z8001
 # The linked kernel belongs to the kernel repository; this tree links none.
-# $(C900_KERNEL_DIR) is that checkout, resolved by toolchain.mk through the
+# $(KDIR) is that repository's export, resolved by toolchain.mk through the
 # same `kernel' edge as $(KINC), and empty when only a headers release did.
-KERN	= $(C900_KERNEL_DIR)/os/hostbuild/kobj/kernel.out
+KERN	= $(KDIR)/kobj/kernel.out
 TOP	= ../../hostbuild/build/bin/top
 # mkkmem reads the kernel's own PROC layout: <l.out.h> and <proc.h>, and
 # <sys/proc.h> in turn wants <sys/timeout.h>, which only the kernel repository
@@ -69,7 +69,7 @@ mkkmem: mkkmem.c
 check: mkkmem
 	@test -f "$(KERN)" || { \
 	  echo "top: needs the linked kernel $(KERN);" >&2; \
-	  echo "  make -C $(C900_KERNEL_DIR)/os/hostbuild kernel" >&2; \
+	  echo "  make deps DEP=kernel places the release that carries it" >&2; \
 	  exit 2; }
 	@test -x "$(TOP)" || { \
 	  echo "top: needs the target top $(TOP); sh hostbuild/build-cmd.sh top" >&2; \

@@ -37,7 +37,7 @@
 # (and its .mk twin) for the toolchain.  This file searches the same paths in
 # the same order and exists so that ONE query answers for both of them.
 #
-# Search order for each: the variable wins; then (emulator only) the pinned
+# Search order for each: the variable wins; then (emulator only) the
 # release in deps/ and a c900 on $PATH; then a sibling checkout, walking
 # outward AT MOST THREE PARENTS, then one inside a `repos/' directory beside
 # this repository.  Three parents is what reaches the enclosing workspace from
@@ -131,7 +131,7 @@ toolchain)
   or point C900_TOOLCHAIN= at a checkout, or at an unpacked release archive
   (one with host/ccz in it).  \`make deps DEP=toolchain' places whichever
   kind DEPS names -- a \`git' line clones, a \`release' line unpacks the
-  pinned archive into deps/."
+  release archive into deps/."
 	;;
 dist)
 	VAR="C900_DIST"
