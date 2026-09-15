@@ -3,8 +3,8 @@
 #
 # Each is one directory holding one self-contained program, test/<name>/<name>.c,
 # that a dist list can stage with src=test/<name>/<name>.  They are guest-side
-# halves of host-driven checks (test/serialbytes pairs with
-# hostbuild/serial-bytes-test.py; test/sbrkzero proves sbrk memory is zero-filled
+# halves of host-driven checks (test/serialbytes writes and reads all 256 byte
+# values on a line; test/sbrkzero proves sbrk memory is zero-filled
 # and that the break is refused rather than wrapped past 64K), so they have to be
 # built by the Z8001 toolchain like any other command.
 #
@@ -34,9 +34,7 @@ ok=0; fail=0; fl=""
 for d in "$TESTS"/*/; do
 	name=$(basename "$d")
 	# A directory with its own Makefile builds itself, and `all' is named
-	# rather than left to the default goal: test/bigtext includes
-	# hostbuild/gotools.mk, whose $(LOUTDIS) rule is the first one read and
-	# would otherwise be all a bare `make' there builds.
+	# rather than left to the default goal.
 	# test/hostcheck is the HOST-side mutation gate: it compiles these same
 	# sources with the host cc against a stand-in kernel, to prove each probe
 	# can fail.  Nothing in it is a guest program, so it is not built here.

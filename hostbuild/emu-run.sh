@@ -5,12 +5,9 @@
 # console transcript.  Results the commands write to files can then be read with
 # fsread.py -- the emulator writes THROUGH to the image, so no sync is needed.
 #
-# Next to sim-run.sh: sim-run.sh drives the full Go simulator over HTTP
-# (cold-boot, a console whose output arrives late, video and a second serial
-# line).  This harness has none of that: the emulator takes the whole keystroke
-# script on the command line and writes the console to stdout.  Use this for
-# anything that does not need video, a second serial line, or the debugger;
-# use sim-run.sh when you do.
+# The emulator takes the whole keystroke script on the command line and writes
+# the console to stdout.  Use this for anything that does not need video, a
+# second serial line, or a debugger.
 #
 # THE GUEST COMES UP MULTI-USER, at a login prompt: init repairs and remounts
 # the root filesystem itself and reaches single user only when that fails, when

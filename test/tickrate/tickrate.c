@@ -31,8 +31,7 @@
  * Every line starts with "tickrate:" so a scripted run can pick it out.
  *
  * The number itself is a measurement, not a verdict -- it means something
- * only when compared with the same number from another instrument
- * (hostbuild/tickrate-test.py does that), so no "correct" rate is hard-coded
+ * only when compared with the same number from another instrument, so no "correct" rate is hard-coded
  * here.  But a rate is a QUOTIENT, and three failure modes make it
  * meaningless; they are refused, being the only three this program can
  * decide by itself:

@@ -50,8 +50,8 @@
 # NOR IS ANY OF THE HOSTFS MACHINERY.  Under the emulator a host directory is
 # reached with the ordinary mount(2) on the shipped /dev/fd1 node: the medium
 # is rendered on the host and attached with --floppy, and no guest driver is
-# involved.  lists/hostfs.list carries the paravirtual block driver the
-# SIMULATOR transport needs, and a dist that includes it takes on the standing
+# involved.  lists/hostfs.list carries /drv/hostfs, the mailbox block driver a
+# host program serves, and a dist that includes it takes on the standing
 # obligation to relink /drv/hostfs after every kernel relink.
 #
 # --- directory skeleton -----------------------------------------------------

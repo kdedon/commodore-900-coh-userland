@@ -1,8 +1,8 @@
 """talk_common.py -- the two-guest bring-up the talk and UDP harnesses share.
 
 Boot both machines, log in, get a stack on each, and prove the wire carries ICMP
-before anything else is asked of it.  Split out for the reason hunt_common.py
-was: two harnesses that answer different questions about the same machines must
+before anything else is asked of it.  Split out because
+two harnesses that answer different questions about the same machines must
 bring them up identically, or comparing their results proves nothing.
 """
 import os

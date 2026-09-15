@@ -10,12 +10,10 @@
 #   make -f Makefile.c900 mgr       the server + mgrlogin, stripped
 #   make -f Makefile.c900 clients   the src/clients programs (CLIENTS below)
 #   make -f Makefile.c900 hrlight   the first-light test card (draws for real)
-#   make -f Makefile.c900 sizes     section sizes of whatever is linked
 #   make -f Makefile.c900 sweep     the bare-`0' pointer-argument sweep
 
 OS	= ..
 include $(OS)/hostbuild/toolchain.mk
-include $(OS)/hostbuild/gotools.mk
 CCZ	= $(TC)/ccz
 BUILD	= build
 OBJ	= $(BUILD)/obj
@@ -392,10 +390,6 @@ $(BIN)/cl/%: src/clients/portable/ify/%.c $(HDR) $(CLLIB)
 
 hrlight: dirs $(OBJ)/hr-hrlight.o $(OBJ)/hr-hrrow.o
 	$(CCZ) -i -s -o $(BIN)/hrlight $(OBJ)/hr-hrlight.o $(OBJ)/hr-hrrow.o
-
-sizes: $(LOUTDIS)
-	$(LOUTDIS) -hdr $(abspath $(BIN))/mgr
-	$(LOUTDIS) -hdr $(abspath $(BIN))/mgrlogin
 
 # A bare `0' where a 32-bit pointer is read pushes two bytes where four are
 # fetched and shifts every argument behind it.  This must report 0 hits; run

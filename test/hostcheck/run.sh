@@ -603,8 +603,8 @@ segindex:the subject is Z8001 indexed addressing and a linker relocation.
 segindex:  No host stand-in can produce that defect; its own header already
 segindex:  says it does not reproduce the relocation bug either.
 serialbytes:the guest half of a host-driven check.  Its exit status is a byte
-serialbytes:  COUNT; whether the values survived is decided by the host half,
-serialbytes:  hostbuild/serial-bytes-test.py, which is where that mutation
+serialbytes:  COUNT; whether the values survived is decided by the host half
+serialbytes:  on the other end of the line, which is where that mutation
 serialbytes:  belongs.
 hostfs:the host-directory pass-through, whose subject is a MEDIUM the guest
 hostfs:  mounts -- there is no userland call for kshim.c to stand in for, and

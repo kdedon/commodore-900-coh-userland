@@ -1,11 +1,12 @@
 # hostfs.list -- the host-directory pass-through disk.
 #
-# DEVELOPMENT ONLY.  NEVER include this list from a shipped dist: the device is
-# a sandbox escape by definition (the guest reads and writes a directory on the
-# simulator host), so it exists only in a dev dist that is never shipped, and
-# even there it is inert unless the host daemon (gotools/hostfsd) was started
-# and was given a directory to export with -dir.  No hostfsd, no export: the
+# A development interface.  The driver is a block device whose controller is
+# a 38-byte mailbox that a host program serves, so an installed copy reaches
+# a directory on the host.  With nothing on the host answering the mailbox the
 # driver's open fails ENXIO and nothing else is reachable.
+#
+# The distribution repository's coherent3-dev includes this list; it is also
+# cut as the optional c900-hostfs packages whatever a dist includes.
 #
 # The /dev nodes (block /dev/hfs + char /dev/rhfs, major 11 minor 0) are NOT
 # listed here because device tables are per-dist (.devices files) and the
@@ -13,9 +14,8 @@
 #
 # Built by hostbuild/build-hostfs.sh into build/drv and build/bin.
 #
-# This list serves the GO-SIM transport only.  The minimal-emulator
-# transport ships nothing at all: it is the stock /dev/fd1 floppy plus
-# hostfsd -render/-extract on the host.
+# Under the emulator a host directory needs none of this: it is a filesystem
+# image on the stock /dev/fd1 floppy, written and read back on the host.
 # PACKAGE.  The host filesystem driver and its client, additive and
 # development-only in practice, but nothing about it is exclusive.
 package  hostfs

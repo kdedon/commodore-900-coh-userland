@@ -305,7 +305,7 @@ discotime	measures elapsed time against hunt's 1000 ms discovery window.
 		wraps every 655 s); a host stand-in either answers instantly or
 		answers what it is told, and neither says anything about the
 		target.  Its own PASS/SLOW verdict stands; the wire run is
-		hostbuild/hunt-test.py.
+		hunt(6) played at the console.
 ichanprobe	bisects the inet daemon's control-channel handshake, step by
 		step, over the real FIFO pair.  The handshake IS the subject,
 		so a stand-in for it would be a stand-in for the thing being

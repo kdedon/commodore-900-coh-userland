@@ -5,7 +5,7 @@
 WHY THIS EXISTS SEPARATELY FROM talk-test.py.  `twohost.py' proves ICMP and TCP
 between two machines and nothing else; every UDP test in the tree is either
 loopback on one machine (`udpecho', `udppoll', `sntpsrv') or has the HOST's
-Python at the far end (`udp-test.py' over slipwire).  So when the talk daemon's first
+Python at the far end (a host peer over slipwire).  So when the talk daemon's first
 two-machine run reported `[No response to are ring]' -- the client sent an
 ANNOUNCE and no reply came back -- there was no way to tell a defect in the
 daemon from a UDP path that has never carried a datagram between two guests.

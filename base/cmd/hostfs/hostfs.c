@@ -16,8 +16,8 @@
  *	hostfs status		say whether driver and daemon answer
  *
  * The heavy lifting is elsewhere: the device is an ordinary block
- * device, so mount(2)/umount(2) do the mounting, and the host daemon
- * (hostfsd) does every filesystem operation.  This tool only makes the
+ * device, so mount(2)/umount(2) do the mounting, and the host program
+ * serving the driver's mailbox does every filesystem operation.  This tool only makes the
  * plumbing convenient from a root shell or a build script.
  */
 #include <stdio.h>
@@ -100,7 +100,7 @@ opendrv()
 	system("/etc/load /drv/hostfs");
 	if ((fd = open(CDEV, 2)) < 0)
 		fprintf(stderr,
-		    "hostfs: no driver or no hostfsd on the host (%s)\n",
+		    "hostfs: no driver or no host serving it (%s)\n",
 		    CDEV);
 	return (fd);
 }
@@ -184,11 +184,11 @@ dostatus()
 	if ((fd = opendrv()) < 0)
 		return (1);
 	if (ioctl(fd, HFIPING, (char *)0) < 0) {
-		printf("driver loaded; hostfsd NOT answering\n");
+		printf("driver loaded; host NOT answering\n");
 		close(fd);
 		return (1);
 	}
-	printf("driver loaded; hostfsd answering\n");
+	printf("driver loaded; host answering\n");
 	close(fd);
 	return (0);
 }

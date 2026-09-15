@@ -339,7 +339,7 @@ char **argv;
 	 * bytes arriving then are assembled into the SCC's three-deep FIFO and
 	 * announced to nobody -- and a SLIP frame that loses its leading bytes
 	 * is simply gone.  Scripted peers should wait for this line rather than
-	 * sleep (hostbuild/slip-test.py does). */
+	 * sleep. */
 	printf("slip: ready on %s\n", argv[1]);
 	fflush(stdout);
 

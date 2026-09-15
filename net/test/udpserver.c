@@ -10,7 +10,7 @@
  *					third argument is the deadline below
  *
  * Binds a port, blocks in recvfrom(), prints who sent each datagram, and sends
- * it straight back to that sender.  The host end is udp-test.py.
+ * it straight back to that sender.  The host end is the SLIP peer on the line.
  *
  * The guest SERVES rather than initiates, which is the opposite of echoclient
  * and deliberate.  UDP has no retransmission: a datagram the serial line loses
@@ -28,7 +28,7 @@
  *
  * WHAT THIS CAN AND CANNOT CHECK.  The datagrams' contents are whatever the
  * host end chose to send, so this end cannot say whether they arrived intact --
- * only the host, which knows what it sent, can, and udp-test.py makes that
+ * only the host, which knows what it sent, can, and the host end makes that
  * comparison.  What this end can judge, and now does, is everything it can see
  * for itself: that the sender recvfrom() reported is a real address and port
  * (a zero either way means the per-datagram addressing this test exists for did

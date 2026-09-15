@@ -8,8 +8,7 @@
 #
 # A RELEASE IMAGE MUST NOT INCLUDE THIS LIST.  Only a dist used for development
 # and testing does -- that is coherent3-full-test, the dist every harness
-# defaults to (hostbuild/sim-run.sh, emu-run.sh, tcp-test.py, udploop-test.py,
-# serial-rx-probe.py and the rest all take `DIST' with it as the default).  The
+# defaults to (emu-run.sh and the rest all take `DIST' with it as the default).  The
 # shipped dists -- coherent3, coherent3-full, coherent3-full-gfx, coherent3-dev,
 # dual -- do not include it and carry a /bin of real commands only.
 #
@@ -237,8 +236,8 @@ f	/bin/polltty	755 0 1	src=test/polltty/polltty
 # non-canonical mode either blocks forever or returns at once.  On the sgtty
 # kernel the first TCGETA fails and it says so.
 f	/bin/termio	755 0 1	src=test/termio/termio
-# Serial byte-exactness probe: writes/reads all 256 values on a line.  Pairs
-# with hostbuild/serial-bytes-test.py to check the sim's serial API.
+# Serial byte-exactness probe: writes/reads all 256 values on a line.  The host
+# end of the line decides whether every value arrived intact.
 f	/bin/serialbytes	755 0 1	src=test/serialbytes/serialbytes
 # Is the Centronics printer driver dispatched on major 3?  It was left out of
 # the link during the 64K diet, and an empty drvl[] slot fails opens with ENXIO
