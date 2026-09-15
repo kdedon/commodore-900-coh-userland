@@ -10,7 +10,6 @@
 #     c2.c   third  text segment (5)     t4h2, t4fpsum  (t4 only)
 #     tail.c LAST   text segment         ftail, fback, getfp
 #     c3.c   LAST   text segment         t4h3           (t4 only)
-# `make check` verifies the placement in the linked symbol tables.
 #
 # Both probes end with two BSS checks: `bssv' (runtime indexing -- the kernel
 # mapping/clearing proof) then `bssc' (constant displacements >= 0x8000 --
@@ -19,12 +18,10 @@
 # than by marker.
 #
 #	make            build both probes
-#	make check      verify segment placement + header layout on the host
 #	make stage      copy into the image staging bin dir
 #
 # Keep these OUT of shipped dist lists -- they are ~200KB test binaries.
 include ../../hostbuild/toolchain.mk
-include ../../hostbuild/gotools.mk
 CCZ	= $(TC)/ccz
 LFLAGS	= -i -L
 GEN	= ./gen.py
@@ -54,12 +51,6 @@ t3:	main3.o mid.o tail.o $(FILL)
 t4:	main4.o mid.o tail.o c1.o c2.o c3.o $(FILL)
 	$(CCZ) $(LFLAGS) -o t4 $(T4OBJ)
 
-check:	t3 t4 $(LOUTDIS)
-	$(LOUTDIS) -hdr $(CURDIR)/t3
-	$(LOUTDIS) -syms $(CURDIR)/t3 | grep -E "(fmid|ftail|fback|getfp|callthru|main)_"
-	$(LOUTDIS) -hdr $(CURDIR)/t4
-	$(LOUTDIS) -syms $(CURDIR)/t4 | grep -E "(fmid|ftail|fback|getfp|callthru|t4h1|t4h2|t4h3|t4fpsum|main)_"
-
 stage:	t3 t4
 	cp t3 t4 $(STAGE)/
 
@@ -74,4 +65,4 @@ stage:	t3 t4
 clean:
 	rm -f *.o t3 t4
 
-.PHONY: all sources check stage clean
+.PHONY: all sources stage clean

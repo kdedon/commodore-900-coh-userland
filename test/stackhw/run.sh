@@ -61,13 +61,6 @@ emu_need "boot the target and measure its processes"
 # its start block, which is how the media descriptors name one, and creates a
 # path the image does not have.
 INJECT=$HERE/../rawalign/inject.py
-# loutdis is a Go host tool: it imports the private simulator, so it lives in
-# c900oses/gotools and not in the toolchain (mk/gotools.sh), which refuses by
-# name -- the tree, and go itself -- rather than leaving an empty path for the
-# loop below to report as a missing nothing.
-. "$ROOT/mk/gotools.sh"
-gotools_need loutdis "read the probe's stack frames back out of the binary"
-LOUTDIS=$GOTOOLS_BIN
 # The image is the distribution repository's product (mk/dist.sh), and so is
 # the directory emu-run.sh resolves a dist name in, which is where the staged
 # copies below are put for it to boot.
@@ -78,6 +71,9 @@ IMG=$(dist_img "$DIST") || exit 2
 # back out of a packed filesystem, is the distribution repository's.
 KHB=$KDIR/os/hostbuild
 FSREAD=$C900_DIST/os/hostbuild/fsread.py
+# dist.py, which patches the kernel's data words through its symbol table,
+# reads that symbol table for procq_ below.
+DISTPY=$C900_DIST/os/hostbuild/dist.py
 
 BAD=0
 fail() { echo "  FAIL $*"; BAD=$((BAD + 1)); }
@@ -91,7 +87,7 @@ ok()   { echo "  ok   $*"; }
 # fails the test, and "missing  -- cannot run" names neither what is wanted nor
 # what wanted it.
 for f in "IMG=$IMG" "CCZ=$CCZ" "KERNEL=$KHB/kobj/kernel.out" \
-	 "FSREAD=$FSREAD" "INJECT=$INJECT" "LOUTDIS=$LOUTDIS"; do
+	 "FSREAD=$FSREAD" "INJECT=$INJECT" "DISTPY=$DISTPY"; do
 	case $f in *=) echo "stackhw: ${f%=} resolved to nothing -- cannot run" >&2; exit 2;; esac
 	[ -e "${f#*=}" ] || { echo "stackhw: missing ${f%%=*} (${f#*=}) -- cannot run" >&2; exit 2; }
 done
@@ -139,7 +135,14 @@ fi
 # procq_'s offset in the kernel's data segment.  nlist(3) cannot supply it (it
 # assigns the 32-bit ldsym.ls_addr to a 16-bit n_value and keeps the segment
 # word), so it is read from the kernel's symbol table on the host.
-PROCQ=$("$LOUTDIS" -syms "$KHB/kobj/kernel.out" | awk '$3=="procq_"{print $1}')
+PROCQ=$(python3 -c '
+import sys
+sys.path.insert(0, sys.argv[1])
+import dist
+syms, _ = dist.loutsyms(open(sys.argv[2], "rb").read(), sys.argv[2])
+if "procq_" in syms:
+    print("%08x" % syms["procq_"][1])
+' "$(dirname "$DISTPY")" "$KHB/kobj/kernel.out")
 case "$PROCQ" in
 ????????) Q=$((0x${PROCQ#????}));;
 *)	echo "stackhw: no procq_ in kobj/kernel.out symbol table" >&2; exit 1;;
@@ -562,7 +565,7 @@ echo "phase 6: cp, mv and cpdir against the shipped binaries"
 for c in cp mv cpdir; do
 	if "$CCZ" -s -i -I "$OS/include" -I "$OS/include/sys" \
 		-o "$WORK/n$c" "$OS/base/cmd/$c.c" > "$WORK/cc.$c.log" 2>&1; then
-		ok "$c: $(wc -c < "$WORK/n$c") B, $("$LOUTDIS" -segs "$WORK/n$c" | sed -n 's/.*SIPDATA  private *[0-9]* *\([0-9]*\).*/\1 bytes of private data/p' | head -1)"
+		ok "$c: $(wc -c < "$WORK/n$c") B"
 	else
 		fail "$c did not compile: $(grep -v 'Strict\|Warning' "$WORK/cc.$c.log" | tail -3)"
 	fi
@@ -627,7 +630,6 @@ if CCZ_VAR=800000020800 "$CCZ" -s -i -L \
 	"$OS/base/cmd/top/m_coherent.c" "$CURSES/libterm.a" \
 	> "$WORK/cc.top.log" 2>&1; then
 	ok "top: $(wc -c < "$WORK/topnew") B"
-	"$LOUTDIS" -segs "$WORK/topnew" | sed -n '/l_ssize\[PRVD/p;/l_ssize\[BSSD/p;/SIPDATA/p;/K column/p' | sed 's/^/       | /'
 else
 	fail "top did not build: $(grep -v 'Strict\|Warning' "$WORK/cc.top.log" | tail -5)"
 fi

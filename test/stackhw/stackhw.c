@@ -47,7 +47,8 @@
  * allowance really is at run time rather than what a header says.
  *
  * THE ADDRESS OF procq_ IS GIVEN ON THE COMMAND LINE: -q takes the offset of
- * procq_ in the kernel's data segment from `loutdis -syms /coherent'.  A wrong
+ * procq_ in the kernel's data segment, read from the kernel's symbol table
+ * (run.sh reads it with the distribution repository's dist.py).  A wrong
  * address walks a list of something else and reports a plausible table from it,
  * so the walk must come back to -q within MAXPROCS steps and must have passed
  * the probe's own pid, or nothing is printed.

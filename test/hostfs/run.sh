@@ -2,11 +2,12 @@
 # tests/hostfs/run.sh -- the host-directory pass-through, checked end to end
 # on the target with the guest's OWN tools.
 #
-# A host directory is rendered as a COHERENT filesystem on a floppy medium
-# (hostfsd -render), the emulator attaches it with --floppy, and the guest
-# mounts it with the stock /etc/mount on the shipped /dev/fd1 node; `ls',
-# `cat' and `cp' are the ordinary commands out of the image.  Afterwards
-# hostfsd -extract returns what the guest wrote.
+# A host directory is packed as a COHERENT filesystem on a floppy medium (the
+# distribution repository's mkimage.py over media/fdvol.media), the emulator
+# attaches it with --floppy, and the guest mounts it with the stock /etc/mount
+# on the shipped /dev/fd1 node; `ls', `cat' and `cp' are the ordinary commands
+# out of the image.  Afterwards the emulator's tools/disk.py --read returns
+# what the guest wrote.
 #
 # The subject of every assertion is a NONCE minted per run and written only
 # into the export directory; phase 1 proves it absent from the dist image, so
@@ -36,23 +37,23 @@ EMUROM=$C900_EMU_ROM
 # hostbuild/build (mk/dist.sh) -- packing moved to a separate repository.
 . "$C900_ROOT/mk/dist.sh"
 IMG=$(dist_img "$DIST") || exit 2
-# hostfsd is a Go host tool: it imports the private simulator, so it lives in
-# c900oses/gotools and not in this repository's own build (mk/gotools.sh).
-. "$C900_ROOT/mk/gotools.sh"
-gotools_need hostfsd "render/extract the host pass-through medium"
-HOSTFSD=$GOTOOLS_BIN
+# The medium is packed by the distribution repository's own packer, from its
+# floppy volume descriptor, and read back by the emulator's disk tool.
+MKIMAGE=$C900_DIST/os/hostbuild/mkimage.py
+FDVOL=$C900_DIST/os/dist/media/fdvol.media
+DISKPY=$(dirname "$EMUROM")/tools/disk.py
 
 BAD=0
 fail() { echo "  FAIL $*"; BAD=$((BAD + 1)); }
 ok()   { echo "  ok   $*"; }
 
-for f in "$IMG" "$HOSTFSD"; do
+for f in "$IMG" "$MKIMAGE" "$FDVOL" "$DISKPY"; do
 	[ -e "$f" ] || { echo "hostfs: missing $f -- cannot run" >&2; exit 2; }
 done
 
 WORK=${WORK:-$HERE/work}
 rm -rf "$WORK"
-mkdir -p "$WORK/export"
+mkdir -p "$WORK/export" "$WORK/stage"
 [ "${KEEP:-0}" = 1 ] || trap 'rm -rf "$WORK"' 0 1 2 15
 
 # The nonce: pid and clock, so a stale transcript or floppy from an earlier
@@ -74,13 +75,16 @@ else
 fi
 
 # ---------------------------------------------------------------- phase 2
-echo "phase 2: render the export directory onto a floppy medium"
-if "$HOSTFSD" -render "$WORK/floppy.img" -dir "$WORK/export" -floppy \
+echo "phase 2: pack the export directory onto a floppy medium"
+# mkimage.py writes <stage>/<partition>/ into each partition; fdvol's one
+# partition is `root'.
+cp -r "$WORK/export" "$WORK/stage/root"
+if python3 "$MKIMAGE" "$WORK/floppy.img" "$FDVOL" "$WORK/stage" \
 	> "$WORK/render.log" 2>&1
 then
-	ok "rendered ($(wc -c < "$WORK/floppy.img") B)"
+	ok "packed ($(wc -c < "$WORK/floppy.img") B)"
 else
-	fail "hostfsd -render: $(tail -1 "$WORK/render.log")"
+	fail "mkimage.py: $(tail -1 "$WORK/render.log")"
 	echo "hostfs: cannot continue"; exit 1
 fi
 
@@ -164,34 +168,35 @@ else
 fi
 
 # ---------------------------------------------------------------- phase 4
-echo "phase 4: guest writes come back to the host directory"
-if "$HOSTFSD" -extract "$WORK/floppy.img" -dir "$WORK/export" \
+echo "phase 4: guest writes come back to the host"
+if python3 "$DISKPY" "$WORK/floppy.img" --read --dest "$WORK/back" / \
 	> "$WORK/extract.log" 2>&1
 then
-	ok "$(cat "$WORK/extract.log")"
+	ok "read back $(grep -c ' read ' "$WORK/extract.log") file(s) from the medium"
 else
-	fail "hostfsd -extract: $(tail -1 "$WORK/extract.log")"
+	fail "disk.py --read: $(tail -1 "$WORK/extract.log")"
 fi
-if [ -f "$WORK/export/back.txt" ] && grep -q "$GNONCE" "$WORK/export/back.txt"
+if [ -f "$WORK/back/back.txt" ] && grep -q "$GNONCE" "$WORK/back/back.txt"
 then
 	ok "back.txt holds the guest's nonce $GNONCE"
 else
 	fail "back.txt missing or does not hold $GNONCE"
 fi
-if [ -f "$WORK/export/other2.txt" ] &&
-   cmp -s "$WORK/export/other.txt" "$WORK/export/other2.txt"
+if [ -f "$WORK/back/other2.txt" ] &&
+   cmp -s "$WORK/export/other.txt" "$WORK/back/other2.txt"
 then
 	ok "other2.txt -- the guest's own cp, over the mount -- came back intact"
 else
 	fail "other2.txt missing or differs from the file the guest copied"
 fi
-# Extraction never deletes and never invents: the two files the host put there
-# are still there, and nothing else appeared.
-n=$(ls "$WORK/export" | wc -l)
-if [ -f "$WORK/export/hostmark.txt" ] && [ "$n" = 4 ]; then
-	ok "export holds exactly the 2 host files + the 2 guest ones"
+# The medium lost nothing and gained nothing else: the two files the host put
+# there are still there and unchanged, and only the guest's two were added.
+n=$(ls "$WORK/back" | wc -l)
+if cmp -s "$WORK/export/hostmark.txt" "$WORK/back/hostmark.txt" &&
+   cmp -s "$WORK/export/other.txt" "$WORK/back/other.txt" && [ "$n" = 4 ]; then
+	ok "the medium holds exactly the 2 host files + the 2 guest ones"
 else
-	fail "export has $n entries, wanted 4: $(ls "$WORK/export" | tr '\n' ' ')"
+	fail "the medium has $n entries, wanted 4: $(ls "$WORK/back" | tr '\n' ' ')"
 fi
 
 # ---------------------------------------------------------------- phase 5

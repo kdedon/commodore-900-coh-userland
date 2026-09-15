@@ -14,8 +14,7 @@ Markers go out with raw write(2), never stdio: a probe that dies mid-way
 must not lose output to an unflushed buffer.
 
 Module placement is by link order; Makefile comments give the intended
-segment of each special module and `loutdis -syms` verifies it after a
-build.
+segment of each special module.
 """
 import os
 import sys

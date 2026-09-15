@@ -4,7 +4,8 @@
 #
 # A compiler environment (the toolchain repository's `make env': cc,
 # cc0/cc1/cc2, as, ld, ar, libc.a and the headers, all Z8001 binaries in a
-# host directory) is rendered onto a medium with a small multi-file C program;
+# host directory) is packed onto a floppy medium with a small multi-file C
+# program, by the distribution repository's mkimage.py over media/fdvol.media;
 # the guest -- booted from the coherent3-buildenv dist, which carries NO
 # compiler -- runs its own make(1) over it, then executes the result.
 #
@@ -38,11 +39,10 @@ C900_ROOT=$OS
 # also the directory emu-run.sh resolves a dist name in.
 . "$OS/mk/dist.sh"
 IMG=$(dist_img "$DIST") || exit 2
-# hostfsd is a Go host tool: it imports the private simulator, so it lives in
-# c900oses/gotools and not in this repository's own build (mk/gotools.sh).
-. "$OS/mk/gotools.sh"
-gotools_need hostfsd "render the compiler environment onto a medium"
-HOSTFSD=$GOTOOLS_BIN
+# The medium is packed by the distribution repository's own packer, from its
+# floppy volume descriptor, and read back by the emulator's disk tool.
+MKIMAGE=$C900_DIST/os/hostbuild/mkimage.py
+FDVOL=$C900_DIST/os/dist/media/fdvol.media
 # CCENV is the TOOLCHAIN repository's axis (`make env CCENV=': ours,
 # inherited, mwc1985), independent of this tree's dist names.  If the
 # toolchain repository renames the value, this default must change with it.
@@ -55,12 +55,15 @@ ENV=${C900_ENV:-$TCB/env/$CCENV}
 
 EMUBIN=${EMUBIN:-$(sh "$C900_TOOLCHAIN/host/runner.sh" 2>/dev/null)}
 EMUROM=${EMUROM:-$(dirname "$(dirname "$EMUBIN")")/rom}
+DISKPY=$(dirname "$EMUROM")/tools/disk.py
 
 BAD=0
 fail() { echo "  FAIL $*"; BAD=$((BAD + 1)); }
 ok()   { echo "  ok   $*"; }
 
-[ -x "$HOSTFSD" ] || { echo "buildenv: no $HOSTFSD" >&2; exit 2; }
+for f in "$MKIMAGE" "$FDVOL" "$DISKPY"; do
+	[ -f "$f" ] || { echo "buildenv: no $f" >&2; exit 2; }
+done
 [ -x "$EMUBIN" ] || { echo "buildenv: no emulator ($EMUBIN)" >&2; exit 2; }
 [ -d "$ENV/bin" ] || {
 	echo "buildenv: no compiler environment at $ENV" >&2
@@ -70,7 +73,7 @@ ok()   { echo "  ok   $*"; }
 
 WORK=${WORK:-$HERE/work}
 rm -rf "$WORK"
-mkdir -p "$WORK/export/env" "$WORK/export/src"
+mkdir -p "$WORK/export/env" "$WORK/export/src" "$WORK/stage"
 [ "${KEEP:-0}" = 1 ] || trap 'rm -rf "$WORK"' 0 1 2 15
 
 NONCE=BUILDENV-$$-$(date +%s)
@@ -151,13 +154,16 @@ else
 fi
 
 # ---------------------------------------------------------------- phase 2
-echo "phase 2: render the environment and the sources onto a medium"
-if "$HOSTFSD" -render "$WORK/floppy.img" -dir "$WORK/export" -floppy \
+echo "phase 2: pack the environment and the sources onto a medium"
+# mkimage.py writes <stage>/<partition>/ into each partition; fdvol's one
+# partition is `root'.  Host execute bits become mode 755 on the medium.
+cp -r "$WORK/export" "$WORK/stage/root"
+if python3 "$MKIMAGE" "$WORK/floppy.img" "$FDVOL" "$WORK/stage" \
 	> "$WORK/render.log" 2>&1
 then
-	ok "$(cat "$WORK/render.log")"
+	ok "$(head -1 "$WORK/render.log")"
 else
-	fail "hostfsd -render: $(tail -1 "$WORK/render.log")"
+	fail "mkimage.py: $(tail -1 "$WORK/render.log")"
 	echo "buildenv: cannot continue"; exit 1
 fi
 
@@ -239,17 +245,17 @@ fi
 
 # ---------------------------------------------------------------- phase 4
 echo "phase 4: the objects and the binary come back to the host"
-if "$HOSTFSD" -extract "$WORK/floppy.img" -dir "$WORK/export" \
-	> "$WORK/extract.log" 2>&1
+if python3 "$DISKPY" "$WORK/floppy.img" --read --dest "$WORK/back" \
+	/src/main.o /src/util.o /src/prog > "$WORK/extract.log" 2>&1
 then
-	ok "$(cat "$WORK/extract.log")"
+	ok "read back $(grep -c ' read ' "$WORK/extract.log") file(s) from the medium"
 else
-	fail "hostfsd -extract: $(tail -1 "$WORK/extract.log")"
+	fail "disk.py --read: $(tail -1 "$WORK/extract.log")"
 fi
 for f in main.o util.o prog; do
-	if [ -f "$WORK/export/src/$f" ]; then
+	if [ -f "$WORK/back/$f" ]; then
 		if python3 "$C900_TOOLCHAIN/host/loutid.py" -q -m z8001 \
-			"$WORK/export/src/$f"
+			"$WORK/back/$f"
 		then
 			ok "$f came back, and is a Z8001 l.out"
 		else
