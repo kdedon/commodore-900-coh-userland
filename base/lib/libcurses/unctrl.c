@@ -27,7 +27,7 @@ static uchar sccsid[] = "@(#)unctrl.c	5.3 (Berkeley) 6/30/88";
  */
 
 /* LINTLIBRARY */
-unsigned char	*_unctrl[]	= {	/* unctrl codes for ttys		*/
+char		*_unctrl[]	= {	/* unctrl codes for ttys		*/
 	"^@", "^A", "^B", "^C", "^D", "^E", "^F", "^G", "^H", "^I", "^J", "^K",
 	"^L", "^M", "^N", "^O", "^P", "^Q", "^R", "^S", "^T", "^U", "^V", "^W",
 	"^X", "^Y", "^Z", "^[", "^\\", "^]", "^~", "^_",

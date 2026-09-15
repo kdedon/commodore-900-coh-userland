@@ -23,42 +23,19 @@ mkdir -p "$OUT/obj"; : > "$LOG"
 [ -x "$MKARZ" ] || sh "$TC/arz" -b >>"$LOG" 2>&1 || :
 [ -x "$MKARZ" ] || { echo "curses: no archiver at $MKARZ, and \`$TC/arz -b' did not build one (see $LOG)"; exit 1; }
 
-# The header this archive is compiled against decides the layout of a WINDOW,
-# and the toolchain's <curses.h> is the same header under the name every -I
-# path reaches.  Both spell their guard `# ifndef WINDOW', so a program that
-# finds one of them sees the other's declarations suppressed: two different
-# structs under one name, chosen by include order, with no diagnostic at
-# compile or link time.  Building the archive while the two disagree is what
-# makes that possible, so it is refused here.
+# No -I beyond the source directory itself: <curses.h>, <unctrl.h> and every
+# other system header these two archives include is the toolchain's, reached
+# through the include directory ccz appends to every compile.  That is the same
+# header a program linking against libcurses.a sees, so the WINDOW layout the
+# archive was compiled with and the one its callers compile against are one
+# declaration and cannot disagree.
 #
-# $TCSYSINC is the system copy ccz appends to every compile; toolchain.sh
-# resolves it.  Naming a path this build does not actually compile against
-# would make this check answer for a file nobody reads.
-[ -f "$TCSYSINC/curses.h" ] || {
-	echo "curses: no curses.h at $TCSYSINC -- the toolchain did not resolve,"
-	echo "  or its layout changed.  Refusing rather than skipping the check."
-	exit 1
-}
-ustag=$(sed -n 's/.*@(#)curses\.h[ \t]*//p' "$OS/base/lib/libcurses/curses.h")
-tctag=$(sed -n 's/.*@(#)curses\.h[ \t]*//p' "$TCSYSINC/curses.h")
-if [ -z "$ustag" ] || [ "$ustag" != "$tctag" ]; then
-	echo "curses: HEADERS DISAGREE"
-	echo "  base/lib/libcurses/curses.h is what libcurses.a is compiled against;"
-	echo "  $TCSYSINC/curses.h is what a program reaches without -I on that directory."
-	echo "  They must be the same version of the header:"
-	echo "    base/lib/libcurses/curses.h  ${ustag:-no @(#) tag}"
-	echo "    $TCSYSINC/curses.h  ${tctag:-no @(#) tag}"
-	exit 1
-fi
-
-# System headers come from include and nowhere else.  Do not add the donor
-# 0.7.3 include directory: it is not in this repository, everything libcurses
-# and libterm include resolves against include and include/sys alone,
-# and it shadows 46 of our headers without agreeing with them -- its ctype.h
-# numbers the bits above _L differently, so an object compiled against it and
-# linked with our libc tests the wrong bit of the same table (isdigit answers
-# for space, isspace for punctuation).
-INC="-I $OS/include -I $OS/include/sys"
+# In particular NOT the 0.7.3 include directory, which shadows 46 of these
+# headers without agreeing with them -- its ctype.h numbers the bits above _L
+# differently, so an object compiled against it and linked with our libc tests
+# the wrong bit of the same table (isdigit answers for space, isspace for
+# punctuation).
+INC=
 
 comp() { # dir  archive  "file file ..."
 	dir="$1"; arch="$2"; shift 2
