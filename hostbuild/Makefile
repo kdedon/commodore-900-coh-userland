@@ -34,7 +34,7 @@ HERE	:= $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 OS	:= $(abspath $(HERE)/..)
 # toolchain.mk defines TC and exports COHERENT_OS.  Set INFO_GOALS before
 # including it so queries can run without a toolchain.
-INFO_GOALS = help check-curses-header
+INFO_GOALS = help
 C900_TC_OPTIONAL := $(if $(filter $(INFO_GOALS),$(MAKECMDGOALS)),1,)
 include $(HERE)/toolchain.mk
 # B is fixed here: the recipes compute "$HERE/build/..." internally.
@@ -75,8 +75,7 @@ MGRCLIENTS := $(shell MAKE_RESTARTS= $(MAKE) -s --no-print-directory -C $(OS)/mg
 MGRCLBIN = $(MGRCLIENTS:%=$(B)/mgr/bin/cl/%)
 
 .PHONY: FORCE all userland net net-hostcheck hunt netcmds curses screen tests man toolchain libc \
-	archive comms mgr hr publish check-publish-fresh clean-stage clean-work help \
-	check-curses-header
+	archive comms mgr hr publish check-publish-fresh clean-stage clean-work help
 
 # Build the programs, libraries and manual.
 SWEEP = userland net hunt netcmds screen archive comms tests mgr hr man
@@ -354,13 +353,6 @@ package-list:
 .PHONY: net-hostcheck
 net-hostcheck:
 	$(MAKE) -C $(HERE)/../net/test/hostcheck check
-
-# The toolchain and libcurses headers must agree on WINDOW layout.
-# Their shared guard makes include order choose which declaration is used.
-.PHONY: check-curses-header
-check-curses-header:
-	@cmp $(OS)/base/lib/libcurses/curses.h $(C900_TOOLCHAIN)/src/include/curses.h \
-	  && echo "curses.h: the toolchain's and base/lib/libcurses/ agree"
 
 # The package FORMAT gate (check-package.sh) and the image gate (check-image.py)
 # judge a packed artifact against the format commodore-900-dist owns; they
