@@ -35,12 +35,11 @@ HUNTD_PATH = /usr/games/lib/huntd
 DEFS	= -DCOHERENT -DHUNTD=\"$(HUNTD_PATH)\" -DINTERNET -DBROADCAST -DBSD_RELEASE=42 \
 	  -DSIGNAL_TYPE=int \
 	  -DRANDOM -DREFLECT -DMONITOR -DOOZE -DFLY -DVOLCANO -DBOOTS
-# base/lib/libcurses is the curses the client links against -- the in-tree
-# 4.3BSD/sgtty one, whose header carries _tty_ch and the terminal capability
-# strings (TI/VS/VE/TE) hunt drives directly.  include/curses.h is the 4.x
-# terminfo header, which has neither.
-INCS	= -Ihuntd -I$(OS)/base/lib/libcurses
-OS	= ../../..
+# The client's <curses.h> is the compiler's own, found on its default include
+# path: the 4.3BSD/sgtty header that carries _tty_ch and the terminal capability
+# strings (TI/VS/VE/TE) hunt drives directly.  The caller supplies the matching
+# libcurses and libterm archives in LIBS.
+INCS	= -Ihuntd
 
 # faketalk.c is in: with the talk feature off it compiles to the empty stub
 # driver.c calls, and leaving it out just makes faketalk() undefined.  The talk
@@ -75,9 +74,8 @@ huntd/extern.o huntd/faketalk.o huntd/makemaze.o huntd/shots.o \
 huntd/terminal.o hunt/connect.o hunt/hunt.o hunt/playit.o:	$(HDRS)
 huntd/faketalk.o:	huntd/talk_ctl.h
 
-# INCS BEFORE CFLAGS: the curses header has to be found in
-# base/lib/libcurses, not the terminfo one in include/ (see INCS above),
-# and whichever -I comes first wins.
+# INCS BEFORE CFLAGS: whichever -I comes first wins, so the port's own headers
+# in huntd/ are found ahead of any directory the caller's CFLAGS names.
 .c.o:
 	$(CC) $(INCS) $(CFLAGS) $(DEFS) -c -o $@ $<
 
