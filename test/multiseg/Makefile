@@ -56,6 +56,6 @@ stage:	$(PROBES)
 	$(CCZ) -i -c -o $@ $<
 
 clean:
-	rm -f *.o $(PROBES)
+	rm -f *.o $(PROBES) $(GENSRC)
 
 .PHONY: all sources stage clean

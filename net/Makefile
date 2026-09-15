@@ -65,9 +65,15 @@ CHAN =	inet_chan.o rawsys.o
 RESOLV = resolv/res_init.o resolv/res_mkquery.o resolv/res_comp.o \
 	resolv/res_send.o resolv/res_query.o resolv/gethnmadr.o
 
-all:	inet-daemon inetd slip ppp libsocket.a ifconfig sntp echoclient echoserver udpecho \
+# Every program built in this directory: PROGS is what `all' builds, DIAGS the
+# diagnostics it leaves out and hostbuild/build-net.sh names.  `clean' removes
+# both, so a program added to either list is one `clean' knows.
+PROGS =	inetd slip ppp ifconfig sntp echoclient echoserver udpecho \
 	udpserver udppoll netdbtest acceptmany chanmax sockcycle ephport discotime devtcp sntpsrv rlecho \
 	talkping dropclient repeatclient fdhog portholder
+DIAGS =	psipping ichanprobe
+
+all:	inet-daemon libsocket.a $(PROGS)
 
 # TCP/IP daemon (its own directory).  The target is `inet-daemon' and not
 # `inet': the product is inet/inet, and a target spelled `inet' names the
@@ -332,5 +338,5 @@ test/repeatclient.o test/talkping.o: $(H)/errno.h talk.h
 	$(AS) -o $@ $<
 
 clean:
-	rm -f *.o test/*.o resolv/*.o inetd slip ppp ifconfig sntp echoclient echoserver udpecho udpserver udppoll netdbtest acceptmany chanmax sockcycle ephport discotime sntpsrv rlecho dropclient repeatclient fdhog portholder ichanprobe psipping libsocket.a
+	rm -f *.o test/*.o resolv/*.o $(PROGS) $(DIAGS) libsocket.a
 	cd inet; make clean

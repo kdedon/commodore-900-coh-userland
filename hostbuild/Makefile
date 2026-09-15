@@ -8,6 +8,7 @@
 #   make publish               build the sweep and stamp it, for the dist repo
 #   make check-publish-fresh   assert publish ran after everything else, not eyeball it
 #   make clean-work            drop the harnesses' working copies
+#   make clean                 remove everything the build writes
 #
 # This repository builds programs; it does not link a kernel and does not
 # pack an image.  The kernel and image-packing tools live in separate
@@ -34,7 +35,7 @@ HERE	:= $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 OS	:= $(abspath $(HERE)/..)
 # toolchain.mk defines TC and exports COHERENT_OS.  Set INFO_GOALS before
 # including it so queries can run without a toolchain.
-INFO_GOALS = help
+INFO_GOALS = help clean
 C900_TC_OPTIONAL := $(if $(filter $(INFO_GOALS),$(MAKECMDGOALS)),1,)
 include $(HERE)/toolchain.mk
 # B is fixed here: the recipes compute "$HERE/build/..." internally.
@@ -75,7 +76,7 @@ MGRCLIENTS := $(shell MAKE_RESTARTS= $(MAKE) -s --no-print-directory -C $(OS)/mg
 MGRCLBIN = $(MGRCLIENTS:%=$(B)/mgr/bin/cl/%)
 
 .PHONY: FORCE all userland net net-hostcheck hunt netcmds curses screen tests man toolchain libc \
-	archive comms mgr hr publish check-publish-fresh clean-stage clean-work help
+	archive comms mgr hr publish check-publish-fresh clean clean-stage clean-work help
 
 # Build the programs, libraries and manual.
 SWEEP = userland net hunt netcmds screen archive comms tests mgr hr man
@@ -105,7 +106,7 @@ check-publish-fresh:
 	fi
 	@echo "check-publish-fresh: ok -- $(B)/.ulstamp is not older than anything else under $(B)"
 help:
-	@sed -n '2,18p' $(HERE)/Makefile
+	@sed -n '2,19p' $(HERE)/Makefile
 
 FORCE:
 
@@ -365,3 +366,27 @@ clean-stage:
 # Remove the harnesses' working image copies to reclaim disk space.
 clean-work:
 	rm -rf $(B)/work
+
+# Remove everything the build writes: the build and log directories, the
+# Python cache the packer leaves, the generated ckcpro.c, and the objects and
+# programs net, hunt and the tests build beside their sources, through each
+# directory's own `clean'.  A test directory without a Makefile holds one
+# program, named for the directory, which build-tests.sh links in place.
+# test/hostcheck is the host-side mutation gate, which build-tests.sh does not
+# build.  The sub-makes that include toolchain.mk get C900_TC_OPTIONAL, since
+# removing files compiles nothing.  Libraries this build writes into the
+# toolchain's build directory belong to that repository's `clean'.
+clean:
+	$(MAKE) -C $(OS)/net clean
+	$(MAKE) -C $(OS)/net/test/hostcheck clean
+	$(MAKE) -C $(OS)/games/net/hunt clean
+	@for d in $(OS)/test/*/; do n=$$(basename $$d); \
+		if [ "$$n" = hostcheck ]; then continue; fi; \
+		if [ -f $${d}Makefile ]; then \
+			$(MAKE) -C $$d C900_TC_OPTIONAL=1 clean || exit 1; \
+		else \
+			echo "rm -f $$d$$n $$d.$$n.new"; rm -f $$d$$n $$d.$$n.new; \
+		fi; \
+	done
+	rm -f $(OS)/comms/ckermit/ckcpro.c
+	rm -rf $(B) $(HERE)/logs $(HERE)/__pycache__
