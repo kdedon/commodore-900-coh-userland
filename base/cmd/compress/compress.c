@@ -229,9 +229,8 @@ char outbuf[512];
  * That ceiling belongs to the 1985 cc2 BINARY, which has no source and cannot
  * be fixed.  The source-built compiler next door (commodore-900-toolchain,
  * host/ccz) writes the same array's size as 0x00008000 and does not have it, so
- * MBKS could go back to 512 for a build with that compiler -- but this tree is
- * built with the 1985 passes, and 511 is correct for both.  The full list of
- * what those passes cannot do is in mk/mwc1985/cc.
+ * MBKS could go back to 512 for a build with that compiler, which is the one
+ * that builds this tree; 511 is correct for both.
  *
  * Lower bound: `data' is NOT only the paging cache.  At maxbits <= 12, which is
  * the default, initV() returns without opening the scratch file and htabof/

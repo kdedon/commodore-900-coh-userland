@@ -41,8 +41,8 @@ also require `C900_EMU`.
 ## Dependencies
 
 `make deps` installs inputs listed in `DEPS`. Use `C900_TOOLCHAIN`, `C900_EMU`,
-`C900_MWC1985`, or `C900_KERNEL` to select local copies. Unset inputs are also
-searched for in adjacent checkout directories.
+or `C900_KERNEL` to select local copies. Unset inputs are also searched for in
+adjacent checkout directories.
 
 ## License
 

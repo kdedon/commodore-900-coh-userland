@@ -9,8 +9,8 @@
 #
 #   bin/c900 --exec <l.out>	a PROCESS RUNNER.  Runs one linked Z8001
 #				program against the host filesystem, which is
-#				what lets the 1985 Z8001 compiler take part in
-#				a host build.
+#				what lets a test run a Z8001 program this tree
+#				built.
 #   bin/c900 + rom/		a MACHINE, for booting an image and typing at
 #				its console.
 #

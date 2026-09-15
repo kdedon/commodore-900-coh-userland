@@ -41,7 +41,7 @@ CPP    = $(CC)
 endif
 
 # Dialect flags come from the compiler flavour, not from here: ../mk/compiler.mk
-# sets C900_CFLAGS per flavour, and both flavours want none.  There is no
+# sets C900_CFLAGS per flavour, and its one flavour, mwc, wants none.  There is no
 # tree-wide include directory: the system headers come from the toolchain,
 # which ccz puts on every compile, and a header this tree defines is reached
 # from the component that defines it.
@@ -635,11 +635,9 @@ HRWIDG := $(HRGUIOBJ)/lib/clgfx/hrwidg.o $(HRGUIOBJ)/lib/clgfx/clgfx.o \
 # Fonts are loaded at runtime from /usr/hr/fonts/*.hf into the shared VRAM tail
 # (inc/shmem.h) and blitted with the engine's bitblt -- no embedded/kernel font.
 #
-# -L: the window server is the one program here whose TEXT passes 64K, so ld
-# must place it across consecutive segments; without it the link stops with
-# "address wraparound, use `-L'".  How far past the wall it sits depends on the
-# compiler -- 69702 bytes with COMPILER=mwc against the 1985 passes' 54404 --
-# so the flag is unconditional rather than per flavour.
+# -L: the window server is the one program here whose TEXT passes 64K (69702
+# bytes), so ld must place it across consecutive segments; without it the link
+# stops with "address wraparound, use `-L'".
 $(HRGUIBIN)/zview: $(HRGUIOBJ)/cmd/zview/zview.o $(HRLOCK) $(HRSEL) $(HRGFX_GLOB) $(LIBHRGFX) $(CRT) $(LIBC)
 	@mkdir -p $(dir $@)
 	$(call ld-checked,-s -L -o $@ $(CRT) $(HRGUIOBJ)/cmd/zview/zview.o $(HRLOCK) $(HRSEL) $(HRGFX_GLOB) $(LIBHRGFX) $(LIBC))
