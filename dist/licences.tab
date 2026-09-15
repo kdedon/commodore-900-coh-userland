@@ -114,7 +114,7 @@ lic bellcore-mgr   n y y mgr/COPYRIGHT                  Bellcore        MGR, Bel
 # Berkeley, in its three materially different forms.  They are separate rows
 # because they are separate obligations, not separate years.
 lic ucb-bsd3       n y y games/bsd/COPYING              Regents         Regents of the University of California, 3-clause
-lic ucb-adv        n y y base/lib/libcurses/curses.h               Berkeley        Regents, with the ACKNOWLEDGEMENT requirement: documentation, advertising and other materials must acknowledge Berkeley
+lic ucb-adv        n y y base/lib/libcurses/curses.c   Berkeley        Regents, with the ACKNOWLEDGEMENT requirement: documentation, advertising and other materials must acknowledge Berkeley
 lic ucb-bsd4       n y y net/include/net/gen/netdb.h    advertising     Regents, 4-clause: all advertising materials must display the acknowledgement
 
 # Everything else that ships, each with its own text.
