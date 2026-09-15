@@ -10,7 +10,6 @@
 
 #include <mgr/font.h>
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 
 /**************************************************************************
@@ -20,7 +19,6 @@
 
 int main(argc,argv) int argc; char **argv;
    {
-	long tm;
    struct font_header head;
    int sum=0;		/* # bytes of font data read so far */
    int size;		/* # bytes of font data */
@@ -42,8 +40,6 @@ int main(argc,argv) int argc; char **argv;
       }
                                
    printf("/* static font file */\n\n");
-   time(&tm);
-	printf("/* created: %s */\n",ctime(&tm));
 
    printf("struct font_header %s_head = {\n",argv[1]);
    printf("\t(unsigned char) %d, (unsigned char) %d, (unsigned char) %d,\n",
