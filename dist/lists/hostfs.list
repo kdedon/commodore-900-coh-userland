@@ -5,8 +5,8 @@
 # a directory on the host.  With nothing on the host answering the mailbox the
 # driver's open fails ENXIO and nothing else is reachable.
 #
-# The distribution repository's coherent3-dev includes this list; it is also
-# cut as the optional c900-hostfs packages whatever a dist includes.
+# No delivered distribution includes this list, so installing it is a choice:
+# it is cut as the optional c900-hostfs packages whatever a dist includes.
 #
 # The /dev nodes (block /dev/hfs + char /dev/rhfs, major 11 minor 0) are NOT
 # listed here because device tables are per-dist (.devices files) and the
