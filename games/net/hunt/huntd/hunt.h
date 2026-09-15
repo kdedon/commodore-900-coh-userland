@@ -465,7 +465,8 @@ void		otto();
  */
 /*
  * This system has the V7 signal set -- sixteen signals, no SIGUSR1 -- and its
- * fourteenth through sixteenth are deliberately unnamed spares (sys/msig.h).
+ * sixteenth, SIGI16, is the machine's one deliberately unnamed spare
+ * (sys/msig.h; the fourteenth and fifteenth are SIGNVI and SIGNMI, taken).
  *
  * hunt uses SIGUSR1 for exactly one thing: the child that failed to exec the
  * driver tells its parent so.  That is private between hunt and its own child,
@@ -474,7 +475,7 @@ void		otto();
  * has on BSD.
  */
 # ifndef SIGUSR1
-# define SIGUSR1	SIGNO16
+# define SIGUSR1	SIGI16
 # endif
 
 /*

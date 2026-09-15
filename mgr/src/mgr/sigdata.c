@@ -41,9 +41,9 @@ static struct signame {
    { "SIGSEGV",	11,	"segmentation violation", },
    { "SIGEPA",	12,	"extended processor (EPU) trap", },
    { "SIGPRV",	13,	"privileged instruction -- this is what abort() raises", },
-   { "SIGNO14",	14,	"signal 14", },
-   { "SIGNO15",	15,	"signal 15", },
-   { "SIGNO16",	16,	"signal 16", },
+   { "SIGNVI",	14,	"non vectored interrupt", },
+   { "SIGNMI",	15,	"non-maskable interrupt (not passed)", },
+   { "SIGI16",	16,	"signal 16", },
 };
 #define NSIGNAME	(sizeof(signames)/sizeof(signames[0]))
 /*}}}  */

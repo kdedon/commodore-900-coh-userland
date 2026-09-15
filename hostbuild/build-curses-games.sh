@@ -101,33 +101,18 @@ fi
 # first and says why: <signal.h> holds two sets of signal numbers and only one
 # of them is this machine's.
 #
-# The machine-dependent half (SIGEPA/SIGPRV/...) is msig.h, and it is NOT
-# taken from this tree: include/msig.h is a kernel-owned header
-# that is mid-reconciliation and may be removed here, and $OS/include/sys
-# has no msig.h at all -- $OS/include/sys/msig.h was tried and does not
-# exist, which is what silently starved this cat and produced an empty
-# sigdesc.h (the games then reported as failing on the literal directory
-# "hostbuild/." -- cc1's name for a compiland it was never given).  The
-# kernel's own Z8001 msig.h (os/sys/z8001/h/msig.h) is the durable source;
-# it is reached through $KINC, the kernel include root toolchain.sh
-# resolves and exports, rather than a hardcoded path into either tree.
-# $OS/include/sys/msig.h is a different, generic donor stub (SIGDIVE/...)
-# and is not a substitute -- using it would generate a sigdesc.h with the
-# wrong signal names instead of failing.
+# The machine-dependent half (SIGEPA/SIGPRV/...) is msig.h, and it is the
+# toolchain's: $TCSYSINC/sys/msig.h carries the Z8001 definitions, so this
+# reaches into the toolchain's own include tree rather than a kernel checkout.
 build_top() {
 	TOPSRC="$OS/base/cmd/top"
 	TOPGEN="$HERE/build/top"
 	mkdir -p "$TOPGEN"
 	MSIG=""
-	if [ -n "${KINC:-}" ]; then
-		KROOT="${KINC%/os/include}"
-		if [ "$KROOT" != "$KINC" ] && [ -f "$KROOT/os/sys/z8001/h/msig.h" ]; then
-			MSIG="$KROOT/os/sys/z8001/h/msig.h"
-		fi
-	fi
+	[ -n "${TCSYSINC:-}" ] && [ -f "$TCSYSINC/sys/msig.h" ] && MSIG="$TCSYSINC/sys/msig.h"
 	if [ -z "$MSIG" ]; then
 		fail=$((fail+1)); fl="$fl top"
-		echo "== top FAILED: no Z8001 msig.h reachable via \$KINC (KINC='${KINC:-}'); need <kernel>/os/sys/z8001/h/msig.h"
+		echo "== top FAILED: no msig.h reachable via \$TCSYSINC (TCSYSINC='${TCSYSINC:-}'); need sys/msig.h in the toolchain's includes"
 		return
 	fi
 	# <signal.h> is the toolchain's, and it is the machine's signal numbers
