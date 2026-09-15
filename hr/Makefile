@@ -413,19 +413,13 @@ DISTDIR   = $(BUILD)/dist
 DRVDIR    = $(ROOT)/drv
 FLOPPYDIR = $(BUILD)/floppy
 
-# The kernel's header directories, reached over ../mk/deps.sh's `kernel' edge.
+# The kernel's header directory, reached over ../mk/deps.sh's `kernel' edge.
 #
 # $(KINC) is the kernel's userland-facing os/include, which is what supplies
-# <sys/timeout.h>; $(KMINC) is its Z8001 MACHINE LAYER, a SECOND directory
-# beside it and not reachable through it, holding the machine's own headers --
-# romconf.h, the Commodore ROM configuration block, exists nowhere else.
-#
-# $(KMINC) belongs LAST on an include path, which is where the kernel's own
-# driver build puts it: it also holds copies of names the toolchain carries
-# (l.out.h, types.h, param.h, proc.h, seg.h, const.h) whose structs are not
-# what this kernel maintains.  A program that reads a kernel struct names the
-# header QUALIFIED -- <sys/seg.h>, <sys/proc.h> -- so it reaches the
-# toolchain's copy, the one the kernel is compiled against.
+# <sys/timeout.h> and, now, <romconf.h> (the Commodore ROM configuration
+# block): kheaders.py ships it from os/include like any other header the
+# kernel's own sources use, so this repository needs no second, kernel-SOURCE
+# include path of its own to reach it.
 C900_KERNEL := $(shell C900_KERNEL= sh ../mk/deps.sh kernel)
 ifneq (,$(wildcard $(C900_KERNEL)/os/include))
 KINC := $(C900_KERNEL)/os/include
@@ -434,7 +428,6 @@ KINC := $(C900_KERNEL)/include
 else
 KINC :=
 endif
-KMINC := $(C900_KERNEL)/os/sys/z8001/h
 
 KERNEL_ERR = { echo "kernel: the kernel is built by commodore-900-coh-kernel3."; \
 	       echo "  This repository stages what that build exports; it links no"; \
@@ -651,21 +644,14 @@ $(HRGUIBIN)/ptytest: $(HRGUIOBJ)/test/ptytest/ptytest.o $(CRT) $(LIBC)
 # kernel headers QUALIFIED, so proc.h, sched.h, seg.h and uproc.h come from the
 # toolchain -- the set the kernel is built against.  What it still needs from
 # here is <romconf.h>, the Commodore ROM configuration block, and <param.h>'s
-# NBUF, the buffer-cache tuning constant: both belong to the machine layer and
-# exist in no other repository.  $(KINC) is what supplies <sys/timeout.h>,
-# which <sys/proc.h> includes and the toolchain has not got; its other headers
-# are the toolchain's own, byte for byte.
+# NBUF, the buffer-cache tuning constant: both are kernel headers exported to
+# os/include, so $(KINC) supplies them the same way it supplies
+# <sys/timeout.h>, which <sys/proc.h> includes and the toolchain has not got;
+# its other headers are the toolchain's own, byte for byte.
 #
-# THE MACHINE LAYER COMES LAST AND THE TOOLCHAIN COMES BEFORE IT, which is the
-# order the kernel's own driver build uses and the order $(KDRVINC) spells.  The
-# machine layer holds 0.7.3-era copies of names the toolchain also carries --
-# l.out.h, types.h, proc.h, seg.h -- and its <l.out.h> includes the unqualified
-# <types.h> beside it, which then satisfies the include guard that <sys/types.h>
-# uses and leaves faddr_t and fsize_t undeclared for every header after it.
-# Naming $(TCINC) here rather than leaving those names to the compiler's own
-# system directory is what keeps the stale copies unread: that directory is
-# searched after every -I, so the machine layer would otherwise win.
-$(HRGUIOBJ)/cmd/zmon/zmon.o: HRGFXCFLAGS += -I$(KINC) -I$(TCINC) -I$(TCINC)/sys -I$(KMINC)
+# $(TCINC) comes before it on the path, which is the order $(KDRVINC) spells,
+# so a name the toolchain also carries resolves to the toolchain's copy.
+$(HRGUIOBJ)/cmd/zmon/zmon.o: HRGFXCFLAGS += -I$(KINC) -I$(TCINC) -I$(TCINC)/sys
 
 # --- the GUI applications ---
 # Every one of these is the same kind of program: it declares its window to the
@@ -1040,14 +1026,10 @@ KDRVVAR   := $(shell sed -n 's/^ccvar=//p' $(KDRVCONF) 2>/dev/null)
 KDRVMODE  := $(shell sed -n 's/^cc2mode=//p' $(KDRVCONF) 2>/dev/null)
 KDRVDEFS  := $(shell sed -n 's/^cdefs=//p' $(KDRVCONF) 2>/dev/null)
 KDRVLD    := $(shell sed -n 's/^ldflags=//p' $(KDRVCONF) 2>/dev/null)
-# The kernel's own driver build also puts its Z8001 machine layer ($(KMINC))
-# on the path.  Nothing this driver includes reaches it -- the object is
-# byte-identical with and without it -- so it is named only where it exists,
-# which is what lets a packaged kernel, whose header set stops at the exported
-# closure, build this driver as well as a checkout does.  $(HRHDR) is on the
-# path for <rico.h>.
-KDRVINC   := -I$(KINC) -I$(KINC)/sys -I$(TCINC) -I$(TCINC)/sys \
-             $(addprefix -I,$(wildcard $(KMINC))) -I$(HRHDR)
+# $(KINC) alone now answers for the kernel's exported header set (romconf.h
+# ships from os/include like the rest), so this needs no second, kernel-
+# SOURCE include path.  $(HRHDR) is on the path for <rico.h>.
+KDRVINC   := -I$(KINC) -I$(KINC)/sys -I$(TCINC) -I$(TCINC)/sys -I$(HRHDR)
 KDRVCC0   := $(C900_TCB)/z8001/cc0-z8001
 KDRVCC1   := $(C900_TCB)/z8001/cc1-z8001
 KDRVCC2   := $(C900_TCB)/z8001/cc2-z8001
