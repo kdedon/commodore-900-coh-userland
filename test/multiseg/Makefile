@@ -26,8 +26,9 @@ sources:
 	$(GEN) .
 
 # The module sources are GENERATED and not checked in; generate them on
-# demand so the directory builds from a fresh checkout.
-GENSRC	= m2.c m3.c m3near.c $(MODS:.o=.c)
+# demand so the directory builds from a fresh checkout.  GENSRC is every file
+# gen.py writes, bt5.c..bt9.c included, which no probe links.
+GENSRC	= m2.c m3.c m3near.c bt0.c bt1.c bt2.c bt3.c bt4.c bt5.c bt6.c bt7.c bt8.c bt9.c
 $(GENSRC) &: $(GEN)
 	$(GEN) .
 
