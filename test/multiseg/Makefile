@@ -9,7 +9,7 @@
 #	make            build all three probes
 #	make stage      copy them into the image staging bin dir
 #
-# Keep them OUT of the shipped lists (they are 90-160KB test binaries).
+# Keep them OUT of the shipped lists (they are 70-125KB test binaries).
 include ../../hostbuild/toolchain.mk
 CCZ	= $(TC)/ccz
 LFLAGS	= -i -L
