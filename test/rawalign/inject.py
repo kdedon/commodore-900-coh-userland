@@ -13,7 +13,7 @@ scratch boot image.
 
 This is the writer for a packed COHERENT filesystem that the harnesses here
 use: tests/privsep reaches it at ../rawalign/inject.py to stage privids over a
-packed image, and tests/stackhw to put its probe on one.  The alignment test
+packed image.  The alignment test
 this directory is named for (rawalign.c, run.sh) needs a relinked kernel, so
 it lives in commodore-900-coh-kernel3's own test/rawalign; this file has no
 kernel dependency of its own.

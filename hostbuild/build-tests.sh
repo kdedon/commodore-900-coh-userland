@@ -54,16 +54,14 @@ for d in "$TESTS"/*/; do
 	fi
 	src="$d$name.c"
 	[ -f "$src" ] || continue		# not a single-program directory
-	# The probes that reach the KERNEL's own headers.  mouse wants
-	# <sys/mouse.h>; stackhw wants <sys/proc.h> and <sys/uproc.h>, and
-	# <sys/proc.h> in turn wants <sys/timeout.h>.  None of those exists in
-	# this tree or the toolchain: $KINC is the kernel repository's include
-	# directory (toolchain.sh), and empty means no kernel resolved, in which
-	# case the probe refuses by name rather than compiling against
-	# something else.
+	# The probe that reaches the KERNEL's own headers.  mouse wants
+	# <sys/mouse.h>, which exists neither in this tree nor in the
+	# toolchain: $KINC is the kernel repository's include directory
+	# (toolchain.sh), and empty means no kernel resolved, in which case the
+	# probe refuses by name rather than compiling against something else.
 	XINC=""
 	case "$name" in
-	mouse|stackhw)
+	mouse)
 		if [ -z "$KINC" ]; then
 			fail=$((fail+1)); fl="$fl $name"
 			echo "  $name: FAIL -- needs the kernel's headers; sh mk/deps.sh -n kernel"

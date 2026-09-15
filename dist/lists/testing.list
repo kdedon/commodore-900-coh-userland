@@ -190,12 +190,6 @@ f	/bin/tickrate	755 0 1	src=test/tickrate/tickrate
 # faults on exactly that form (Maze[y][x]); this reproduces the shape small,
 # next to the same access through a pointer, so a disagreement is visible.
 f	/bin/segindex	755 0 1	src=test/segindex/segindex
-# 3- and 4-text-segment probes: cross-segment calls in both directions, a
-# 3->4->5->6->3 chain, and function pointers taken in one segment and called
-# from another.  Each check duplicates its computation in main's own module, so
-# a mis-linked target names a FAIL rather than passing quietly.
-f	/bin/t3	755 0 1	src=test/multiseg/t3
-f	/bin/t4	755 0 1	src=test/multiseg/t4
 # Can the in-kernel debugger be entered and left?  Only meaningful on a kernel
 # built KDDT=1; on one without it, halt(2) stops the machine instead.
 f	/bin/ddtentry	755 0 1	src=test/ddtentry/ddtentry

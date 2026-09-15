@@ -325,7 +325,7 @@ talkping	asks the ntalk service to REMEMBER: the invitation it looks up in
 dropclient	is not a probe.  It abandons connections without closing them and
 		returns 0 whatever happens; what the drop does to a SERVICE is
 		the subject, and that verdict is the daemon's, read on the guest
-		by tests/stackhw and tests/cmd/inetd.cmd.  A host stand-in could
+		by tests/cmd/inetd.cmd.  A host stand-in could
 		only drop connections on itself.
 fdhog		is not a probe either.  It fills its own descriptor table, gives
 		back a stated few and execs the program under test into what is
@@ -339,7 +339,7 @@ portholder	takes a port with NWTC_EXCL through /dev/tcp and holds it, which
 		SHARED one beside it.  Host sockets have no such claim -- SO_REUSE
 		and two binds are not it -- so a stand-in could neither take the
 		port in the way that matters nor be refused for the reason that
-		matters.  Driven on the guest by tests/stackhw.
+		matters.  Driven on the guest by tests/cmd/inetd.cmd.
 sockcycle	measures whether libsocket gives a closed socket's block back to
 		the heap, read off sbrk(0).  Its subject is libsocket.c's own
 		allocation, and nothing here compiles libsocket.c -- the socket

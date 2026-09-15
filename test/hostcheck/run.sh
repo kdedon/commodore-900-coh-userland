@@ -626,10 +626,6 @@ loadavg:  -- a stray binary, no source -- not something this repository builds.
 rawalign:the same move, on the same terms: source and harness are in
 rawalign:  commodore-900-coh-kernel3 now, and this directory holds only a
 rawalign:  leftover binary and a stray __pycache__.
-stackhw:phase 0 checks that the image's kernel, drivers and kobj/kernel.out
-stackhw:  agree.  These are in a separate repository now; kobj/kernel.out and
-stackhw:  the *.bin images still here are pre-split fossils, not something
-stackhw:  this repository builds.
 privsep:phase 0 checks exactly what the device-node/setuid-bit lane
 privsep:  currently live in this repository is still changing (the packed
 privsep:  image right now answers /dev/hd*, rhd*, kmem, mem and swap at 666

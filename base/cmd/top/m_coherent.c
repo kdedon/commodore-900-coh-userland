@@ -109,10 +109,9 @@
 /*
  * How much of the arena a sample copies at once.  It is a frame of sample(),
  * so this plus everything called from there has to fit under the stack a
- * process is given, and test/stackhw measures what a run of top actually
- * reaches.  It is not a claim about the kernel: an arena larger than this is
- * read through the window as far as it goes and one structure at a time
- * beyond it.
+ * process is given.  It is not a claim about the kernel: an arena larger than
+ * this is read through the window as far as it goes and one structure at a
+ * time beyond it.
  */
 #define WINSIZE	24576
 
