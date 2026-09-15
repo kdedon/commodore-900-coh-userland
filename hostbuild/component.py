@@ -9,6 +9,7 @@ A package directive in dist/lists names a component.  Derive its source,
 manual and development packages from the runtime list and build source map.
 Resolve paths in this repository first, then C900_OSPATH, kernel and toolchain.
 Emit tab-separated entries; refuse unresolved required files."""
+import filecmp
 import os
 import re
 import subprocess
@@ -644,14 +645,51 @@ class Component:
             return p if os.path.exists(p) else None
         if e.type in ('d', 'e', 'l'):
             return None
-        rel = e.dest.lstrip('/')
-        for c in ([os.path.join(DIST, 'files', rel),
-                   os.path.join(DIST, 'files', rel + '.in')] +
-                  oscands(os.path.join(self.roots['root'], rel)) +
-                  oscands(os.path.join(self.roots['drv'], os.path.basename(rel))) +
-                  oscands(os.path.join(self.roots['bin'], os.path.basename(rel)))):
-            if os.path.exists(c):
-                return c
+        return self._nosrc(e)
+
+    def _nosrc_tiers(self, dest):
+        """(exact, flat): where an entry with no src= may find its content.
+
+        The EXACT tier names the destination itself -- the overlay file, its
+        template, and the path in the staging tree.  The FLAT tier names only
+        the basename, in the build output directory of the destination's KIND:
+        the driver directory for an entry under /drv, the command directory for
+        every other.  A command is never looked for among drivers, nor a driver
+        among commands; the kernel's /drv/hostfs and this repository's
+        /bin/hostfs are two programs that share a name.  This is the package
+        format's search order, which the distribution's FORMAT states.
+        """
+        rel = dest.lstrip('/')
+        kind = 'drv' if rel.startswith('drv/') else 'bin'
+        return ([os.path.join(DIST, 'files', rel),
+                 os.path.join(DIST, 'files', rel + '.in')] +
+                oscands(os.path.join(self.roots['root'], rel)),
+                oscands(os.path.join(self.roots[kind], os.path.basename(rel))))
+
+    def _nosrc(self, e):
+        """The file an f or t entry with no src= installs, or None.
+
+        The exact tier answers before the flat one.  A tier in which more than
+        one DISTINCT file exists is refused, naming the entry and every file:
+        which root's file is meant is the list's decision, spelled src=, and
+        taking whichever root the search reaches first ships a same-named file
+        nobody chose.  Two paths to one file, or two files with the same bytes,
+        are one answer, not a choice."""
+        for tier in self._nosrc_tiers(e.dest):
+            have = [c for c in tier if os.path.exists(c)]
+            distinct = []
+            for c in have:
+                if not any(os.path.realpath(c) == os.path.realpath(d) or
+                           (os.path.isfile(c) and os.path.isfile(d) and
+                            filecmp.cmp(c, d, shallow=False))
+                           for d in distinct):
+                    distinct.append(c)
+            if len(distinct) > 1:
+                die("%s: %s names no src= and %d files answer it:\n  %s\n"
+                    "  Name the one this entry installs with src=."
+                    % (e.origin, e.dest, len(distinct), "\n  ".join(distinct)))
+            if have:
+                return have[0]
         return None
 
     def files(self):
