@@ -11,9 +11,11 @@ this one takes a partition offset and walks directories, so it can reach
 /drv/notty as well as /coherent.  Old blocks are leaked, which is fine for a
 scratch boot image.
 
-This is the writer for a packed COHERENT filesystem that the harnesses here
-use: tests/privsep reaches it at ../rawalign/inject.py to stage privids over a
-packed image.  The alignment test
+This is the writer for a packed COHERENT filesystem, and it has one consumer:
+commodore-900-dist's os/tests/privsep stages privids over a packed image with
+it.  That harness boots such an image, so it lives where the image is built,
+and it reaches this file over the `userland' edge rather than keeping a copy --
+the tool keeps its one home here.  The alignment test
 this directory is named for (rawalign.c, run.sh) needs a relinked kernel, so
 it lives in commodore-900-coh-kernel3's own test/rawalign; this file has no
 kernel dependency of its own.

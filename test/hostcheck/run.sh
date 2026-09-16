@@ -569,21 +569,11 @@ loadavg:  no source -- not something this repository builds.
 rawalign:the probe and its harness are in commodore-900-coh-kernel3, on the
 rawalign:  same terms as loadavg.  What is left here is TRACKED and is not a
 rawalign:  leftover: inject.py, which places a program into a packed image
-rawalign:  without a directory edit.  Its one consumer is test/privsep, in
-rawalign:  this tree beside it; no other repository reaches for it.  It is a
+rawalign:  without a directory edit.  Its one consumer is the privilege pass,
+rawalign:  which is commodore-900-dist's os/tests/privsep: it boots a PACKED
+rawalign:  image, so it lives where that image is built, and it reaches this
+rawalign:  file over the \`userland' edge rather than keeping a copy.  It is a
 rawalign:  tool, not a probe -- there is no run of its own to mutate.
-privsep:the privilege pass boots a PACKED image, five halves of it and a
-privsep:  guest boot for each, so kshim.c sits between it and nothing and a
-privsep:  host mutation case cannot reach what it measures.  It carries its
-privsep:  own gate instead: \`sh run.sh gate' runs the clean half against the
-privsep:  system as committed and the mutant half with the four setuid bits
-privsep:  taken off, and requires the second to break what the first proved.
-privsep:  Its privids phases use test/rawalign/inject.py, which is TRACKED in
-privsep:  this tree beside it.  Phase 0's modes: the packed image answers ps
-privsep:  and top setuid root and /dev/hd*, rhd*, mem, kmem and swap at 600.
-privsep:  The \`nodes' and \`nodemutant' halves name only programs the
-privsep:  delivered images install: ps and top, the two setuid-root namelist
-privsep:  readers, and ps -k for the escalation a setuid bit must not buy.
 vprintf:the subject is the target's own va_list walk, against a 32-bit long
 vprintf:  and a far pointer, on the Z8001 -- the same terms as ptraudit, and
 vprintf:  no host stand-in can hold that defect either.  It was run once by

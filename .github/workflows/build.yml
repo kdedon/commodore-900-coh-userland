@@ -25,11 +25,12 @@
 # (hostbuild/build/packages), so they ride along.
 #
 # WHAT IS NOT HERE, on purpose:
-#   * test/privsep.  Its gate boots a PACKED IMAGE, which is
-#     commodore-900-dist's product, and it resolves that image through
-#     mk/dist.sh -- a dist edge this repository's DEPS does not carry and
-#     which no release here can supply.  It is run from the distribution
-#     repository, against the image that repository packed.
+#   * the privilege pass.  Its gate boots a PACKED IMAGE, which is
+#     commodore-900-dist's product and which this repository's released
+#     inputs do not carry, so no job here could run it.  The harness LIVES
+#     there now, as os/tests/privsep, and that repository's release-check
+#     runs it against the image it packed.  What is left in this tree is
+#     the one tool it reaches back for, test/rawalign/inject.py.
 #   * tests/check-paths.sh.  Only the toolchain repository is checked out
 #     natively on Windows; this repository builds under Docker/WSL, so that
 #     gate would assert a Windows-native-checkout constraint this repository
