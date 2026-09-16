@@ -181,7 +181,12 @@ cp "$HERE/check-contents.sh" "$T/check-contents.sh"
 EXTRA="version=$V package=$COMP-$KIND component=$COMP pkgkind=$KIND entries=$nf"
 case "$KIND" in
 man) EXTRA="$EXTRA programs=$NPROG documented=$NDOC libraries=$NLIBS" ;;
-src) EXTRA="$EXTRA programs=$NPROG mapped=$NSRC" ;;
+# toolchain_src NAMES, NOT CARRIES.  Every program here links the toolchain's
+# csu and compiles against its headers (ulsrcmap.py's ELSEWHERE), and the
+# toolchain ships that source in its own -src package rather than this one
+# carrying paths a release-shaped toolchain checkout may not have unpacked.
+# This is the complete corresponding source only alongside that package.
+src) EXTRA="$EXTRA programs=$NPROG mapped=$NSRC toolchain_src=toolchain" ;;
 # WHICH BUILD THESE BYTES CAME OUT OF.  ulid is this repository's own content
 # id over its published set, so two packages cut from one sweep can be shown to
 # carry the same programs without being taken apart.

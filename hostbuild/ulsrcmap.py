@@ -5,10 +5,11 @@
 
 Read C900_BUILD_MAP or build/compiled-programs.log by default.  Union records
 across builds and include linked objects, recipes and the helpers they read,
-headers, libc, startup and linked-library sources.  Carry small source
-directories whole; list compiled files from large ones.  Prefix paths needed
-for source packages but not binary freshness with "+".  Drop missing local
-paths; retain external toolchain source requirements."""
+libc and linked-library sources.  Carry small source directories whole; list
+compiled files from large ones.  Prefix paths needed for source packages but
+not binary freshness with "+".  Drop missing local paths; retain libc, which
+this tree's -src packages carry; the toolchain's startup code and headers are
+recorded by name (dist/pack-component.sh's `toolchain_src='), not carried."""
 
 import os
 import re
@@ -26,17 +27,28 @@ B = os.path.join(HERE, 'build')
 # which is why it is marked rather than judged (`+', see the header comment).
 CARRIED = ['hostbuild/Makefile']
 
-# THE SAME, IN THE TOOLCHAIN REPOSITORY.  The C library, the startup code and
-# the headers every program compiles against are built from src/{libc,csu} and
-# src/include over there, not from anything here, and a statically linked GPL
-# program's corresponding source includes them.  So they are named, and they are
-# named UNCONDITIONALLY -- unlike everything else in this file, which is dropped
-# when the path is not in this tree.  Paths in the map are resolved by the
-# consumer across the whole search path, so these find the toolchain checkout;
-# with none, a -src package refuses by name, which is the right answer, because
-# a package cut without the library it links is not the complete corresponding
-# source it claims to be.
-ELSEWHERE = ['src/include', 'src/libc', 'src/csu']
+# THE SAME, IN THE TOOLCHAIN REPOSITORY.  The C library every program compiles
+# against is built from src/libc over there, not from anything here, and a
+# statically linked GPL program's corresponding source includes it.  So it is
+# named, and named UNCONDITIONALLY -- unlike everything else in this file,
+# which is dropped when the path is not in this tree.  Paths in the map are
+# resolved by the consumer across the whole search path, so this finds the
+# toolchain checkout; with none, a -src package refuses by name, which is the
+# right answer, because a package cut without the library it links is not the
+# complete corresponding source it claims to be.
+#
+# THE STARTUP CODE AND THE HEADERS ARE NOT HERE.  src/csu (linked into every
+# program the same way src/libc is) and src/include are the toolchain's own,
+# and the toolchain ships their source in its own -src package -- this map
+# does not carry them as paths a consumer must find in THIS tree's search
+# path, because a release-shaped toolchain checkout need not have unpacked
+# its own -src package for this one to resolve.  What a -src package cut from
+# this map records instead is the NAME of the toolchain source package a
+# reader combines it with, not a path: dist/pack-component.sh writes
+# `toolchain_src=toolchain' once into every -src package's .provenance, the
+# same field component-bin.pkg already uses for `ulid' and `kernel_linkid' --
+# a recorded fact, not a new refusal.
+ELSEWHERE = ['src/libc']
 
 
 # WHAT A RECIPE ITSELF READS.  A build script is source the same way a .c file

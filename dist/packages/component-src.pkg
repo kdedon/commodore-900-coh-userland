@@ -40,6 +40,13 @@
 # answers for.  They must be equal, and `keymatch' below is what says so from
 # inside the archive, so an operator who has only the source package can still
 # see that it is complete.
+#
+# `toolchain_src' in .provenance names the toolchain's own -src package: every
+# program here links its csu and compiles against its headers, and the
+# toolchain ships that source itself (ulsrcmap.py, ELSEWHERE) rather than this
+# package carrying paths a release-shaped toolchain checkout may not have
+# unpacked.  This package is the complete corresponding source only alongside
+# the package that field names.
 kind      component-src
 what      one component's complete corresponding source, its recipe and its licences
 producer  dist/pack-component.sh
