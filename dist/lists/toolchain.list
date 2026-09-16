@@ -53,30 +53,15 @@
 #           installs on any image yet; a dist that claimed to build a kernel
 #           and could not would be the same defect this list is fixing.
 #
-# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
-# addressable unit of a release channel; one without is not.
-package  toolchain
-role     optional
-# KINDS -- `src' AND `man', and NOT `dev'.
-#
-# src   the complete corresponding source for all six programs installed here,
-#       the harnesses that compile them and the licence text governing them,
-#       out of the toolchain's own hostbuild/build/.ulsrcmap.  It is the same
-#       obligation every other component's -src discharges and this one is not
-#       exempted for being a compiler.
-# man   the Lexicon documents all six (cc, cc0, cc1, cc2, as, ld).  #370's
-#       other half was pages for programs no image installs -- `man cc' on a
-#       machine with no cc -- and for these six that is now false in the
-#       direction that was worth fixing.
-# dev   ALREADY EXISTS, under its pre-scheme name, and is deliberately not
-#       declared again here.  packages/include.pkg and packages/libc.pkg are
-#       the toolchain component's -dev packages: the target headers and the
-#       Z8001 libraries, cut by the toolchain's own release-pack.sh, gated,
-#       and carrying identity this list could not restate.  Declaring `dev'
-#       would cut a SECOND package over the same headers, and two packages
-#       claiming one interface is the divergence PACKAGE-FORMAT exists to
-#       prevent.
-kinds    src man
+# NO `package' LINE.  A list with one is an addressable unit of a release
+# channel (os/dist/PACKAGE-FORMAT); this one is not, on purpose: `ours' is the
+# toolchain repository's own artifact, built and packaged by that repository,
+# the same way packages/include.pkg and packages/libc.pkg already are its
+# -dev packages rather than this component's.  The userland stages these
+# entries only to compose the extended tree (see the file below); it does not
+# cut a toolchain-src or toolchain-man archive over them, so it never carries
+# an obligation -- the source map, the licence text -- that belongs to the
+# repository that builds `ours'.
 
 # --- the directories ---------------------------------------------------------
 # /usr/bin AND /usr/lib ARE NOT HERE.  A `d' entry is NOT idempotent -- dist.py

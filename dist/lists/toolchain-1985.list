@@ -26,21 +26,12 @@
 # a linker reach an image only through lists/toolchain.list, which stages ours
 # at /usr/bin; nothing puts either at /bin.
 #
-# PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
-# addressable unit of a release channel; one without is not.
-package  toolchain-1985
-role     optional
-# KINDS -- `man' AND NOT `src'.  These are vendor binaries and no repository of
-# this project holds their source, so declaring `src' would make the component
-# refuse for ever, and a permanent refusal reads as a defect somebody should
-# fix rather than as the fact that it is.  The Lexicon documents eight of the
-# eleven -- cc, cpp, the four passes, db and l; ccx and nld have no page, and
-# slibc.a is counted a program only because the archive is installed 755.
-kinds    man
-# `require', not `include': this list stages twelve files and creates no
-# dependency of its own, but the chain cc drives is unusable without the
-# assembler, the linker, the runtime and /usr/include that base carries.
-require  lists/base.list
+# NO `package' LINE.  A list with one is an addressable unit of a release
+# channel (os/dist/PACKAGE-FORMAT); this one is not: the twelve bytes staged
+# below are the toolchain repository's own vendor/mwc-1985, and that
+# repository packages them itself rather than this one cutting a
+# toolchain-1985-man archive over vendor bytes it did not recover and holds no
+# terms for.
 
 # --- the driver and the tools around it --------------------------------------
 # ccx IS the driver: it execs cpp, the passes, crts0.o and the loader by

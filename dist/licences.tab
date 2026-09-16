@@ -262,11 +262,6 @@ use net            ucb-bsd3         /bin/finger, /bin/host
 use net            mwc-bsd3
 use net            bellcore-mgr     -src only: object-search over-reach onto mgr/src
 
-use toolchain      mwc-bsd3         the Z8001 compiler, assembler, linker and libraries, all MWC-derived
-
-use toolchain-1985 no-grant         the twelve June 1985 Mark Williams binaries the reference disk shipped with -- cc, ccx, db, l, nld, cpp, cc0, cc1, cc2, cc3, scrts0.o, slibc.a -- for which no repository here holds source or terms.  Predating the 2015 COHERENT source release, so mwc-bsd3 does not reach them; this is why the component publishes no `src' kind.
-
-
 use vellum         mit-oc           velcmd, veldlg, velgraph and the stencil and example drawings
 use vellum         pleban-bsd3      every binary but velgraph, and libvellum.a, which all of them link
 use vellum         mwc-bsd3         csu and libc
