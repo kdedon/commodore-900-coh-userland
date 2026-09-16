@@ -40,10 +40,12 @@ libhrgfx.a	hr/gfx
 libvellum.a	hr/lib/vellum
 
 # libm-z8001.a and libmisc-z8001.a -- the maths library and the small support
-# library, built by the TOOLCHAIN repository from src/libm and src/libmisc.
-# Every program that calls sin(), pow() or the long-arithmetic helpers links
-# one of them, and its complete corresponding source includes theirs.  libm.a
-# is the same archive under the name hr/Makefile stages it as.
-libm-z8001.a	src/libm
-libm.a	src/libm
-libmisc-z8001.a	src/libmisc
+# library, built by the TOOLCHAIN repository from src/libm and src/libmisc, the
+# same way src/csu is.  NOT NAMED HERE: a row naming them would require the raw
+# path the way ELSEWHERE (ulsrcmap.py) used to require src/csu, and a
+# release-shaped toolchain checkout need not have that source unpacked for a
+# consumer to resolve it.  Every -src package already carries
+# `toolchain_src=toolchain' (dist/pack-component.sh), which names the
+# toolchain's own source package for its whole runtime -- libc, csu and these
+# two libraries alike -- so a program linking libm or libmisc owes nothing
+# more here than a program linking only csu does.
