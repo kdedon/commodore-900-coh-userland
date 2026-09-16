@@ -428,13 +428,26 @@ def placed_owners(dest):
     base installs.  The owner is that entry's, so it is looked up where it is
     stated rather than assumed; when two lists place one path with two owners
     the answer is both of them, and the caller refuses.
+
+    A LIST THIS MACHINE CANNOT FULLY READ IS SKIPPED, NOT FATAL.  The three
+    console lists are the kernel repository's, drawn in through console-both's
+    `include', and a kernel release does not ship dist/lists at all -- so on a
+    release-shaped machine that walk cannot even be attempted.  No entry any
+    userland list places a hard link to lives in a console list (none names a
+    console driver's path), so skipping one this machine cannot resolve costs
+    nothing an owner lookup here would ever have found, and a component with no
+    console driver in its lineage -- editors among them -- must not refuse over
+    a list it never needed.
     """
     global _PLACED
     if _PLACED is None:
         _PLACED = {}
         for rel in listnames():
             ents = []
-            read_list(rel, set(), ents)
+            try:
+                read_list(rel, set(), ents)
+            except SystemExit:
+                continue
             for e in ents:
                 if e.type != 'l':
                     _PLACED.setdefault(e.dest, set()).add(
