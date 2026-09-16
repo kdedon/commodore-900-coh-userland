@@ -1,7 +1,9 @@
 # mkfs.cmd -- does a filesystem MADE BY mkfs(1M) check clean, mount READ/WRITE
 # and round-trip files byte for byte?
 #
-#	EMUWAIT=900 hostbuild/emu-run.sh tests/cmd/mkfs.cmd coherent3-full-test
+#	dd if=/dev/zero of=${TMPDIR:-/tmp}/mkfs-fd.img bs=512 count=2392 &&
+#	FLOPPY=${TMPDIR:-/tmp}/mkfs-fd.img EMUWAIT=900 \
+#	    hostbuild/emu-run.sh test/cmd/mkfs.cmd coherent3-full-test
 #
 # WHY THIS EXISTS.  mkfs is the only program that writes a filesystem from
 # nothing, and a filesystem that is subtly wrong -- one block missing from the
@@ -11,12 +13,39 @@
 # free list and the i-list, and the mount/write/umount/remount/cmp cycle makes
 # the kernel allocate out of the free list mkfs built and hand the bytes back.
 #
-# WHICH DEVICE, and why it is safe.  /dev/hd3 is the /tmp partition (2903
-# blocks).  /etc/rc has not run in single user, so nothing is mounted on it and
-# nothing on the running system reads it; case 15 makes it afresh, so it is
-# left with an empty clean filesystem either way.  The root (/dev/hd4) and /usr
-# (/dev/hd6) are never touched.  emu-run.sh works on a COPY of the image in any
-# case, so even that is confined to the copy.
+# WHICH DEVICE, and why it is safe.  THE GUEST COMES UP MULTI-USER: emu-run.sh
+# boots to a login prompt and logs in as root, so /etc/rc has already run, and
+# /etc/rc mounts every filesystem the media declares --
+#
+#	/etc/mount /dev/hd4 / -u
+#	/etc/mount /dev/hd3 /tmp
+#	/etc/mount /dev/hd6 /usr
+#	/etc/mount /dev/hd2 /usr/man -r
+#
+# -- while rc.net and rc.local go on writing their logs into /tmp.  There is no
+# spare partition to make a filesystem in.  media/hd42-coh.media, which
+# coherent3-full-test rides, declares five slots and four filesystems: hd0
+# (boot), hd4 (/), hd2 (/usr/man), hd3 (/tmp, plus the swap extent at
+# 9001..13097 in the same slot) and hd6 (/usr).  hd1 is NOT declared on this
+# media -- its blocks 13736..23807 are the unallocated hole -- and an undeclared
+# slot is all-zero in the partition table kboot hands the kernel, so the driver
+# refuses every block through /dev/hd1.  Every partition that exists is either
+# mounted or is swap.
+#
+# So the medium is one the RUN ATTACHES: a 2392-block floppy image handed to
+# the emulator with FLOPPY=, reachable in the guest as /dev/fd1 (the route
+# os/tests/fdmount uses in the distribution repository).  /etc/rc never mounts
+# it -- case 0 prints the mount table to show that -- and no hard-disk
+# partition is written at any point here.  2392 is fixed by NFBLK in wd(4) and
+# FLOPPY_BLOCKS in the emulator, so that is the only size to make.
+#
+# THE MEDIUM MUST BE BLANK, which is what the `dd' above is for, and case 0
+# proves it: the twelve bytes at offset 996 -- the volume and pack names in the
+# super block -- must read as NULs BEFORE mkfs runs and as `gt'/`pk' after it in
+# case 12.  A medium carrying a filesystem already would let every mount below
+# pass without mkfs having written anything.  emu-run.sh does NOT copy the
+# floppy (it copies only the disk), so the bytes mkfs wrote are in that file
+# afterwards and the emulator's tools/disk.py --read returns them.
 #
 # WHAT A PASS LOOKS LIKE.  Twenty `== STATUS-<n> 0' lines, all zero -- a
 # nonzero status or a missing STATUS line is a failure.  Count them at the
@@ -27,9 +56,13 @@
 #     accompanied by `missing =', `dups in free', `Bad ifree list', `Free
 #     list/tfree counts differ' or `Bad freelist'.  Those lines are the
 #     free-list defects this gate is for, and icheck prints them while still
-#     printing `/dev/hd3:' and exiting -- so read the lines, not just the
+#     printing `/dev/fd1:' and exiting -- so read the lines, not just the
 #     status.  `free = <n>' and `bad=0' from icheck -v are the evidence the
-#     walk happened rather than the program bailing out early.
+#     walk happened rather than the program bailing out early.  The filesystem
+#     is never mounted when a checker walks it: a checker run against a MOUNTED
+#     filesystem reports blocks missing from the free list because the kernel
+#     has allocated them since, which is a property of the mount and not of
+#     mkfs (R7-123).
 #   * STATUS-7 is a write into the freshly mounted filesystem, and case 6 must
 #     NOT have printed `not cleanly unmounted, mounting read only'.  A freshly
 #     made filesystem is FSCLEAN, and mount(2) forces one that is not read only
@@ -39,7 +72,7 @@
 #     identical, so its STATUS line is what says it compared them at all.
 #     /coherent is 208 blocks -- more than the 10 direct addresses and more
 #     than one indirect block holds -- so that copy reaches the double
-#     indirect.
+#     indirect, and it fits a 2392-block volume with room to spare.
 #
 # CASE 13 IS THE NEGATIVE CONTROL AND IT MUST GO RED BY DESIGN.  It writes a
 # nonzero byte over s_dirty in the super block (block 1, offset 466: the field
@@ -74,25 +107,30 @@
 # Case 1 makes a filesystem in a REGULAR FILE.  Beyond its status it asserts
 # nothing here: it exists so the host can read /diff.fs back out with fsread.py
 # and compare it against one made by another mkfs under the same arguments.
+echo == 0 the mount table, and the medium this run writes
+/etc/mount
+df
+echo == 0 the attached medium is blank -- these twelve bytes are the volume and pack names
+dd if=/dev/fd1 bs=1 skip=996 count=12 | od -c
 echo == 1 mkfs into a regular file, for the host-side differential
 > /diff.fs
 /etc/mkfs /diff.fs 400
 echo == STATUS-1 $?
 ls -l /diff.fs
-echo == 2 mkfs the spare partition /dev/hd3, 2903 blocks
-/etc/mkfs /dev/hd3 2903
+echo == 2 mkfs the attached medium /dev/fd1, 2392 blocks
+/etc/mkfs /dev/fd1 2392
 echo == STATUS-2 $?
 echo == 3 icheck the fresh filesystem -- the free-list assertion
-/bin/icheck -v /dev/hd3
+/bin/icheck -v /dev/fd1
 echo == STATUS-3 $?
 echo == 4 dcheck the fresh filesystem
-/bin/dcheck /dev/hd3
+/bin/dcheck /dev/fd1
 echo == STATUS-4 $?
 echo == 5 check, which runs both
-/bin/check /dev/hd3
+/bin/check /dev/fd1
 echo == STATUS-5 $?
 echo == 6 mount it -- no read-only message here
-/etc/mount /dev/hd3 /mnt
+/etc/mount /dev/fd1 /mnt
 echo == STATUS-6 $?
 ls -la /mnt
 echo == 7 it must be READ/WRITE
@@ -106,10 +144,10 @@ echo == STATUS-8 $?
 cp /coherent /mnt/big
 echo == STATUS-9 $?
 sum /mnt/big
-/etc/umount /dev/hd3
+/etc/umount /dev/fd1
 echo == STATUS-10 $?
 echo == 9 remount and compare byte for byte
-/etc/mount /dev/hd3 /mnt
+/etc/mount /dev/fd1 /mnt
 echo == STATUS-11 $?
 ls -l /mnt
 cmp /mnt/rc /etc/rc
@@ -120,38 +158,40 @@ cat /mnt/w
 sum /mnt/big
 sum /coherent
 echo == 10 the populated filesystem must still check clean
-/etc/umount /dev/hd3
+/etc/umount /dev/fd1
 echo == STATUS-14 $?
-/bin/icheck -v /dev/hd3
-/bin/dcheck /dev/hd3
+/bin/icheck -v /dev/fd1
+/bin/dcheck /dev/fd1
 echo == 11 the PROTO FILE form, which is how the installer calls mkfs
 echo /dev/null gt pk > /proto
-echo 2903 400 >> /proto
+echo 2392 400 >> /proto
 echo d--755 0 1 >> /proto
 echo '$' >> /proto
 cat /proto
-/etc/mkfs /dev/hd3 /proto
+/etc/mkfs /dev/fd1 /proto
 echo == STATUS-15 $?
-/bin/icheck -v /dev/hd3
+/bin/icheck -v /dev/fd1
 echo == STATUS-16 $?
-/bin/dcheck /dev/hd3
+/bin/dcheck /dev/fd1
 echo == STATUS-17 $?
 echo == 12 the volume name and pack name it wrote -- 'gt' and 'pk', nothing else
-dd if=/dev/hd3 bs=1 skip=996 count=12 | od -c
+dd if=/dev/fd1 bs=1 skip=996 count=12 | od -c
 echo == 13 NEGATIVE CONTROL: dirty the super block, mount must go read only
-echo x | dd of=/dev/hd3 bs=1 seek=978 count=1
+echo x | dd of=/dev/fd1 bs=1 seek=978 count=1
 echo == STATUS-18 $?
-/etc/mount /dev/hd3 /mnt
+/etc/mount /dev/fd1 /mnt
 echo dirty-write-attempt > /mnt/ro
 ls -l /mnt/ro
-/etc/umount /dev/hd3
+/etc/umount /dev/fd1
 echo == 14 the -f and -p options must reach the super block
-/etc/mkfs -f vol -p pak /dev/hd3 2903
+/etc/mkfs -f vol -p pak /dev/fd1 2392
 echo == STATUS-19 $?
-dd if=/dev/hd3 bs=1 skip=996 count=12 | od -c
-/bin/icheck -v /dev/hd3
+dd if=/dev/fd1 bs=1 skip=996 count=12 | od -c
+/bin/icheck -v /dev/fd1
 echo == STATUS-20 $?
-echo == 15 leave /dev/hd3 with a clean empty filesystem
-/etc/mkfs /dev/hd3 2903
-/bin/icheck /dev/hd3
+echo == 15 leave the medium with a clean empty filesystem
+/etc/mkfs /dev/fd1 2392
+/bin/icheck /dev/fd1
+echo == 16 the mount table again -- nothing here was ever mounted by /etc/rc
+/etc/mount
 echo == ALLDONE
