@@ -83,11 +83,17 @@ def main():
     # ------------------------------------- root still reaches every node
     # None of this depends on either mutation: these are the tools the policy
     # costs nothing, and they are run rather than asserted.
+    # The checkers walk /dev/rhd2 (/usr/man, mounted read-only), not /dev/rhd3:
+    # rc mounts hd3 read/write on /tmp and logs into it, so a checker reading
+    # its raw device reports the inconsistency of a live filesystem -- exit 8
+    # from icheck and dcheck -- which says nothing about privilege.
+    # cmds-nodes.in carries the whole account.
     for tag, what in (
-            ('check',  'check(1) reads /dev/rhd3 as root'),
-            ('icheck', 'icheck(1) reads /dev/rhd3 as root'),
-            ('dcheck', 'dcheck(1) reads /dev/rhd3 as root'),
-            ('ncheck', 'ncheck(1) reads /dev/rhd3 as root'),
+            ('check',  'check(1) reads /dev/rhd2 as root'),
+            ('icheck', 'icheck(1) reads /dev/rhd2 as root'),
+            ('dcheck', 'dcheck(1) reads /dev/rhd2 as root'),
+            ('ncheck', 'ncheck(1) reads /dev/rhd2 as root'),
+            ('rootraw3', 'dd(1) reads a block off /dev/rhd3 as root'),
             ('rootdf', 'df(1) opens the mounted device as root'),
             ('rootraw', 'dd(1) reads the /etc/passwd block off /dev/rhd4 as root'),
             ('rootwrite', 'the raw device is readable AND writable to root, '

@@ -7,10 +7,10 @@
 # system used to make.
 #
 # Everything an ordinary user does here goes through `su guest': su(1) run by
-# root needs no password and setuid()s BOTH ids down (cmd/su.c).  /usr is
-# mounted by hand because rc has not run and guest's home is there.  /tmp is not
-# mounted; the /tmp DIRECTORY on the root filesystem is 777, which is where the
-# guest writes.
+# root needs no password and setuid()s BOTH ids down (cmd/su.c).  The guest
+# comes up MULTI-USER, so /etc/rc has already run every mount the media
+# declares -- / on hd4, /tmp on hd3, /usr on hd6, /usr/man on hd2 read-only --
+# and the mount below only covers the case where it has not.
 # The distribution ships no `dump' node -- run.sh's own table says why -- so
 # naming one here makes ls(1) exit 1 and the set-up step, which is what the
 # whole half is believed on, report a failure that is about the LISTING.
@@ -23,12 +23,29 @@
 /bin/test -d /usr/spool/uucp; echo PRIV mount rc=$?
 # --- root still reaches every node the policy shut ------------------------
 # The filesystem tools all open the raw device, and all of them run as root.
-# /dev/rhd3 is the /tmp partition: the smallest filesystem on the disc and the
-# one holding nothing the rest of this run depends on.
-/bin/check /dev/rhd3; echo PRIV check rc=$?
-/bin/icheck /dev/rhd3; echo PRIV icheck rc=$?
-/bin/dcheck /dev/rhd3; echo PRIV dcheck rc=$?
-/bin/ncheck /dev/rhd3 >/dev/null; echo PRIV ncheck rc=$?
+# THE FILESYSTEM THEY WALK HAS TO BE QUIESCENT, because that is the only state
+# in which a verdict about it means anything.  /dev/rhd2 is /usr/man, which rc
+# mounts READ-ONLY (`/etc/mount /dev/hd2 /usr/man -r'): nothing writes it while
+# the checkers read it, so what is on the disc is what the superblock says.
+#
+# NOT /dev/rhd3, which this block used to name.  rc mounts hd3 read/write on
+# /tmp and then writes /tmp/rc.net.log and /tmp/rc.local.log into it, so under
+# a running system its raw device is inconsistent by construction: blocks are
+# allocated in core before the superblock on disc accounts for them, and inodes
+# reach the disc before the directory blocks that name them.  icheck then exits
+# IC_MISS (8) printing `missing = 16' and dcheck exits DC_CLRI (8) printing the
+# inodes with no entry -- each program answering CORRECTLY about a filesystem
+# being written underneath it.  The packed filesystem is sound (its free chain
+# walks to exactly its s_tfree), and the same four commands exit 0 on rhd2 in
+# the same run, which is what says the tools and the driver are not at fault.
+/bin/check /dev/rhd2; echo PRIV check rc=$?
+/bin/icheck /dev/rhd2; echo PRIV icheck rc=$?
+/bin/dcheck /dev/rhd2; echo PRIV dcheck rc=$?
+/bin/ncheck /dev/rhd2 >/dev/null; echo PRIV ncheck rc=$?
+# Root's REACH to the shut node is the claim this half makes about /dev/rhd3,
+# and it is measured directly: one block off the raw device, no verdict about
+# what a live filesystem's contents ought to look like.
+/bin/dd if=/dev/rhd3 bs=512 count=1 of=/dev/null; echo PRIV rootraw3 rc=$?
 /bin/df /; echo PRIV rootdf rc=$?
 # The one open that IS the attack, made by the user entitled to make it.
 /bin/dd if=/dev/rhd4 bs=512 skip=@PWBLK@ count=1 of=/dev/null; echo PRIV rootraw rc=$?
