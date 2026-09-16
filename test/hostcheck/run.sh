@@ -494,58 +494,15 @@ MUTATE=noso  want 1 "lr's so/se removed from the termcap entry"	sh ../moreterm/r
 fi
 
 # --------------------------------------------------------------------------
-# buildenv -- make(1) compiling and linking ON THE TARGET, from a compiler
-# environment mapped in from the host.  Its own run.sh carries the negative
-# control: phase 5 replays the identical run with no medium attached and
-# requires every claim to fail.  A guest boot either way, so this is skipped
-# rather than failed when the compiler environment or the dist image is not built.
+# buildenv and selfhost are NOT here.  Both boot a packed image, which is the
+# distribution repository's product and exists only once that repository has
+# run, so both are dist integration tests and live there now, as
+# os/tests/buildenv and os/tests/selfhost.  Each still carries the negative
+# control it carried here -- buildenv's phase 5 replays the identical run with
+# no medium attached, selfhost's phase 3 the identical commands on a dist that
+# ships no compiler -- and each is run from that repository, against the image
+# that repository packed.
 # --------------------------------------------------------------------------
-if sel buildenv; then
-echo "buildenv (make(1) compiling and linking on target, from a host-mapped compiler environment)"
-sh ../buildenv/run.sh > "$LOG" 2>&1
-rc=$?
-case $rc in
-0) echo "  ok   the guest built and ran a program from a mapped environment, and"
-   echo "       the same claims fail with no medium attached (../buildenv/run.sh"
-   echo "       phase 5)"
-   PASSED=$((PASSED + 1)); RAN="$RAN buildenv"; DISCRIM="$DISCRIM buildenv" ;;
-2) echo "  --   skipped: $(grep -m1 . "$LOG")"
-   echo "       Without it this probe is UNPROVEN, not passing -- and it is"
-   echo "       counted that way below, in PROVES NOTHING."
-   RAN="$RAN buildenv" ;;
-*) echo "  FAIL buildenv: see \`sh ../buildenv/run.sh'"
-   sed 's/^/       | /' "$LOG" | tail -15
-   why "buildenv: sh ../buildenv/run.sh (rc $rc)"
-   BAD=$((BAD + 1)) ;;
-esac
-fi
-
-# --------------------------------------------------------------------------
-# selfhost -- cc compiling and linking on the target from the compiler THE
-# IMAGE SHIPS, with nothing mapped in from the host.  Its own run.sh carries
-# the negative control: phase 3 replays the identical commands on coherent3-full-test
-# -- same media, same userland, no lists/toolchain.list -- and requires every
-# claim to fail.
-# --------------------------------------------------------------------------
-if sel selfhost; then
-echo "selfhost (cc compiling and linking on target, from the compiler the dist ships)"
-sh ../selfhost/run.sh > "$LOG" 2>&1
-rc=$?
-case $rc in
-0) echo "  ok   the machine compiled and linked with its own installed compiler,"
-   echo "       and the same claims fail on a dist that ships none"
-   echo "       (../selfhost/run.sh phase 3)"
-   PASSED=$((PASSED + 1)); RAN="$RAN selfhost"; DISCRIM="$DISCRIM selfhost" ;;
-2) echo "  --   skipped: $(grep -m1 . "$LOG")"
-   echo "       Without it this probe is UNPROVEN, not passing -- and it is"
-   echo "       counted that way below, in PROVES NOTHING."
-   RAN="$RAN selfhost" ;;
-*) echo "  FAIL selfhost: see \`sh ../selfhost/run.sh'"
-   sed 's/^/       | /' "$LOG" | tail -15
-   why "selfhost: sh ../selfhost/run.sh (rc $rc)"
-   BAD=$((BAD + 1)) ;;
-esac
-fi
 
 # --------------------------------------------------------------------------
 # Coverage.  Every directory in test must be either in the matrix above or
@@ -606,26 +563,16 @@ serialbytes:the guest half of a host-driven check.  Its exit status is a byte
 serialbytes:  COUNT; whether the values survived is decided by the host half
 serialbytes:  on the other end of the line, which is where that mutation
 serialbytes:  belongs.
-hostfs:the host-directory pass-through, whose subject is a MEDIUM the guest
-hostfs:  mounts -- there is no userland call for kshim.c to stand in for, and
-hostfs:  a host build cannot be given the defect (serving the guest's own disk
-hostfs:  instead of the host's).  It carries its own discrimination instead:
-hostfs:  run.sh phase 5 replays the identical run with no medium attached and
-hostfs:  requires every assertion to fail.  It costs two emulator boots, so it
-hostfs:  is not run from here.
-duallayout:two systems on one disk, each handed its own wd(4) table.  The
-duallayout:  subject is the IMAGE GENERATOR and the loader's config, neither of
-duallayout:  which kshim.c sits between.  It carries its own gate instead --
-duallayout:  \`sh run.sh gate' mutates copies of mkimage.py, dist.py and the media
-duallayout:  descriptor and requires each check to refuse what it claims to; that
-duallayout:  half needs no emulator, but the boots after it do, so it is not
-duallayout:  driven from here.
 loadavg:moved wholesale to commodore-900-coh-kernel3 in the 2026-08-09 split
 loadavg:  What is left in this tree is an untracked, pre-split build artifact
 loadavg:  -- a stray binary, no source -- not something this repository builds.
-rawalign:the same move, on the same terms: source and harness are in
-rawalign:  commodore-900-coh-kernel3 now, and this directory holds only a
-rawalign:  leftover binary and a stray __pycache__.
+rawalign:the same move, on the same terms: the probe and its harness are in
+rawalign:  commodore-900-coh-kernel3 now.  What is left here is TRACKED and is
+rawalign:  not a leftover: inject.py, which places a program into a packed image
+rawalign:  without a directory edit.  The distribution repository's
+rawalign:  os/tests/privsep reaches for it through its \`userland' edge, so this
+rawalign:  tree is where it is published from.  It is a tool, not a probe --
+rawalign:  there is no run of its own to mutate.
 privsep:phase 0 checks exactly what the device-node/setuid-bit lane
 privsep:  currently live in this repository is still changing (the packed
 privsep:  image right now answers /dev/hd*, rhd*, kmem, mem and swap at 666
