@@ -563,16 +563,15 @@ serialbytes:the guest half of a host-driven check.  Its exit status is a byte
 serialbytes:  COUNT; whether the values survived is decided by the host half
 serialbytes:  on the other end of the line, which is where that mutation
 serialbytes:  belongs.
-loadavg:moved wholesale to commodore-900-coh-kernel3 in the 2026-08-09 split
-loadavg:  What is left in this tree is an untracked, pre-split build artifact
-loadavg:  -- a stray binary, no source -- not something this repository builds.
-rawalign:the same move, on the same terms: the probe and its harness are in
-rawalign:  commodore-900-coh-kernel3 now.  What is left here is TRACKED and is
-rawalign:  not a leftover: inject.py, which places a program into a packed image
-rawalign:  without a directory edit.  The distribution repository's
-rawalign:  os/tests/privsep reaches for it through its \`userland' edge, so this
-rawalign:  tree is where it is published from.  It is a tool, not a probe --
-rawalign:  there is no run of its own to mutate.
+loadavg:the probe and its harness are in commodore-900-coh-kernel3.  What is
+loadavg:  left in this tree is an untracked build artifact -- a stray binary,
+loadavg:  no source -- not something this repository builds.
+rawalign:the probe and its harness are in commodore-900-coh-kernel3, on the
+rawalign:  same terms as loadavg.  What is left here is TRACKED and is not a
+rawalign:  leftover: inject.py, which places a program into a packed image
+rawalign:  without a directory edit.  Its one consumer is test/privsep, in
+rawalign:  this tree beside it; no other repository reaches for it.  It is a
+rawalign:  tool, not a probe -- there is no run of its own to mutate.
 privsep:the privilege pass boots a PACKED image, five halves of it and a
 privsep:  guest boot for each, so kshim.c sits between it and nothing and a
 privsep:  host mutation case cannot reach what it measures.  It carries its
@@ -580,16 +579,11 @@ privsep:  own gate instead: \`sh run.sh gate' runs the clean half against the
 privsep:  system as committed and the mutant half with the four setuid bits
 privsep:  taken off, and requires the second to break what the first proved.
 privsep:  Its privids phases use test/rawalign/inject.py, which is TRACKED in
-privsep:  this tree beside it -- not, as this note used to say, in another
-privsep:  repository.  Phase 0's modes are no longer in flux either: the
-privsep:  packed image answers ps and top setuid root and /dev/hd*, rhd*,
-privsep:  mem, kmem and swap at 600.
+privsep:  this tree beside it.  Phase 0's modes: the packed image answers ps
+privsep:  and top setuid root and /dev/hd*, rhd*, mem, kmem and swap at 600.
 privsep:  The \`nodes' and \`nodemutant' halves name only programs the
 privsep:  delivered images install: ps and top, the two setuid-root namelist
 privsep:  readers, and ps -k for the escalation a setuid bit must not buy.
-privsep:  They used to run /usr/mgr/bin/mgrload, which only
-privsep:  lists/mgr-clients.list names and which no dist includes, so they
-privsep:  could not pass from any repository.
 vprintf:the subject is the target's own va_list walk, against a 32-bit long
 vprintf:  and a far pointer, on the Z8001 -- the same terms as ptraudit, and
 vprintf:  no host stand-in can hold that defect either.  It was run once by
