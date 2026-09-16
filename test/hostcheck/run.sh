@@ -573,14 +573,26 @@ rawalign:  without a directory edit.  The distribution repository's
 rawalign:  os/tests/privsep reaches for it through its \`userland' edge, so this
 rawalign:  tree is where it is published from.  It is a tool, not a probe --
 rawalign:  there is no run of its own to mutate.
-privsep:phase 0 checks exactly what the device-node/setuid-bit lane
-privsep:  currently live in this repository is still changing (the packed
-privsep:  image right now answers /dev/hd*, rhd*, kmem, mem and swap at 666
-privsep:  and ps/top with no setuid bit -- see phase 0's own output).  Wiring
-privsep:  it in here would fail hostcheck on someone else's unfinished work.
-privsep:  Its privids phases need tests/rawalign/inject.py, which is in a
-privsep:  separate repository.  Left alone for now, the same way mouse and
-privsep:  ichan are.
+privsep:the privilege pass boots a PACKED image, five halves of it and a
+privsep:  guest boot for each, so kshim.c sits between it and nothing and a
+privsep:  host mutation case cannot reach what it measures.  It carries its
+privsep:  own gate instead: \`sh run.sh gate' runs the clean half against the
+privsep:  system as committed and the mutant half with the four setuid bits
+privsep:  taken off, and requires the second to break what the first proved.
+privsep:  Its privids phases use test/rawalign/inject.py, which is TRACKED in
+privsep:  this tree beside it -- not, as this note used to say, in another
+privsep:  repository.  Phase 0's modes are no longer in flux either: the
+privsep:  packed image answers ps and top setuid root and /dev/hd*, rhd*,
+privsep:  mem, kmem and swap at 600.
+privsep:  It stays HERE while the other image-booting harnesses moved to the
+privsep:  distribution repository, because it does not pass from there -- or
+privsep:  from here: the \`nodes' and \`nodemutant' halves fail against every
+privsep:  dist packed today.  Both run /usr/mgr/bin/mgrload, which only
+privsep:  lists/mgr-clients.list names and which no dist includes (the
+privsep:  graphical ones take lists/hr-clients.list), so phase 0 reports it
+privsep:  absent and tolerates that while cmds-nodes.in cannot.  The failure
+privsep:  is identical from either repository, which is why it is not run
+privsep:  from here.
 vprintf:the subject is the target's own va_list walk, against a 32-bit long
 vprintf:  and a far pointer, on the Z8001 -- the same terms as ptraudit, and
 vprintf:  no host stand-in can hold that defect either.  It was run once by
