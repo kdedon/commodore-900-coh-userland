@@ -24,9 +24,14 @@ mkdir -p "$BIN"
 # leaves behind.  $LOGD names them; the FAIL lines quote the path.
 LOGD="$HERE/logs"; mkdir -p "$LOGD"
 
-if CCZ_VAR=800000020800 "$CCZ" -s -i $INC -o "$BIN/.patch.new" \
-	"$SRC/patch.c" "$SRC/pch.c" "$SRC/inp.c" "$SRC/util.c" "$SRC/version.c" \
-	$GLIB >"$LOGD"/patch-build.log 2>&1
+# Compiled from the repository root with repository-relative source paths:
+# patch.c and pch.c assert(), and <assert.h> puts __FILE__ in the binary.  See
+# c900_rel in toolchain.sh.
+if ( cd "$COHERENT_OS" && CCZ_VAR=800000020800 "$CCZ" -s -i $INC \
+	-o "$BIN/.patch.new" \
+	$(c900_rel "$SRC/patch.c" "$SRC/pch.c" "$SRC/inp.c" "$SRC/util.c" \
+		   "$SRC/version.c") \
+	$GLIB ) >"$LOGD"/patch-build.log 2>&1
 then
 	mv -f "$BIN/.patch.new" "$BIN/patch"
 	echo "  patch: OK ($(wc -c < "$BIN/patch") B)"

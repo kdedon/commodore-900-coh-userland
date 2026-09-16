@@ -68,10 +68,14 @@ INC="-I $T -I $BC -I $OS/include -I $OS/include/sys -DCOHERENT"
 # number reader, with none of the grammar or the interpreter.
 DCBC="$BC/bcmch.c $BC/bcmutil.c $BC/getnum.c $BC/globals.c $BC/output.c $BC/putnum.c"
 
+# Compiled from the repository root with repository-relative source paths: the
+# multi-precision library and bc's own files assert(), and <assert.h> puts
+# __FILE__ in the binary.  The generated parser in $T is outside the tree and
+# keeps its own path, which no assert reaches.  See c900_rel in toolchain.sh.
 link_one() {	# link_one <outname> <src...>
 	lname="$1"; shift
-	if CCZ_VAR=800000020800 "$CCZ" -s -i -L $INC \
-	   -o "$BIN/.$lname.new" "$@" >>"$LOG" 2>&1; then
+	if ( cd "$COHERENT_OS" && CCZ_VAR=800000020800 "$CCZ" -s -i -L $INC \
+	   -o "$BIN/.$lname.new" $(c900_rel "$@") ) >>"$LOG" 2>&1; then
 		return 0
 	fi
 	rm -f "$BIN/.$lname.new"

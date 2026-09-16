@@ -38,7 +38,11 @@ build() {
 	incs=""
 	while [ "$1" != "--" ]; do incs="$incs $1"; shift; done
 	shift
-	if CCZ_VAR=800000020800 "$CCZ" -s -i $INC $incs -o "$BIN/.$name.new" "$@" $GLIB >"$LOGD"/ex-$name.log 2>&1; then
+	# Compiled from the repository root with repository-relative source
+	# paths: unmkfs.c asserts, and <assert.h> puts __FILE__ in the binary.
+	# See c900_rel in toolchain.sh.
+	if ( cd "$COHERENT_OS" && CCZ_VAR=800000020800 "$CCZ" -s -i $INC $incs \
+	     -o "$BIN/.$name.new" $(c900_rel "$@") $GLIB ) >"$LOGD"/ex-$name.log 2>&1; then
 		mv -f "$BIN/.$name.new" "$BIN/$name"
 		ok=$((ok+1)); echo "  $name: OK ($(wc -c < "$BIN/$name") B)"
 	else

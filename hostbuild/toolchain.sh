@@ -179,6 +179,32 @@ fi
 # is not.  Depth is never more than three, so this cannot grow without bound.
 C900_BUILD_RECIPE="${C900_BUILD_RECIPE:+$C900_BUILD_RECIPE }$0"
 export C900_BUILD_RECIPE
+# c900_rel <path...> -- print each path relative to the repository root, one per
+# line, leaving anything outside the tree (a generated parser in a temporary
+# directory) alone.
+#
+# A source path reaches the BINARY: <assert.h> expands assert(p) with __FILE__,
+# so the spelling the compiler was handed is a string in every program that
+# asserts.  Handed "$OS/base/cmd/unmkfs.c", that string is the checkout's
+# absolute path, and the published bytes then depend on WHERE the tree was
+# built -- two clean builds of one commit in two directories differ, and a
+# release cut by CI can never match one cut locally.  Handed
+# "base/cmd/unmkfs.c" from a compiler run in the root, the string is the path
+# within the repository, which is a function of the source alone.
+#
+# The caller runs the compiler from $COHERENT_OS for this reason; -I and -o
+# arguments stay absolute, since neither reaches the output.
+c900_rel() {
+	_c9n=$#
+	while [ "$_c9n" -gt 0 ]; do
+		_c9a="$1"; shift; _c9n=$((_c9n - 1))
+		case "$_c9a" in
+		"$OS"/*)		_c9a="${_c9a#"$OS"/}";;
+		"$COHERENT_OS"/*)	_c9a="${_c9a#"$COHERENT_OS"/}";;
+		esac
+		printf '%s\n' "$_c9a"
+	done
+}
 export TCID
 export C900_TOOLCHAIN COHERENT_OS C900_TC_SHAPE C900_TC_REPORTED C900_TC_BUILD
 export TCSYSINC

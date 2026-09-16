@@ -96,8 +96,12 @@ for f in "$@"; do
 		fi
 		IORD="$IORD -I $KINC -I $KINC/sys";;
 	esac
-	if "$CCZ" -s -i $IORD \
-	          -o "$BIN/.$b.new" "$f" $XLIB >>"$LOG" 2>&1; then
+	# Compiled from the repository root with a repository-relative source
+	# path: a command that asserts gets __FILE__ in its binary, and an
+	# absolute one there makes the published bytes depend on where the tree
+	# was built.  See c900_rel in toolchain.sh.
+	if ( cd "$COHERENT_OS" && "$CCZ" -s -i $IORD \
+	          -o "$BIN/.$b.new" $(c900_rel "$f") $XLIB ) >>"$LOG" 2>&1; then
 		mv -f "$BIN/.$b.new" "$BIN/$b"
 		ok=$((ok+1))
 	else

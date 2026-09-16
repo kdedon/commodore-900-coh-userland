@@ -136,10 +136,13 @@ reason() {	# reason <log>
 # last binary that worked -- telnet and clear both had to be recovered out of an
 # old disk image.  What stops a stale binary shipping is this script's non-zero
 # exit status, which build-all-userland.sh carries into `make userland'.
+# Compiled from the repository root with repository-relative source paths:
+# cmd/yacc and cmd/knapsack assert(), and <assert.h> puts __FILE__ in the
+# binary.  See c900_rel in toolchain.sh.
 link_one() {	# link_one <outname> <log> <src...>
 	lname="$1"; llog="$2"; shift 2
-	if CCZ_VAR=800000020800 "$CCZ" -s -i -L $INC -o "$BIN/.$lname.new" \
-	   "$@" $GLIB >"$llog" 2>&1; then
+	if ( cd "$COHERENT_OS" && CCZ_VAR=800000020800 "$CCZ" -s -i -L $INC \
+	   -o "$BIN/.$lname.new" $(c900_rel "$@") $GLIB ) >"$llog" 2>&1; then
 		mv -f "$BIN/.$lname.new" "$BIN/$lname"
 		return 0
 	fi
