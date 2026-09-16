@@ -312,6 +312,9 @@ endif
 #
 # Archives go to PKGOUT; licence texts go to B/licences.
 # The formats are declared in dist/packages/component-*.pkg.
+# Each cut starts from an empty PKGOUT: pack-component.sh only ever adds
+# archives there, so one left from an earlier or dirty build would sit beside
+# the new cut and be just as collectible.
 PKGOUT ?= $(B)/packages
 COMPONENT = $(PYTHON) $(OS)/hostbuild/component.py
 
@@ -324,7 +327,7 @@ package:
 # A refusal is a component that publishes nothing, so the sweep fails on one:
 # an install set short of a component is not an install set.
 packages:
-	@mkdir -p $(PKGOUT); ok=0; skip=0; \
+	@rm -rf $(PKGOUT); mkdir -p $(PKGOUT); ok=0; skip=0; \
 	$(COMPONENT) components | awk '$$2 ~ /^bin/ {print $$1, $$2}' | \
 	while read -r n kinds; do \
 		for k in $$(echo "$$kinds" | tr ',' ' '); do \
