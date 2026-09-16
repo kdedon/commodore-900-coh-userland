@@ -584,15 +584,12 @@ privsep:  this tree beside it -- not, as this note used to say, in another
 privsep:  repository.  Phase 0's modes are no longer in flux either: the
 privsep:  packed image answers ps and top setuid root and /dev/hd*, rhd*,
 privsep:  mem, kmem and swap at 600.
-privsep:  It stays HERE while the other image-booting harnesses moved to the
-privsep:  distribution repository, because it does not pass from there -- or
-privsep:  from here: the \`nodes' and \`nodemutant' halves fail against every
-privsep:  dist packed today.  Both run /usr/mgr/bin/mgrload, which only
-privsep:  lists/mgr-clients.list names and which no dist includes (the
-privsep:  graphical ones take lists/hr-clients.list), so phase 0 reports it
-privsep:  absent and tolerates that while cmds-nodes.in cannot.  The failure
-privsep:  is identical from either repository, which is why it is not run
-privsep:  from here.
+privsep:  The \`nodes' and \`nodemutant' halves name only programs the
+privsep:  delivered images install: ps and top, the two setuid-root namelist
+privsep:  readers, and ps -k for the escalation a setuid bit must not buy.
+privsep:  They used to run /usr/mgr/bin/mgrload, which only
+privsep:  lists/mgr-clients.list names and which no dist includes, so they
+privsep:  could not pass from any repository.
 vprintf:the subject is the target's own va_list walk, against a 32-bit long
 vprintf:  and a far pointer, on the Z8001 -- the same terms as ptraudit, and
 vprintf:  no host stand-in can hold that defect either.  It was run once by

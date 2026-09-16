@@ -7,10 +7,17 @@ that /dev/kmem, /dev/mem, /dev/swap and every hd/rhd node is 600 root?  And is
 the raw disk really shut to that user, or does the refusal come from somewhere
 else?
 
-Both answers are worthless on their own, so the mutant run takes the setuid bit
-off ps, top and mgrload (the three must then FAIL) and afterwards puts the
+A third question is asked of the same programs in both modes: the setuid bit
+must buy the caller nothing beyond the three nodes ps and top open for
+themselves, so ps(1) -k -- which lets the caller name the memory file -- must
+refuse the guest /dev/mem and /dev/rhd4 while ps is still setuid, because
+cmd/ps.c drops the privilege before its first open as soon as a file is named.
+
+The first two answers are worthless on their own, so the mutant run takes the
+setuid bit off ps and top (both must then FAIL) and afterwards puts the
 nodes back to 666 (the guest must then read /etc/passwd off /dev/rhd4 and open
-it for writing).  Every check below says which mode expects which answer, and
+it for writing, and the named-file read that was refused must now succeed).
+Every check below says which mode expects which answer, and
 the ones that expect the same answer in both modes are the ones neither
 mutation touches -- they are controls, and saying so is the point.
 
@@ -91,7 +98,7 @@ def main():
     # 600 nodes plus the setuid bit must leave an ordinary user exactly as
     # informed as before; without the bit all three must stop dead, and the
     # message has to be the one about the node, not some later failure.
-    psb, topb, mlb = block(text, 'ps'), block(text, 'top'), block(text, 'mgrload')
+    psb, topb = block(text, 'ps'), block(text, 'top')
     if not mutant:
         if want(rcs, 'ps', True, 'ps(1) as guest'):
             rows = [l for l in psb.splitlines()
@@ -105,28 +112,37 @@ def main():
                 ok("top printed its process and memory summaries as guest")
             else:
                 fail("top exited 0 as guest but printed no summary:\n%s" % topb)
-        # mgrload always exits 1 here: it has no window.  The question is
-        # whether it got its sample first, and the only evidence either way is
-        # its own /dev/kmem message.
-        if 'mgr terminals' not in mlb:
-            fail("mgrload did not reach its terminal check:\n%s" % mlb)
-        elif 'cannot open' in mlb:
-            fail("mgrload could not open /dev/kmem as guest -- the setuid bit "
-                 "is not doing its work:\n%s" % mlb)
-        else:
-            ok("mgrload opened /dev/kmem as guest and then refused for want of "
-               "a window, which is the only thing left to refuse it")
     else:
         want(rcs, 'ps', False, 'ps(1) as guest with the setuid bit off')
         want(rcs, 'top', False, 'top(1) as guest with the setuid bit off')
         for what, b, needle in (('ps', psb, '/dev/mem'),
-                                ('top', topb, '/dev/kmem'),
-                                ('mgrload', mlb, 'cannot open')):
+                                ('top', topb, '/dev/kmem')):
             if needle in b:
                 ok("%s named the node it could not open (%s)" % (what, needle))
             else:
                 fail("%s failed without naming a node -- a refusal for another "
                      "reason proves nothing:\n%s" % (what, b))
+
+    # ------------------------------------- what the setuid bit does NOT buy
+    # Both are run before either mutation, so ps is setuid root in both modes
+    # and both modes want the same answer: this is the escalation arm, and it
+    # is a control on the two checks above.  ps reads /dev/mem for its own
+    # purposes one line earlier; asked to read the same node FOR THE CALLER it
+    # must refuse, because naming a file makes cmd/ps.c setuid(getuid()) before
+    # the first open.  /dev/rhd4 is the same refusal aimed at the raw disk,
+    # which is the whole of the escalation: a setuid-root program that read a
+    # named file with its effective uid would hand the guest /etc/passwd.
+    for tag, b, node in (('psk', block(text, 'psk'), '/dev/mem'),
+                         ('pskraw', block(text, 'pskraw'), '/dev/rhd4')):
+        if want(rcs, tag, False,
+                "guest cannot make setuid ps(1) read %s for him (-k)" % node):
+            if 'annot open %s' % node in b:
+                ok("and ps named the file it would not open for the guest "
+                   "(%s), so the refusal is the privilege drop and not a "
+                   "rejected flag" % node)
+            else:
+                fail("ps refused -k %s without naming it -- a refusal for "
+                     "another reason proves nothing:\n%s" % (node, b))
 
     # ------------------------------------- the raw disk, kernel memory, swap
     # Before the second mutation in both runs, so both runs must refuse: this
@@ -166,6 +182,10 @@ def main():
                 fail("the read succeeded but printed no root entry:\n%s" % ex)
         want(rcs, 'wraw2', True,
              "and opens the same device for writing, which is the whole attack")
+        want(rcs, 'psk2', True,
+             "and with /dev/mem at 666 the named-file read ps refused earlier "
+             "goes through, so that refusal measured the node mode and the "
+             "privilege drop rather than ps declining the flag")
     else:
         want(rcs, 'exploit', False,
              "the exploit read is refused with the nodes as shipped")
@@ -175,6 +195,8 @@ def main():
         else:
             ok("no password entry reached the transcript from the raw device")
         want(rcs, 'wraw2', False, "and the write is refused too")
+        want(rcs, 'psk2', False,
+             "and ps -k /dev/mem is still refused with the nodes as shipped")
 
     want(rcs, 'done', True, "the script ran to the end")
     return 1 if bad else 0

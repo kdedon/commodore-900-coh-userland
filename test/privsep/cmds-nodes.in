@@ -1,6 +1,6 @@
 # tests/privsep/cmds-nodes.in -- the device half, typed at a root shell.  run.sh replaces @MUTBITS@ and @MUTNODES@: both are an echo on the real
-# system, and on the mutant run the first takes the setuid bit off ps, top and
-# mgrload and the second puts the device nodes back to 666.  They are two
+# system, and on the mutant run the first takes the setuid bit off ps and top
+# and the second puts the device nodes back to 666.  They are two
 # mutations at two points in one run because they answer two different
 # questions, and each is invisible while the other is in force -- ps at 755
 # works perfectly well against a 666 /dev/kmem, which is exactly the trade this
@@ -8,7 +8,7 @@
 #
 # Everything an ordinary user does here goes through `su guest': su(1) run by
 # root needs no password and setuid()s BOTH ids down (cmd/su.c).  /usr is
-# mounted by hand because rc has not run and mgrload lives there.  /tmp is not
+# mounted by hand because rc has not run and guest's home is there.  /tmp is not
 # mounted; the /tmp DIRECTORY on the root filesystem is 777, which is where the
 # guest writes.
 # The distribution ships no `dump' node -- run.sh's own table says why -- so
@@ -16,9 +16,9 @@
 # whole half is believed on, report a failure that is about the LISTING.
 /bin/ls -l /dev/rhd4 /dev/hd4 /dev/mem /dev/kmem /dev/swap /dev/fd1 /dev/rfd1; echo PRIV ls rc=$?
 # The guest comes up MULTI-USER, so /etc/rc has mounted /usr already and a
-# second mount of it answers "device busy".  What the check below needs is
-# that /usr IS mounted, so mount it only when it is not, and report on the
-# state rather than on the command.
+# second mount of it answers "device busy".  What the checks below need is
+# that /usr IS mounted -- guest's home directory is on it -- so mount it only
+# when it is not, and report on the state rather than on the command.
 /bin/test -d /usr/spool/uucp || /etc/mount /dev/hd6 /usr
 /bin/test -d /usr/spool/uucp; echo PRIV mount rc=$?
 # --- root still reaches every node the policy shut ------------------------
@@ -37,16 +37,27 @@
 # device, and that is the question test(1) answers directly.
 test -w /dev/rhd3 -a -r /dev/rhd3; echo PRIV rootwrite rc=$?
 @MUTBITS@
-# --- positive: the three namelist readers, run by an ordinary user --------
+# --- positive: the two namelist readers, run by an ordinary user ----------
+# ps and top are the setuid-root readers the delivered images install, and they
+# are the whole positive side: an ordinary user still sees the process table and
+# the load average through them although every node they read is 600 root.
 echo PRIV BEGIN ps
 su guest /bin/ps -ax; echo PRIV END ps rc=$?
 echo PRIV BEGIN top
 su guest /bin/top -b 1; echo PRIV END top rc=$?
-# mgrload needs a window it cannot have here, and says so and exits -- but it
-# takes its sample BEFORE it looks at the terminal, so the presence of its
-# "cannot open" line, or the absence of it, is the answer about /dev/kmem.
-echo PRIV BEGIN mgrload
-su guest /usr/mgr/bin/mgrload; echo PRIV END mgrload rc=$?
+# --- the escalation the setuid bit must NOT buy ---------------------------
+# ps(1) -k names the memory file it reads.  The bit exists for the three nodes
+# ps opens by itself, and cmd/ps.c drops the privilege BEFORE the first open as
+# soon as the caller names a file (`if (ownfile) setuid(getuid())'), so a guest
+# cannot turn ps into a reader of anything its own uid could not open.  Both
+# are run with ps STILL SETUID -- before @MUTBITS@ -- because that is the only
+# state in which the refusal says anything: the same program that reads
+# /dev/mem for its own purposes one line above must refuse to read it, and the
+# raw disk, for the caller's.
+echo PRIV BEGIN psk
+su guest /bin/ps -k /dev/mem -ax; echo PRIV END psk rc=$?
+echo PRIV BEGIN pskraw
+su guest /bin/ps -k /dev/rhd4 -ax; echo PRIV END pskraw rc=$?
 # --- negative: the raw disk, kernel memory and swap, as that same user ----
 su guest /bin/sh -c 'echo x >/dev/rhd4'; echo PRIV wrawroot rc=$?
 su guest /bin/sh -c 'echo x >/dev/hd4'; echo PRIV wblkroot rc=$?
@@ -72,4 +83,10 @@ su guest /bin/df /; echo PRIV guestdf rc=$?
 echo PRIV BEGIN exploit
 su guest /bin/sh -c 'dd if=/dev/rhd4 bs=512 skip=@PWBLK@ count=1 2>/dev/null | grep root:'; echo PRIV END exploit rc=$?
 su guest /bin/sh -c 'echo x >/dev/rhd4'; echo PRIV wraw2 rc=$?
+# The named-file read again, now that /dev/mem is 666.  It was refused above
+# with the node at 600; here the guest may open the node itself, so ps reads it
+# for him -- which is what makes the refusal above a measurement of the node
+# mode and the privilege drop rather than ps declining the flag.
+echo PRIV BEGIN psk2
+su guest /bin/ps -k /dev/mem -ax; echo PRIV END psk2 rc=$?
 echo PRIV done rc=0

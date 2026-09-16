@@ -62,12 +62,15 @@
 #
 # THE DEVICE HALF (`sh run.sh nodes', `sh run.sh nodemutant', cmds-nodes.in).
 # /dev/hd*, /dev/rhd*, /dev/swap, /dev/mem and /dev/kmem are 600
-# root, and ps, top and mgrload are setuid root because they read three of them.
-# The clean run says an ordinary user still gets a process listing, a load
-# average and no way into the raw disk; the mutant run puts the nodes back to
-# 666 -- which is what they shipped as -- and shows the guest reading the
-# /etc/passwd block straight off /dev/rhd4 and opening it for writing, i.e. the
-# hole the modes close, exercised rather than asserted.
+# root, and ps and top are setuid root because they read three of them -- the
+# two such programs the delivered images install, and the only two.  The clean
+# run says an ordinary user still gets a process listing, a load average and no
+# way into the raw disk; that the setuid bit buys him nothing beyond that, since
+# ps(1) -k, which names the memory file, drops the privilege before its first
+# open and so refuses the guest both /dev/mem and /dev/rhd4; and the mutant run
+# puts the nodes back to 666 -- which is what they shipped as -- and shows the
+# guest reading the /etc/passwd block straight off /dev/rhd4 and opening it for
+# writing, i.e. the hole the modes close, exercised rather than asserted.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 OS=$(cd "$HERE/../.." && pwd)
@@ -172,9 +175,9 @@ echo "== privsep ($MODE) on $DIST"
 # The modes, out of the packed image.  A staged tree can be right while the
 # packer writes something else, which is how the eleven wrong modes survived.
 echo "phase 0: the setuid modes and the device modes in the packed image"
-python3 - "$IMG" "$ROOTPART" "${USRPART:-}" "$FSREAD" <<'PY' || BAD=$((BAD + 1))
+python3 - "$IMG" "$ROOTPART" "$FSREAD" <<'PY' || BAD=$((BAD + 1))
 import sys
-img, part, usrpart, fsdir = sys.argv[1:5]
+img, part, fsdir = sys.argv[1:4]
 sys.path.insert(0, fsdir)
 import fsread
 
@@ -188,11 +191,11 @@ def look(f, path):
     except SystemExit:
         return None
 
-# The four the kernel forces, then the three that authenticate, then the three
-# namelist readers -- ps, top and mgrload read /dev/kmem, /dev/mem and
-# /dev/swap, which are 600 root, and are setuid root so an ordinary user can.
-# 4755 is what dist/lists/base.list states for each; anything else is the bug
-# returning.
+# The four the kernel forces, then the three that authenticate, then the two
+# namelist readers -- ps and top read /dev/kmem, /dev/mem and /dev/swap, which
+# are 600 root, and are setuid root so an ordinary user can.  4755 is what
+# dist/lists/base.list and dist/lists/runtime.list state for each; anything
+# else is the bug returning.
 for path in ('/bin/mkdir', '/bin/rmdir', '/bin/rm', '/bin/mv',
              '/bin/newgrp', '/bin/passwd', '/bin/su', '/bin/login',
              '/bin/ps', '/bin/top'):
@@ -205,19 +208,6 @@ for path in ('/bin/mkdir', '/bin/rmdir', '/bin/rm', '/bin/mv',
     else:
         print("  FAIL %-12s %o uid %d -- wanted setuid root" %
               (path, e['mode'], e['uid']))
-        bad += 1
-
-# mgrload is on /usr and only on the dists that carry the MGR clients: absent
-# is not a failure, a present one with the wrong mode is.
-if usrpart:
-    e = look(fsread.Fs(data, int(usrpart)), '/mgr/bin/mgrload')
-    if e is None:
-        print("  --   /usr/mgr/bin/mgrload not on this dist")
-    elif e['mode'] & 0o4000 and e['uid'] == 0:
-        print("  ok   %-12s %o uid %d" % ('mgrload', e['mode'], e['uid']))
-    else:
-        print("  FAIL mgrload %o uid %d -- wanted setuid root" %
-              (e['mode'], e['uid']))
         bad += 1
 
 # The device nodes, both directions: every node the policy names must have the
@@ -290,7 +280,7 @@ PY
 	# readers are measured against the nodes as shipped, and the node modes
 	# afterwards, because a 666 /dev/kmem hides everything the first one did.
 	if [ "$MODE" = nodemutant ]; then
-		MUTB='chmod 755 /bin/ps /bin/top /usr/mgr/bin/mgrload; echo PRIV mutbits rc=$?'
+		MUTB='chmod 755 /bin/ps /bin/top; echo PRIV mutbits rc=$?'
 		MUTN='chmod 666 /dev/rhd4 /dev/hd4 /dev/mem /dev/kmem /dev/swap; echo PRIV mutnodes rc=$?'
 	else
 		MUTB='echo PRIV mutbits rc=0'
@@ -355,7 +345,7 @@ else
 	fail "no transcript"; sed 's/^/       | /' "$WORK/harness"
 	echo "privsep: cannot continue"; exit 1
 fi
-grep -n '^PRIV \|^privids \|not allowed\|not a super user\|only superuser\|access list\|non-existent\|not the super-user\|cannot change group\|cannot open\|Permission\|mgr terminals' \
+grep -n '^PRIV \|^privids \|not allowed\|not a super user\|only superuser\|access list\|non-existent\|not the super-user\|cannot change group\|annot open\|Permission' \
 	"$WORK/out" | sed 's/^/       | /'
 
 # ---------------------------------------------------------------- phase 3
