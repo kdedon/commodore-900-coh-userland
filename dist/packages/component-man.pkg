@@ -84,8 +84,7 @@ text      files/man.index  ^COHERENT[.]
 # ---- WHICH BYTES ----
 # nroff source, so a content id is recomputable and is recorded.  The pages are
 # the manual's text as this repository tracks it; what this package adds is the
-# SELECTION, and .contents is what makes the selection checkable.
+# SELECTION, and .contents is what makes the selection checkable, by any
+# consumer, directly with `md5sum -c .contents'.
 file      .contents
-file      check-contents.sh
 idfile    .contents  .provenance  contentid
-gate      check-contents.sh

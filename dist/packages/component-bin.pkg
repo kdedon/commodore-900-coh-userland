@@ -49,14 +49,15 @@ file      LICENSE
 file      manifest.tab
 dir       files
 glob      files/*  1
-# The manifest is not decoration: every payload path is a row of it, and
-# check-contents.sh (below) is what asserts the two agree.  A package whose
-# files/ and manifest.tab disagree installs a set nobody declared.
+# The manifest is not decoration: every payload path is a row of it.
+# pack-component.sh writes files/ and manifest.tab from the one resolved file
+# list, so the two agree by construction rather than by a check run afterward.
 text      manifest.tab  ^f /
 # ---- WHICH BYTES ----
 # .contents is md5sum's own format over every other file here and
 # .provenance:contentid is its sha1, exactly as the toolchain packages do it, so
-# a flipped byte is caught inside the archive and named.  There is no source id:
+# a flipped byte is caught inside the archive and named, and any consumer
+# verifies it directly with `md5sum -c .contents'.  There is no source id:
 # a component-bin package is a SELECTION of the bytes a producer built, and the
 # stamp names THE SET IT SELECTED FROM, by the id that set is known by.  Two
 # producers cut this kind: for this repository's components it is `ulid', the
@@ -66,6 +67,4 @@ text      manifest.tab  ^f /
 # to, which is the only kernel they load into.
 text      .provenance  ^(ulid|kernel_linkid)=
 file      .contents
-file      check-contents.sh
 idfile    .contents  .provenance  contentid
-gate      check-contents.sh

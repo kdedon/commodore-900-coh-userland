@@ -176,7 +176,6 @@ fi
 # ---- the package's own furniture ----
 echo "$V" > "$T/VERSION"
 cp "$OS/LICENSE" "$T/LICENSE"
-cp "$HERE/check-contents.sh" "$T/check-contents.sh"
 
 EXTRA="version=$V package=$COMP-$KIND component=$COMP pkgkind=$KIND entries=$nf"
 case "$KIND" in

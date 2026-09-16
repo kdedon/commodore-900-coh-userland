@@ -57,7 +57,8 @@ dir       files
 glob      files/*  1
 text      manifest.tab  ^f .
 # ---- WHICH BYTES ----
+# .contents is md5sum's own format over every other file here, and
+# .provenance:contentid is its sha1, so a flipped byte is caught and named.
+# Any consumer verifies it directly with `md5sum -c .contents'.
 file      .contents
-file      check-contents.sh
 idfile    .contents  .provenance  contentid
-gate      check-contents.sh

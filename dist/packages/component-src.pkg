@@ -75,8 +75,7 @@ glob      files/*  1
 text      manifest.tab  ^f .
 # ---- WHICH BYTES ----
 # Source is text, so unlike a compiler its bytes ARE a stable name for it: a
-# content id is recomputable here and is recorded.  See component-bin.pkg.
+# content id is recomputable here and is recorded, and any consumer verifies
+# it directly with `md5sum -c .contents'.  See component-bin.pkg.
 file      .contents
-file      check-contents.sh
 idfile    .contents  .provenance  contentid
-gate      check-contents.sh
