@@ -1,35 +1,43 @@
-# build -- compile this repository's programs against the toolchain it pins.
+# build -- compile this repository's programs against the toolchain it pins,
+# and run every check this repository still owns against what that build
+# produced.
 #
-# The toolchain is resolved as a dependency edge -- `make deps DEP=toolchain',
-# which is what DEPS is read by -- and the shape it resolved to is
-# read back with `sh mk/deps.sh -k toolchain'; C900_TOOLCHAIN then points at
-# the deps/ path that placed, rather than a separate checkout of it.
+# THE SHAPE.  One `build' job produces the tree; one job per check consumes it;
+# one `verdict' job depends on them all, so a branch protection rule has a
+# single required status to name.  The build runs once and the checks run in
+# parallel against its output, rather than each check rebuilding a userland
+# whose build is the longest thing here.
 #
-# The kernel is an edge too, and the sweep needs it: the userland owns no
-# machine layer, so <sys/machz8001.h> and the rest of that header set are the
-# kernel repository's, and build-hyacc.sh -- step 1 of the sweep -- refuses by
-# name without them.  It is checked out here and named in C900_KERNEL, set
-# rather than searched, because a job that depended on directory adjacency
-# breaks the first time a runner image moves its checkouts.
+# NO SIBLING CHECKOUT ANYWHERE.  The toolchain, the emulator and the kernel are
+# dependency EDGES, resolved by `make deps' from DEPS, where each is a release
+# at `latest'.  A job that checked out a sibling repository would test whatever
+# that repository's default branch holds this minute instead of the release
+# this tree pins, and would break the first time a runner image moved its
+# checkouts.  The kernel edge is not optional: this tree owns no machine layer,
+# so <sys/machz8001.h> and the rest of that header set come from the kernel's
+# export, and the `top' check reads the linked kernel out of it.
 #
-# This repository builds programs; it does not link a kernel and does not pack
-# an image (those are commodore-900-coh-kernel3 and commodore-900-dist).
-# The gate here is `make -C hostbuild userland' -- the cmd/games/libs sweep --
-# followed by `publish' and `check-publish-fresh', so a green run proves the
-# same thing a human running `make -C hostbuild all' by hand would check: that
-# the sweep finished AND that publish ran after it, not against a stale
-# build/.ulstamp.
+# WHAT THE ARTIFACT CARRIES.  hostbuild/build, as a tar rather than as loose
+# files: `check-publish-fresh' judges .ulstamp against the MODIFICATION TIMES
+# of everything beside it, so a transport that did not preserve them would
+# decide that gate by accident.  tar preserves them and `tar -xp' restores
+# them.  The packages `make packages' cuts are under that same directory
+# (hostbuild/build/packages), so they ride along.
 #
-# NOT included, on purpose:
+# WHAT IS NOT HERE, on purpose:
+#   * test/privsep.  Its gate boots a PACKED IMAGE, which is
+#     commodore-900-dist's product, and it resolves that image through
+#     mk/dist.sh -- a dist edge this repository's DEPS does not carry and
+#     which no release here can supply.  It is run from the distribution
+#     repository, against the image that repository packed.
 #   * tests/check-paths.sh.  Only the toolchain repository is checked out
 #     natively on Windows; this repository builds under Docker/WSL, so that
 #     gate would assert a Windows-native-checkout constraint this repository
 #     does not have.
 #   * a release job.  Nothing in DEPS points a downstream repository at a
 #     GitHub release of this one -- commodore-900-dist consumes what
-#     `publish' stamps in a sibling checkout (hostbuild/publish-userland.sh,
-#     RELEASE-STYLES.md sec. H.4), not a tagged archive -- so there is no
-#     asset for a release workflow here to cut.
+#     `publish' stamps (hostbuild/publish-userland.sh, RELEASE-STYLES.md
+#     sec. H.4), not a tagged archive -- so there is no asset to cut.
 name: build
 
 on:
@@ -38,44 +46,198 @@ on:
   workflow_dispatch:
 
 jobs:
-  userland:
+  # ---------------------------------------------------------------------------
+  # The build.  `all' is the sweep followed by `publish'; `packages' cuts the
+  # install set from what publish stamped, which is why it follows in the same
+  # job and in that order.
+  # ---------------------------------------------------------------------------
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { path: userland, fetch-depth: 0 }
-      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # Which SHAPE each edge resolved to, in the log: a release and a checkout
+      # are both usable and a build should say which it got.
+      - name: Place every dependency edge
+        run: |
+          make deps
+          for d in toolchain emu kernel; do
+            printf '%s: ' "$d"; sh mk/deps.sh -k "$d"
+          done
+
+      - name: Sweep, publish, package
+        run: make -C hostbuild all packages
+
+      # Modification times matter to check-publish-fresh, so the tree travels
+      # as a tar and not as loose files.
+      - name: Pack the built tree
+        run: tar -cf userland-build.tar -C hostbuild build
+
+      - uses: actions/upload-artifact@v4
         with:
-          repository: kdedon/commodore-900-coh-kernel3
-          path: commodore-900-coh-kernel3
-          token: ${{ secrets.C900_CI_TOKEN || github.token }}
+          name: userland-build
+          path: userland-build.tar
+          retention-days: 7
 
-      # A RELEASE of the toolchain, pinned in DEPS -- see DEPS's own comment
-      # for why a tagged release and not a floating checkout.
-      - name: The toolchain this tree is built with
-        working-directory: userland
+  # ---------------------------------------------------------------------------
+  # The checks.  Each downloads the one build and runs one gate against it.
+  # ---------------------------------------------------------------------------
+
+  # The mutation matrix: every probe under test that a host stand-in can be
+  # made to misbehave for, plus the ptraudit, top, shkeyword, sortopen and
+  # moreterm cases the matrix drives out of line.  $N2 is the guest runner the
+  # ptraudit and top cases need; without it they report UNPROVEN, which fails
+  # the matrix rather than passing quietly.
+  hostcheck:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: The mutation matrix
         run: |
-          make deps DEP=toolchain
-          # Which SHAPE resolved, in the log: a release and a checkout are
-          # both usable and a build should say which it got.
-          sh mk/deps.sh -k toolchain
+          N2=$(sh deps/commodore-900-toolchain/host/runner.sh) \
+            make -C test/hostcheck check
 
-      - name: Userland sweep
-        working-directory: userland
-        env:
-          C900_TOOLCHAIN: ${{ github.workspace }}/userland/deps/commodore-900-toolchain
-          C900_KERNEL: ${{ github.workspace }}/commodore-900-coh-kernel3
-        run: make -C hostbuild userland
+  # The four probes that carry their own discrimination because no host
+  # stand-in can hold the defect they measure: each compiles a mutated copy of
+  # the real source and requires the run to fail.  They are declared UNCOVERED
+  # in the matrix for that reason, so they are driven here by name.
+  awkrules:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: awk's pattern-action rule syntax
+        run: sh test/awkrules/run.sh
 
-      # Not for the dist repository here -- there is no image to pack in this
-      # job -- but for the same reason kernel3 checks its own build: `all'
-      # exiting 0 and `publish' having actually run against a fresh build are
-      # different claims, and only the second is what a downstream checkout
-      # depends on.
-      - name: Publish stamp is fresh
-        working-directory: userland
-        env:
-          C900_TOOLCHAIN: ${{ github.workspace }}/userland/deps/commodore-900-toolchain
-          C900_KERNEL: ${{ github.workspace }}/commodore-900-coh-kernel3
+  mkfsgetlink:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: mkfs(1M)'s name-matching loop
+        run: sh test/mkfsgetlink/run.sh
+
+  nlistfar:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: nlist(3) past 64K
+        run: sh test/nlistfar/run.sh
+
+  stdiobound:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: stdio against a 16-bit int
+        run: sh test/stdiobound/run.sh
+
+  # Text past 64K.  What these measure is the target linker and loader, so
+  # there is nothing to mutate and the gate is that its own Makefile builds
+  # all three probes against the pinned toolchain.
+  multiseg:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: Probes for text past 64K
+        run: make -C test/multiseg all
+
+  # The network probes, compiled with host stubs and injected faults: both that
+  # they work and that they detect the faults they test for.
+  net-hostcheck:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Place every dependency edge
+        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: Network probes against injected faults
+        run: make -C hostbuild net-hostcheck
+
+  # `all' exiting 0 and `publish' having run against a FRESH build are
+  # different claims, and only the second is what a downstream checkout
+  # depends on.
+  publish-fresh:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - name: The publish stamp follows every build output
+        run: make -C hostbuild check-publish-fresh
+
+  # ---------------------------------------------------------------------------
+  # The verdict.  One status for a branch rule to require, and it must read
+  # every job's RESULT rather than merely being reached: a `needs' job that was
+  # skipped or cancelled leaves this one runnable, and a verdict that did not
+  # look would report that as green.
+  # ---------------------------------------------------------------------------
+  verdict:
+    needs:
+      - build
+      - hostcheck
+      - awkrules
+      - mkfsgetlink
+      - nlistfar
+      - stdiobound
+      - multiseg
+      - net-hostcheck
+      - publish-fresh
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job succeeded
         run: |
-          make -C hostbuild publish
-          make -C hostbuild check-publish-fresh
+          echo 'results: ${{ join(needs.*.result, " ") }}'
+          case '${{ join(needs.*.result, " ") }}' in
+          *failure*|*cancelled*|*skipped*)
+            echo "verdict: a job did not succeed" >&2; exit 1 ;;
+          esac
+          echo "verdict: ok"
