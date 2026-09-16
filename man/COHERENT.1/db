@@ -1,0 +1,56 @@
+db -- Command
+
+Assembler-level symbolic debugger
+db [-cdefort] [object file] [auxiliary file]
+
+db works on the level of assembly language, on the symbol table the compiler
+and the assembler build into an l.out object.  It runs a program as a child
+under trace control, reads a core file, reads a file as a flat array of
+bytes, or reads the running kernel, and in each case prints and patches what
+it finds.  Using it needs a working knowledge of the Z8001.
+
+What the two file arguments mean depends on the option that chose the mode,
+and each mode has its own defaults:
+
+     no option   With no arguments, the object file is l.out and the
+                 auxiliary file is core.  One argument names the object
+                 file; two name the object file and the core file.
+     -c          The auxiliary file is a core file, l.out and core by
+                 default.  One argument names the core file; two name the
+                 object file and the core file.
+     -d          A system dump: /coherent and /dev/dump by default,
+                 otherwise both named.
+     -e          The argument is an object file, which db executes as a
+                 child process under trace control.
+     -f          Map the file as a straight array of bytes.  One argument
+                 names that file; two name the object file and the file.
+     -k          Map a kernel: /coherent and /dev/mem by default.  One
+                 argument names the memory file; two name both.
+     -o          The argument is an object file, l.out by default; with two
+                 arguments the second is a second object file.
+
+Only one of -c, -d, -e, -f, -k and -o may be given.  The rest of the
+options modify whichever mode was chosen:
+
+     -h          Map a segmented object at virtual base 0x300000 instead of
+                 the usual one.  The source calls this debugging coherent.
+     -r          Open the files read-only, even where they could be written.
+     -s          Do not read the symbol table.
+     -t          Do input and output through /dev/tty, so that the program
+                 being debugged may have the terminal.
+
+The usage message db prints for a bad option is
+
+     Usage: db [-cdefort] [object file] [auxiliary file]
+
+which lists neither -h, -k nor -s, though all three are accepted.
+
+Files
+l.out      the default object file
+core       the default core file
+/coherent  the default kernel image, for -d and -k
+/dev/dump  the default system dump, for -d
+/dev/mem   the default kernel memory, for -k
+
+See Also
+as, cc, ld, ptrace

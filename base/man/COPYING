@@ -1,6 +1,6 @@
 The COHERENT Lexicon, for what this component owns.
 
-COHERENT.1/ and COHERENT.2/ hold 666 articles of Mark Williams Company's
+COHERENT.1/ and COHERENT.2/ hold 662 articles of Mark Williams Company's
 on-line manual -- the two halves the Lexicon splits itself into, a-l and m-z --
 covering the base COHERENT system this component builds: its commands, its
 shell, its libraries (libmp, libm, libcurses, libterm, libedit) and the
@@ -13,9 +13,15 @@ index it is assembling.
 
 The pages are MWC's text, staged exactly as the archive has it: plain ASCII as
 a *roff terminal driver rendered it, with bold and underline carried as
-backspace overstrike.  Nothing here is written or edited by this project.  652
+backspace overstrike.  Nothing here is written or edited by this project.  648
 articles are the 4.2 edition; 12 are the 3.x edition, of names 4.2 withdrew
 from the manual or answered with a page that documents another machine.
+
+The Lexicon's as, cc, db and ld articles are not here.  They describe Mark
+Williams' i80386 assembler, compiler, debugger and loader; this system ships
+none of those four programs, and the pages for the programs it does ship are
+written where those are built -- as, cc and ld in the toolchain repository's
+man, db in this repository's own man/COHERENT.1.
 
 TERMS
 -----

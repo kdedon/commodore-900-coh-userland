@@ -25,7 +25,6 @@ COHERENT.1/ar.h	ar.h	Format for archive files
 COHERENT.1/arhead	ARHEAD	Append options to beginning of ar command line
 COHERENT.1/array	array	Definition
 COHERENT.1/artail	ARTAIL	Append options to end of ar command line
-COHERENT.1/as	as	i80386 assembler
 COHERENT.1/ascii	ASCII	Definition
 COHERENT.1/asfix	asfix	Convert assembly-language programs into as 80386 format
 COHERENT.1/ashead	ASHEAD	Append options to beginning of as command line
@@ -73,7 +72,6 @@ COHERENT.1/cast	cast	Definition
 COHERENT.1/cat	cat	Concatenate the contents of a file to the standard output
 COHERENT.1/caveatutilitor	caveat utilitor	Definition
 COHERENT.1/cc3	cc3	Definition
-COHERENT.1/cc	cc	C compiler
 COHERENT.1/cchead	CCHEAD	Append options to beginning of cc command line
 COHERENT.1/c	c	Print multi-column output
 COHERENT.1/cctail	CCTAIL	Append options to end of cc command line
@@ -136,7 +134,6 @@ COHERENT.1/daemon	daemon	Definition
 COHERENT.1/dataformats	data formats	Definition
 COHERENT.1/datatypes	data types	Definition
 COHERENT.1/date	date	Print/set the date and time
-COHERENT.1/db	db	Assembler-level symbolic debugger
 COHERENT.1/dc	dc	Desk calculator
 COHERENT.1/dcheck	dcheck	Check directory consistency
 COHERENT.1/dd	dd	Convert the contents of a file
@@ -299,7 +296,6 @@ COHERENT.1/lastlogin	.lastlogin	Record of last login
 COHERENT.1/lcasep	lcasep	Convert text to lower case
 COHERENT.1/lc	lc	List directory's contents in columnar format
 COHERENT.1/ldhead	LDHEAD	Append options to beginning of ld command line
-COHERENT.1/ld	ld	Link relocatable object modules
 COHERENT.1/ldtail	LDTAIL	Append options to end of ld command line
 COHERENT.1/let	let	Evaluate an expression
 COHERENT.1/lex	lex	Lexical analyzer generator
