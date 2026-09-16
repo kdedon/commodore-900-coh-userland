@@ -28,7 +28,7 @@ mkdir -p "$HERE/build"; : > "$LOG"
 # libc-z8001.a supplies string routines and getopt.
 # games/lib/src supplies err(3) and fgetln(3).
 GLIB=""
-CF="-I$OS/include -I$OS/net/include"
+CF="-I$OS/net/include"
 
 # ccz supplies crt0.o and libc-z8001.a to the link itself, so the port's
 # Makefile cannot name them as prerequisites and a rebuilt libc relinks nothing:

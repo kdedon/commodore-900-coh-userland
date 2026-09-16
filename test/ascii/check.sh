@@ -9,8 +9,8 @@
 # *.devices *.media), Makefiles, *.sh, *.py, *.yml.  Enumeration is `git
 # ls-files -co --exclude-standard' (find without git), so untracked work is
 # checked and ignored build output is not.  dist/files -- the packaging
-# overlay this used to also check -- moved to a separate repository and is
-# checked there now.  Not checked: the archival trees in ARCHIVAL, the
+# overlay -- is in a separate repository and is checked there.  Not checked:
+# the archival trees in ARCHIVAL, the
 # non-ASCII DATA files in EXEMPT, and *.go (UTF-8 by language spec, never fed
 # to the native toolchain; -s adds it).
 #
@@ -77,7 +77,7 @@ KNOWN_CORRUPT='
 '
 
 # Vendored / archival trees: never rewritten, so never checked.  sys/ref (the vendored holdings kept for diffing
-# against the kernel) is in a separate repository and is not here anymore.
+# against the kernel) is in a separate repository.
 ARCHIVAL='^man-4\.2/
 ^mgr/
 ^base/cmd/badscan\.c$
