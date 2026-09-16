@@ -34,7 +34,7 @@ emu_need_rom "boot the target and run this gate"
 EMUBIN=$C900_EMU
 EMUROM=$C900_EMU_ROM
 # The image is the distribution repository's, not this tree's own
-# hostbuild/build (mk/dist.sh) -- packing moved to a separate repository.
+# hostbuild/build (mk/dist.sh): packing is that repository's job.
 . "$C900_ROOT/mk/dist.sh"
 IMG=$(dist_img "$DIST") || exit 2
 # The medium is packed by the distribution repository's own packer, from its

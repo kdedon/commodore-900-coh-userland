@@ -9,8 +9,6 @@
 #   -i  separated I/D, text shared
 #   -L  large model: text and data may span several 64K segments
 #   -DCOHERENT selects sim.h's c900.h include and mac.h's `QUAD long'
-#   the libcurses include directory must come BEFORE include, whose
-#   curses.h is a terminfo header no library in this tree implements
 
 OS	= ../..
 include $(OS)/hostbuild/toolchain.mk
@@ -20,7 +18,7 @@ OBJ	= obj
 BIN	= .
 
 CFLAGS	= -c -i -L -DCOHERENT \
-	  -I$(OS)/base/lib/libcurses -I$(OS)/include -I$(OS)/include/sys -I.
+	  -I$(OS)/base/lib/libcurses -I.
 LDFLAGS	= -i -L -s
 LIBS	= $(CURSES)/libcurses.a $(CURSES)/libterm.a
 # ccz links crt0.o and libc-z8001.a implicitly, so make cannot see them;

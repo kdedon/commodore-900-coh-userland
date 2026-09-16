@@ -262,10 +262,10 @@ INC_TARGET += $(INC_FLAT)
 TCLIBC = $(C900_TCB)/libc-z8001
 TCLIBM = $(C900_TCB)/libm-z8001
 
-# ld: the target-native linker.  Its source (src/ld) moved to the toolchain
-# repository in the repo split -- it is what the toolchain's own host cross
-# build links kernels and images WITH, so keeping a second copy here would
-# recreate the duplicate the split removed.  The toolchain cross-builds it to
+# ld: the target-native linker.  Its source (src/ld) is the toolchain
+# repository's -- it is what the toolchain's own host cross build links
+# kernels and images WITH, so keeping a second copy here would duplicate it.
+# The toolchain cross-builds it to
 # run ON the Z8001 (host/build-native.sh: src/ld/all.c, unity build) for the
 # same reason it cross-builds a native `as' and `cc' -- so this image can
 # self-host.  This tree stages the result; it does not compile it.

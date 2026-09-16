@@ -63,18 +63,14 @@ sweep() {
 
 do_cmd() {
 	# userland base: 0.7.3 headers
-	I="-I$OS/include"
-	sweep cmd-flat "$I" "$OS/base/cmd" 1
+	sweep cmd-flat "" "$OS/base/cmd" 1
 	# subdirectory tools (multi-file programs), object mode only.
-	# as/ld used to live here and needed sys/z8001/h (the n.out object
-	# format header) for their own case below; both the assembler/linker
-	# sources and that header moved out with the kernel split -- as/ld are
-	# now the commodore-900-toolchain repository's, and base/cmd has no
-	# as/ or ld/ directory for this loop to ever match -- so the special
-	# case is gone rather than kept pointing at a path nothing here has.
+	# as/ld are the commodore-900-toolchain repository's; base/cmd has no
+	# as/ or ld/ directory for this loop to match, so there is no special
+	# case for them here.
 	for d in "$OS"/base/cmd/*/; do
 		b=$(basename "$d")
-		I2="$I -I$d"
+		I2="-I$d"
 		sweep "cmd-$b" "$I2" "$d" 2
 	done
 	# full-link smoke: every flat command that compiled OK
@@ -82,7 +78,7 @@ do_cmd() {
 	while IFS='	' read -r f stage rest; do
 		[ "$stage" = OK ] || continue
 		stem=$tmp/$(basename "$f" .c)
-		"$CC0" $VAR "$f" "$stem.z0" -I"$OS/include" >/dev/null 2>&1 &&
+		"$CC0" $VAR "$f" "$stem.z0" >/dev/null 2>&1 &&
 		"$CC1" $VAR "$stem.z0" "$stem.z1" >/dev/null 2>&1 &&
 		"$CC2" 0010 "$stem.z1" "$stem.o" "$stem.scr" 0 >/dev/null 2>&1
 		err=$("$LD" -o "$stem.out" "$LIBC/crt0.o" "$stem.o" "$LIBC/libc-z8001.a" 2>&1)
@@ -93,22 +89,20 @@ do_cmd() {
 	awk -F'	' '$2!="OK"{print "   ld  " $1 "  " $3}' "$log" | head -20
 }
 
-# do_sys used to sweep sys/z8001, sys/drv, sys/ker, sys/coh and assemble
-# md.s against $OS/sys/z8001/h (the 3.2 contract headers + Z8001 machine
-# tail).  All of it -- the four source trees AND the header directory --
-# left this repository for commodore-900-coh-kernel3 in the kernel/userland
-# split; sys does not exist any more.  Left as a silent sweep,
-# `find' on each missing directory prints nothing, the loop body never
-# runs, and the summary line reads "0 ok, 0 fail" four times over: that is
-# indistinguishable from a clean pass and is exactly the defect class this
-# script exists to catch, so it refuses by name instead (name exactly what
-# cannot build and why, at the point the caller would expect it to run)
-# rather than being removed outright: `build.sh sys` and
-# `build.sh all sys` remain valid things to type, and should say why they
-# do nothing rather than fail to parse.
+# sys/z8001, sys/drv, sys/ker, sys/coh and sys/z8001/h (the 3.2 contract
+# headers + Z8001 machine tail that md.s would assemble against) are
+# commodore-900-coh-kernel3's; this repository has no sys tree to sweep.
+# Left as a silent sweep, `find' on each missing directory prints nothing,
+# the loop body never runs, and the summary line reads "0 ok, 0 fail" four
+# times over: that is indistinguishable from a clean pass and is exactly
+# the defect class this script exists to catch, so do_sys refuses by name
+# instead (name exactly what cannot build and why, at the point the caller
+# would expect it to run) rather than being removed outright: `build.sh sys`
+# and `build.sh all sys` remain valid things to type, and should say why
+# they do nothing rather than fail to parse.
 do_sys() {
 	echo "== sys: SKIPPED -- sys/z8001, sys/drv, sys/ker, sys/coh and sys/z8001/h" >&2
-	echo "==      moved to commodore-900-coh-kernel3 in the kernel/userland split." >&2
+	echo "==      are commodore-900-coh-kernel3's." >&2
 	echo "==      This repository has no kernel sources to sweep; build the kernel" >&2
 	echo "==      from that repository instead." >&2
 	return 1

@@ -355,7 +355,7 @@ VAR="${CCZ_VAR:-800000020800}"
 compile() {			# compile() src obj
 	s="$1"; o="$2"; b=$(basename "$s" .c)
 	c900_buildlog "$s"
-	"$CC0" $VAR "$s" "$OUT/obj/$b.z0" -I"$OS/include" -I"$OS/include/sys" 2>/dev/null
+	"$CC0" $VAR "$s" "$OUT/obj/$b.z0" 2>/dev/null
 	"$CC1" $VAR "$OUT/obj/$b.z0" "$OUT/obj/$b.z1" 2>/dev/null
 	"$CC2" 0010 "$OUT/obj/$b.z1" "$o" "$OUT/obj/$b.scr" 0 2>/dev/null
 }

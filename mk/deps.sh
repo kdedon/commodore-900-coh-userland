@@ -23,8 +23,8 @@
 #   kernel      C900_KERNEL       the kernel checkout, or its headers release
 #
 # This repository does not link a kernel or stage a loader into an image --
-# that moved to separate repositories -- so kboot is not listed here, unlike
-# the kernel and dist repositories which name it.  Trimmed to the edges DEPS
+# the kernel and dist repositories do that -- so kboot is not listed here,
+# unlike those repositories which name it.  Trimmed to the edges DEPS
 # actually names.
 #
 # This file is what DEPS and `make deps' talk to: the name column there is a

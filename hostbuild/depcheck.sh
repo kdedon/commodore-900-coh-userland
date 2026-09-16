@@ -106,10 +106,10 @@ $OS/net/libsocket.a|$HERE/build/.stamp-hunt|a LIBRARY hunt links
 # kernel's is not covered by anything here, and a change to $KINC will not by
 # itself mark the userland stamp out of date.
 #
-# The kernel's build variant (KTTY/KDDT, relinking kobj/kernel.out) was a case
-# here too, until the kernel moved to a separate repository: this Makefile has
-# no kobj/kernel.out target left to ask about, so there is no variant_case here
-# any more -- that repository's own depcheck, if it has one, is where it belongs.
+# The kernel's build variant (KTTY/KDDT, relinking kobj/kernel.out) is not a
+# case here: the kernel lives in its own repository, this Makefile has no
+# kobj/kernel.out target to ask about, and there is no variant_case here --
+# that repository's own depcheck, if it has one, is where it belongs.
 
 # NEGATIVE CONTROL: a file no target is built from.  This one MUST report that
 # the target stays up to date; if it does not, the check is answering "would

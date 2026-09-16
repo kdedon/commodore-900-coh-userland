@@ -25,7 +25,7 @@ SCR="screen ansi help fileio mark window socket putenv getpty"
 
 for f in $SCR; do
 	( cd "$OS" && "$CCZ" -c -i -L -DCOHERENT \
-		-Iinclude -Iinclude/sys -Inet/screen \
+		-Inet/screen \
 		-o "$OBJ/screen-$f.o" "net/screen/$f.c" ) >>"$LOG" 2>&1 || {
 		echo "== screen FAILED ($f.c) -- $(grep -iE 'error|no match|not defined|Internal' "$LOG" | grep -v Warning | tail -1)"
 		exit 1; }
