@@ -668,8 +668,11 @@ cmdls()
 			if (entblock(e, j) != 0)
 				f->f_blocks++;
 		f->f_nent++;
-		/* stamps live on the file's extent-0 entry only */
-		if (enttotal(e) == 0 && (s = entsfcb(i)) != 0)
+		/*
+		 * stamps live on the first entry only; with EXM=1 its raw
+		 * extent is 1 past 16 KB, so match by entry number
+		 */
+		if ((enttotal(e) >> 1) == 0 && (s = entsfcb(i)) != 0)
 			for (j = 0; j < 8; j++)
 				f->f_stamp[j] = s[j];
 	}
