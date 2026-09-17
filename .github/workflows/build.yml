@@ -99,10 +99,12 @@ jobs:
         with: { name: userland-build }
       - name: Restore the built tree
         run: tar -xpf userland-build.tar -C hostbuild
+      # The emu edge, not the toolchain: a release carries no host/runner.sh.
       - name: The mutation matrix
         run: |
-          N2=$(sh deps/commodore-900-toolchain/host/runner.sh) \
-            make -C test/hostcheck check
+          export C900_ROOT=$PWD
+          . mk/emulator.sh
+          N2=$C900_EMU make -C test/hostcheck check
 
   # The four probes that carry their own discrimination because no host
   # stand-in can hold the defect they measure: each compiles a mutated copy of
@@ -205,6 +207,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # toolchain.mk resolves the compiler as the Makefile is read.
+      - name: Place every dependency edge
+        run: make deps
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -234,8 +239,8 @@ jobs:
     steps:
       - name: Every job succeeded
         run: |
-          echo 'results: ${{ join(needs.*.result, " ") }}'
-          case '${{ join(needs.*.result, " ") }}' in
+          echo 'results: ${{ join(needs.*.result, ' ') }}'
+          case '${{ join(needs.*.result, ' ') }}' in
           *failure*|*cancelled*|*skipped*)
             echo "verdict: a job did not succeed" >&2; exit 1 ;;
           esac
