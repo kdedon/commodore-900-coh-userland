@@ -35,10 +35,8 @@
 #     natively on Windows; this repository builds under Docker/WSL, so that
 #     gate would assert a Windows-native-checkout constraint this repository
 #     does not have.
-#   * a release job.  Nothing in DEPS points a downstream repository at a
-#     GitHub release of this one -- commodore-900-dist consumes what
-#     `publish' stamps (hostbuild/publish-userland.sh, RELEASE-STYLES.md
-#     sec. H.4), not a tagged archive -- so there is no asset to cut.
+#   * the release job.  Cutting and publishing the component archives on a v*
+#     tag is release.yml beside this file, which runs the same build.
 name: build
 
 on:

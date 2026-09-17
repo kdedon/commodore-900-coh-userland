@@ -1,0 +1,80 @@
+# release -- on a v* tag, publish the install set this repository cuts.
+#
+# WHAT IS PUBLISHED.  The component archives `make packages' produces:
+# c900-<component>-{bin,man,src}-v<V>.tar.gz, one triple per component, and a
+# -dev archive for each component that exports headers.  Those are what an
+# installer unpacks onto a target and what commodore-900-dist stages into an
+# image, so they are what a tag has to carry.
+#
+# THE VERSION COMES FROM THE TAG, and it arrives by itself: the packers read
+# hostbuild/version.sh, which is `git describe' against the tag being built, so
+# the archive names agree with the release they hang off without a version
+# being passed down to them.  fetch-depth: 0 is what makes that answerable --
+# version.sh reads a tag and a shallow clone has none.
+#
+# A DISPATCH RUN IS NOT A RELEASE.  It has no tag, so version.sh answers what
+# `git describe' says instead; it builds the archives and uploads them for
+# inspection, and publishes nothing.
+#
+# THE BUILD IS THE ONE build.yml RUNS -- `make deps', then `make -C hostbuild
+# all packages', against the toolchain, emulator and kernel RELEASES that DEPS
+# names at `latest'.  A release built against anything else would not be the
+# thing those checks passed on.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: The version being released
+        run: |
+          case "$GITHUB_REF" in
+          refs/tags/*) v=${GITHUB_REF_NAME#v} ;;
+          *)           v=$(sh hostbuild/version.sh) ;;
+          esac
+          echo "V=$v" >> "$GITHUB_ENV"
+          echo "releasing $v"
+
+      # Which SHAPE each edge resolved to, in the log: a release and a checkout
+      # are both usable and a build should say which it got.
+      - name: Place every dependency edge
+        run: |
+          make deps
+          for d in toolchain emu kernel; do
+            printf '%s: ' "$d"; sh mk/deps.sh -k "$d"
+          done
+
+      - name: Sweep, publish, package
+        run: make -C hostbuild all packages
+
+      - name: What was cut
+        run: ls -l hostbuild/build/packages/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c900-userland-${{ env.V }}
+          path: hostbuild/build/packages/*.tar.gz
+          if-no-files-found: error
+
+      # The archives are the point of the tag.  Uploaded as workflow ARTIFACTS
+      # alone they sit behind a login and expire, so nothing could fetch one by
+      # name.  A dispatch run skips this: it has no tag to hang assets off.
+      - uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          files: hostbuild/build/packages/*.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
