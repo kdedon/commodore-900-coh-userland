@@ -58,10 +58,10 @@ jobs:
 
       # Which SHAPE each edge resolved to, in the log: a release and a checkout
       # are both usable and a build should say which it got.
-      - name: Place every dependency edge
+      - name: Place the build's dependency edges
         run: |
-          make deps
           for d in toolchain emu kernel; do
+            make deps DEP="$d"
             printf '%s: ' "$d"; sh mk/deps.sh -k "$d"
           done
 

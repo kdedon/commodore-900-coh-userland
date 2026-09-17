@@ -22,8 +22,8 @@
 #                 is gitignored.  The archive carries its own VERSION, which
 #                 is what the build reports as the shape it used, so "which
 #                 one ran this" is recorded rather than chosen in advance.
-#                 <asset> is the release
-#                 asset's file name, with @REF@ standing for the tag and
+#                 <asset> is the asset's file name, or several comma-separated
+#                 (a bare `.gz' is decompressed), with @REF@ for the tag and
 #                 @HOST@ for the platform suffix INCLUDING the archive
 #                 extension -- the two axes are not independent, since a
 #                 Windows asset is a .zip and a Linux one a .tar.gz.  We build
@@ -74,10 +74,8 @@ fetch_git() {
 	git clone --branch "$3" "$2" "$4" || return 1
 }
 
-# The newest published release's tag, read off the redirect /releases/latest
-# answers with.  Not the API: that is rate-limited per IP, and CI runners share
-# them.  A repository with no release redirects to /releases, which has no tag
-# in it, so this prints nothing and the caller refuses by name.
+# The newest release's tag, from the /releases/latest redirect (the API is
+# rate-limited per IP).  Prints nothing if there is no release.
 latest_tag() {
 	_lt=$(curl -fsLI -o /dev/null -w '%{url_effective}' "$1/releases/latest") || return 1
 	case $_lt in
@@ -114,36 +112,43 @@ fetch_release() {
 		esac ;;
 	*)	host= ;;
 	esac
-	asset=$(echo "$5" | sed "s/@REF@/$3/g; s/@HOST@/$host/g")
-	from=$2/releases/download/$3/$asset
 	tmp=$4.tmp.$$
 	rm -rf "$tmp"
-	mkdir -p "$tmp"
-	echo "$1: downloading $from"
-	if ! curl -fL --retry 2 -o "$tmp/$asset" "$from"; then
-		rm -rf "$tmp"
-		echo "$1: no release asset at $from" >&2
-		echo "  A missing asset means that release has not been published yet." >&2
-		echo "  Until it is, build the dependency yourself and name it by variable;" >&2
-		echo "  the resolver's refusal says which variable." >&2
-		return 1
-	fi
-	case "$asset" in
-	*.tar.gz|*.tgz) tar xzf "$tmp/$asset" -C "$tmp" ;;
-	*.zip)          unzip -q "$tmp/$asset" -d "$tmp" ;;
-	*) echo "$1: don't know how to unpack $asset" >&2; rm -rf "$tmp"; return 1 ;;
-	esac
-	rm -f "$tmp/$asset"
-	# The asset carries one top directory (bin/, rom/, disk/ inside it); it is
-	# stripped so deps/<name>/bin/c900 is the path the resolvers search for.
-	inner=
-	for d in "$tmp"/*; do
-		[ -d "$d" ] || { inner=; break; }
-		[ -z "$inner" ] || { inner=; break; }
-		inner=$d
+	mkdir -p "$tmp/.dl"
+	for a in $(echo "$5" | tr , ' '); do
+		asset=$(echo "$a" | sed "s/@REF@/$3/g; s/@HOST@/$host/g")
+		from=$2/releases/download/$3/$asset
+		echo "$1: downloading $from"
+		if ! curl -fL --retry 2 -o "$tmp/.dl/$asset" "$from"; then
+			rm -rf "$tmp"
+			echo "$1: no release asset at $from" >&2
+			echo "  A missing asset means that release has not been published yet." >&2
+			echo "  Until it is, build the dependency yourself and name it by variable;" >&2
+			echo "  the resolver's refusal says which variable." >&2
+			return 1
+		fi
+		rm -rf "$tmp/.x"
+		mkdir "$tmp/.x"
+		case "$asset" in
+		*.tar.gz|*.tgz) tar xzf "$tmp/.dl/$asset" -C "$tmp/.x" ;;
+		*.zip)          unzip -q "$tmp/.dl/$asset" -d "$tmp/.x" ;;
+		*.gz) gunzip -c "$tmp/.dl/$asset" > "$tmp/${asset%.gz}"; continue ;;
+		*)    mv "$tmp/.dl/$asset" "$tmp/$asset"; continue ;;
+		esac
+		# Strip an archive's single top directory.
+		inner=
+		for d in "$tmp/.x"/*; do
+			[ -d "$d" ] || { inner=; break; }
+			[ -z "$inner" ] || { inner=; break; }
+			inner=$d
+		done
+		cp -a "${inner:-$tmp/.x}/." "$tmp/"
 	done
+	rm -rf "$tmp/.dl" "$tmp/.x"
+	# Bare assets carry no VERSION; record the tag.
+	[ -f "$tmp/VERSION" ] || echo "$3" > "$tmp/VERSION"
 	mkdir -p "$(dirname "$4")"
-	if [ -n "$inner" ]; then mv "$inner" "$4"; rm -rf "$tmp"; else mv "$tmp" "$4"; fi
+	mv "$tmp" "$4"
 	echo "$1: unpacked $3 -> $4"
 }
 

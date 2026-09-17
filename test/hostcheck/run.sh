@@ -579,6 +579,12 @@ vprintf:  and a far pointer, on the Z8001 -- the same terms as ptraudit, and
 vprintf:  no host stand-in can hold that defect either.  It was run once by
 vprintf:  hand under the emulator but has no run.sh and no mutation yet, so
 vprintf:  there is no repeatable gate to wire in here.
+cpmdisk:the subject is cpm(1)'s reading and writing of the CP/M directory
+cpmdisk:  format, and its instrument is a disk image, not a system call --
+cpmdisk:  kshim.c has nothing to stand in for.  test/cpmdisk/run.sh builds
+cpmdisk:  cpm.c with the host cc, formats its own drives and judges cpm(1)
+cpmdisk:  against the directory bytes; it failed against cpm(1)'s old lookup
+cpmdisk:  of a file's stamps before that was fixed.
 hostcheck:this harness.
 "
 
