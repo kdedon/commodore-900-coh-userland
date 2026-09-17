@@ -40,16 +40,9 @@ mkdir -p "$OUT" "$HERE/logs" "$OBJ"
 # name the two sets share, and nothing here needs a Minix-only errno: everything
 # else the clients want from net/include is still found below it.
 #
-# The COHERENT set is the toolchain's, resolved the way ccz itself resolves it:
-# src/include in a checkout, usr/include in an unpacked release.  ccz appends
-# the same directories to every compile, but it appends them LAST, which is
-# where net/include won.
-if [ -d "$C900_TOOLCHAIN/native" ]; then
-	TCSYSINC="$C900_TOOLCHAIN/usr/include"
-else
-	TCSYSINC="$C900_TOOLCHAIN/src/include"
-fi
-[ -f "$TCSYSINC/errno.h" ] || {
+# The COHERENT set is $TCSYSINC, resolved by toolchain.sh.  ccz appends it
+# too, but last, after net/include.
+[ -f "${TCSYSINC:-}/errno.h" ] || {
 	echo "== netcmds FAILED: no errno.h at $TCSYSINC -- the toolchain did not"
 	echo "  resolve, or its layout changed.  Refusing rather than compiling the"
 	echo "  clients against the stack's error numbers."

@@ -47,14 +47,8 @@ ARZ="$TC/arz"
 # search path out so a sub-make finds the same headers.
 NETINC="-I$NET -I$NET/include -I$NET/inet -I$NET/inet/generic"
 
-# COHERENT's own headers, resolved the way ccz resolves them: src/include in a
-# checkout, usr/include in an unpacked release.
-if [ -d "$C900_TOOLCHAIN/native" ]; then
-	TCSYSINC="$C900_TOOLCHAIN/usr/include"
-else
-	TCSYSINC="$C900_TOOLCHAIN/src/include"
-fi
-[ -f "$TCSYSINC/errno.h" ] || {
+# COHERENT's headers are $TCSYSINC, resolved once by toolchain.sh.
+[ -f "${TCSYSINC:-}/errno.h" ] || {
 	echo "build-net.sh: no errno.h at $TCSYSINC -- the toolchain did not" >&2
 	echo "  resolve, or its layout changed.  Refusing rather than compiling" >&2
 	echo "  the resolver against the stack's error numbers." >&2

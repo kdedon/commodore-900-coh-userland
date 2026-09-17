@@ -84,11 +84,19 @@ COHERENT_OS=$(cd "$OS" && pwd)
 # usr/include in an unpacked release.  A script that needs to READ one of
 # those headers rather than compile against it takes the path from here, so
 # there is one answer to where they are.
-if [ -d "$C900_TOOLCHAIN/native" ]; then
-	TCSYSINC="$C900_TOOLCHAIN/usr/include"
-else
-	TCSYSINC="$C900_TOOLCHAIN/src/include"
-fi
+#
+# $C900_TC_SHAPE says which of the two; mk/deps.sh reads it off what each
+# kind ships (host/build-cc.sh in a checkout, bin/ccz plus VERSION in a
+# release).
+case "$C900_TC_SHAPE" in
+checkout)	TCSYSINC="$C900_TOOLCHAIN/src/include" ;;
+release*)	TCSYSINC="$C900_TOOLCHAIN/usr/include" ;;
+*)		echo "toolchain.sh: cannot tell a checkout from a release at" >&2
+		echo "  C900_TOOLCHAIN=$C900_TOOLCHAIN (sh mk/deps.sh -k toolchain" >&2
+		echo "  says \`$C900_TC_SHAPE'); refusing rather than guessing where" >&2
+		echo "  the system headers are." >&2
+		exit 2 ;;
+esac
 
 # $KINC: the KERNEL's header set, resolved through mk/deps.sh's `kernel' edge.
 #
