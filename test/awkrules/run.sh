@@ -133,6 +133,11 @@ oneline-BEGIN-END	s|e rc=0	BEGIN{print "s"} END{print "e"}
 
 # Phase 4, second half: what nawk brings that the 1985 language does not have
 # at all -- the constructs a user reaches for the moment this is a nawk.
+#
+# The printf cases pin the conversions nawk hands libc: %X %D %U %O are the
+# long forms of %x %d %u %o.  An unknown conversion is copied literally and
+# eats its argument, so these also check the arguments stay in step; one ends
+# the format string.
 NAWK_ONLY='
 user-function	40320 rc=0	function f(n){if(n<=1)return 1; return n*f(n-1)}\nBEGIN{print f(8)}
 split-and-array	3|a|c rc=0	BEGIN{n=split("a:b:c",A,":"); print n; print A[1]; print A[3]}
@@ -141,7 +146,14 @@ sub-returns-count	1|baa rc=0	BEGIN{t="aaa"; print sub(/a/,"b",t); print t}
 substr-index-length	ell|3|5 rc=0	BEGIN{print substr("hello",2,3); print index("hello","ll"); print length("hello")}
 match-sets-RSTART	2|2|2 rc=0	BEGIN{print match("foobar",/o+/); print RSTART; print RLENGTH}
 sprintf	a-2 rc=0	BEGIN{print sprintf("%s-%d","a",2)}
-printf-hex	FF rc=0	BEGIN{printf "%x", 255}
+printf-hex	ff rc=0	BEGIN{printf "%x", 255}
+printf-hex-upper	FF rc=0	BEGIN{printf "%X", 255}
+printf-long-decimal	70000 rc=0	BEGIN{printf "%D", 70000}
+printf-long-unsigned	70000 rc=0	BEGIN{printf "%U", 70000}
+printf-long-octal	210560 rc=0	BEGIN{printf "%O", 70000}
+printf-upper-then-text	FF! rc=0	BEGIN{printf "%X!", 255}
+printf-upper-then-string	FF-ok rc=0	BEGIN{printf "%X-%s", 255, "ok"}
+printf-conversions-in-step	ff|FF|10|7 rc=0	BEGIN{printf "%x|%X|%o|%u", 255, 255, 8, 7}
 delete-and-in	1|0 rc=0	BEGIN{a["x"]=1; print ("x" in a); delete a["x"]; print ("x" in a)}
 do-while	5 rc=0	BEGIN{i=0; do{i++}while(i<5); print i}
 getline-var-from-file	a 1 rc=0	BEGIN{getline ln < "@IN@"; print ln}

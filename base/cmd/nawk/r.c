@@ -415,11 +415,22 @@ printf("fmt(%s)\n", s);
 	else if (*(s + 1) == '%') {
 		*t++ = *s++; continue;
 	}
-	for (r = fmt, *r++ = *s++; *r++ = *s; s++) {
-		if (strchr("%cdefgosux", *s))
+	/*
+	 * Collect one conversion.  COHERENT's printf(3) takes DOUX as
+	 * long doux.  A format that ends before its conversion is copied
+	 * out as is, taking no argument.
+	 */
+	for (r = fmt, *r++ = *s++; *s != '\0'; s++) {
+		*r++ = *s;
+		if (strchr("%cdefgosuxDOUX", *s))
 			break;
 	}
 	*r = '\0';
+	if (*s == '\0') {
+		strcpy(t, fmt);
+		t += strlen(t);
+		break;
+	}
 	if (p->n_arg[i] == NULL)
 		error("not enough args in printf(%s)", s0);
 	v = execute(p->n_arg[i++]);
@@ -448,6 +459,9 @@ printf("val(%d)(%s)\n", v->c_type, v->c_sval);
 			sprintf(t, fmt, (long) x);
 		else
 			sprintf(t, fmt, (int) x);
+		break;
+	case 'D': case 'O': case 'U': case 'X':
+		sprintf(t, fmt, (long) x);
 		break;
 	case 's':
 		/*r = getsval(v);*/
