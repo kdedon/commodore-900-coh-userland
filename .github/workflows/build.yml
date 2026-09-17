@@ -73,10 +73,23 @@ jobs:
       - name: Pack the built tree
         run: tar -cf userland-build.tar -C hostbuild build
 
+      # The edges travel too, so the checks resolve them once here rather than
+      # each asking the release API again: it is rate-limited per IP, and nine
+      # jobs asking three times over is what exhausts it.  A tar because the
+      # toolchain release carries symlinks and executables.
+      - name: Pack the edges
+        run: tar -cf userland-deps.tar deps
+
       - uses: actions/upload-artifact@v4
         with:
           name: userland-build
           path: userland-build.tar
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: userland-deps
+          path: userland-deps.tar
           retention-days: 7
 
   # ---------------------------------------------------------------------------
@@ -93,16 +106,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
         run: tar -xpf userland-build.tar -C hostbuild
+      # The emu edge, not the toolchain: a release carries no host/runner.sh.
       - name: The mutation matrix
         run: |
-          N2=$(sh deps/commodore-900-toolchain/host/runner.sh) \
-            make -C test/hostcheck check
+          export C900_ROOT=$PWD
+          . mk/emulator.sh
+          N2=$C900_EMU make -C test/hostcheck check
 
   # The four probes that carry their own discrimination because no host
   # stand-in can hold the defect they measure: each compiles a mutated copy of
@@ -113,8 +130,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -127,8 +146,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -141,8 +162,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -155,8 +178,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -172,8 +197,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -188,8 +215,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place every dependency edge
-        run: make deps
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -205,6 +234,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      # toolchain.mk resolves the compiler as hostbuild/Makefile is read.
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
       - uses: actions/download-artifact@v4
         with: { name: userland-build }
       - name: Restore the built tree
@@ -234,8 +268,8 @@ jobs:
     steps:
       - name: Every job succeeded
         run: |
-          echo 'results: ${{ join(needs.*.result, " ") }}'
-          case '${{ join(needs.*.result, " ") }}' in
+          echo 'results: ${{ join(needs.*.result, ' ') }}'
+          case '${{ join(needs.*.result, ' ') }}' in
           *failure*|*cancelled*|*skipped*)
             echo "verdict: a job did not succeed" >&2; exit 1 ;;
           esac

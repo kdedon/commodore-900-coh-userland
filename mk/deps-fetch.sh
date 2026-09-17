@@ -74,10 +74,15 @@ fetch_git() {
 	git clone --branch "$3" "$2" "$4" || return 1
 }
 
-# The newest published release's tag, from the repository's release list.
+# The newest published release's tag, read off the redirect /releases/latest
+# answers with.  Not the API: that is rate-limited per IP, and CI runners share
+# them.  A repository with no release redirects to /releases, which has no tag
+# in it, so this prints nothing and the caller refuses by name.
 latest_tag() {
-	curl -fsL "https://api.github.com/repos/${1#https://github.com/}/releases/latest" |
-	sed -n 's/^[ \t]*"tag_name"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' | sed 1q
+	_lt=$(curl -fsLI -o /dev/null -w '%{url_effective}' "$1/releases/latest") || return 1
+	case $_lt in
+	*/releases/tag/*) echo "${_lt##*/releases/tag/}" ;;
+	esac
 }
 
 fetch_release() {
