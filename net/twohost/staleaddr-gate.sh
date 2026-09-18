@@ -13,9 +13,8 @@
 #	sh staleaddr-gate.sh mutant	the mutated half alone
 #	sh staleaddr-gate.sh clean	the unmutated half alone
 #
-# Variables: DIST (default coherent3-full-test), EMU (see twohost.py).  Two dist builds
-# and two two-emulator runs: budget an hour, and do not run it in parallel with
-# anything else that builds an image.
+# Variables: EMU (see twohost.py).  Takes about an hour; do not run it
+# alongside another build of the net package.
 #
 # THE MUTATION is in ip_get_ifaddr(), and it is one place rather than one per
 # consumer on purpose.  Every consumer of the interface address now goes through
@@ -26,13 +25,13 @@
 #
 # The source is edited in the tree and restored on the way out, including on a
 # signal: there is no way to build a mutant stack without building the stack, and
-# `make dist' stages net/inet/inet by path.  The restore is checked, and the
+# the net package carries net/inet/inet from the tree.  The restore is checked, and the
 # gate refuses to report anything if the tree it leaves behind is not the tree it
 # started with.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 OS=$(cd "$HERE/../.." && pwd)
-DIST=${DIST:-coherent3-full-test}
+IMG=${TMPDIR:-/tmp}/staleaddr-gate.$$.bin
 SRC=$OS/net/inet/generic/ip_lib.c
 BACKUP=${TMPDIR:-/tmp}/staleaddr-gate.$$.ip_lib.c
 MODE=${1:-both}
@@ -45,7 +44,7 @@ restore() {
 	fi
 }
 trap 'restore; exit 130' INT TERM
-trap restore EXIT
+trap 'restore; rm -f "$IMG" "$IMG.stamp"' EXIT
 
 # The mutant: ip_get_ifaddr answers with the address it saw the first time.
 mutate() {
@@ -72,15 +71,16 @@ EOF
 }
 
 build() {			# build <what it is>
-	echo "== building the $1 stack and a $DIST image"
+	echo "== building the $1 stack and a test image of it"
 	rm -f "$OS/net/inet/generic/ip_lib.o" "$OS/net/inet/inet"
 	sh "$OS/hostbuild/build-net.sh" || return 1
-	( cd "$OS/hostbuild" && make dist DIST="$DIST" ) || return 1
+	sh "$OS/dist/pack-component.sh" net bin || return 1
+	sh "$OS/test/image/build.sh" "$IMG" || return 1
 }
 
 # check <want: pass|fail> <what it is>
 check() {
-	( cd "$HERE" && python3 udp-two-test.py --dist="$DIST" )
+	( cd "$HERE" && python3 udp-two-test.py --image="$IMG" )
 	st=$?
 	got=pass; [ $st -eq 0 ] || got=fail
 	if [ "$got" != "$1" ]; then

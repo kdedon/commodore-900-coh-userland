@@ -36,7 +36,11 @@
 #              c900-kernel-headers-v<V> archive resolves this edge too, and
 #              serves the compiles and not the staging, which then refuses by
 #              name.
+#   tools      c900-tools: cohfs, which writes and reads the test image.
+#   kboot      the loader and its headers, which the test image boots through.
 #
 toolchain  release  https://github.com/kdedon/commodore-900-toolchain    latest  c900-toolchain-@REF@-@HOST@  commodore-900-toolchain
 emu        release  https://github.com/kdedon/commodore-900-emulator     latest  c900-@REF@-@HOST@            commodore-900-emulator
 kernel     release  https://github.com/kdedon/commodore-900-coh-kernel3  latest  c900-kernel-@REF@.tar.gz     commodore-900-coh-kernel3
+tools      release  https://github.com/kdedon/commodore-900-toolchain    latest  c900-tools-@REF@-@HOST@      commodore-900-tools
+kboot      release  https://github.com/kdedon/commodore-900-kboot        latest  kboot,c900-kboot-headers-@REF@.tar.gz  commodore-900-kboot

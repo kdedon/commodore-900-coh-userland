@@ -45,48 +45,16 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OS = os.path.normpath(os.path.join(HERE, "..", ".."))         # the repository root
-C900_ROOT = os.path.normpath(os.path.join(OS, ".."))          # the repository
+OS = os.path.normpath(os.path.join(HERE, ".."))               # the repository root
 WIREPY = os.path.join(OS, "net", "twohost", "wire.py")
 
-# net/twohost owns the question "where did a build of these parts write its
-# images"; it is asked of the distribution repository rather than answered
-# here, and one implementation answers it for every harness that boots one.
+# net/twohost owns the two questions every two-machine harness asks -- which
+# image the guests boot (the test image this build packed) and where the
+# emulator is (mk/deps.sh emu) -- so one implementation answers them for all.
 sys.path.insert(0, os.path.join(OS, "net", "twohost"))
-from twohost import dist_image
+from twohost import test_image, EMU
 LINE = "/dev/tty51"                     # SCC channel A -- the emulator's --wire
 LCK = "/usr/spool/uucp/LCK..tty51"
-
-# Same search as mk/emulator.sh, in the same order: a checkout beside this
-# repository or beside one of its three enclosing directories, then one inside a
-# `repos/' directory beside it, then a c900 on $PATH.  Three parents, not "until
-# /", is what reaches the enclosing workspace from a repository staged at
-# <workspace>/repos/<repo> without finding an unrelated checkout on a CI runner.
-# $EMU names one explicitly, as the checkout or as the binary.
-def emu_search():
-    out, d = [], C900_ROOT
-    for _ in range(4):
-        out.append(os.path.normpath(os.path.join(d, "..",
-                                                 "commodore-900-emulator")))
-        d = os.path.dirname(d)
-    out.append(os.path.join(C900_ROOT, "repos", "commodore-900-emulator"))
-    return out
-
-
-EMU_SEARCH = emu_search()
-
-
-def find_emu():
-    emu = os.environ.get("EMU", "")
-    if os.path.isdir(emu):
-        emu = os.path.join(emu, "bin", "c900")
-    if emu:
-        return emu
-    for d in EMU_SEARCH:
-        c = os.path.join(d, "bin", "c900")
-        if os.access(c, os.X_OK):
-            return c
-    return shutil.which("c900") or ""
 
 
 def say(s):
@@ -305,29 +273,17 @@ def wildcard(A, B):
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     opts = [a for a in argv[1:] if a.startswith("--")]
-    # Images are packed in the distribution repository, in a directory derived
-    # from the parts a build resolved, so the path cannot be spelled here --
-    # net/twohost asks that repository for it and names both failures (no
-    # checkout, no packed image) at the point of use.
-    if args:
-        img = args[0]
-    else:
-        img = dist_image("coherent3-full-test")
-        if img is None:
-            return 2
+    # The test image this build packed (test/image/build.sh), or the one
+    # named; net/twohost names the failure at the point of use.
+    img = test_image(args[0] if args else None)
+    if img is None:
+        return 2
     cut, trace = "--cut" in opts, "--trace" in opts
     text, wild = "--text" in opts, "--wild" in opts
 
     if not EMU or not os.path.exists(EMU):
         say("no emulator, and two of them are needed to run this harness.")
-        say("  Clone https://github.com/MichalPleban/commodore-900-emulator")
-        say("  and `make' it, to one of:")
-        for d in EMU_SEARCH:
-            say("    %s" % d)
-        say("  -- or put its c900 on $PATH, or set EMU to the checkout.")
-        return 2
-    if not os.path.exists(img):
-        say("no image %s (make dist)" % img)
+        subprocess.call(["sh", os.path.join(OS, "mk", "deps.sh"), "-n", "emu"])
         return 2
 
     work = os.path.join(os.environ.get("TMPDIR", "/tmp"),
@@ -393,8 +349,6 @@ def main(argv):
     good = verdict.startswith("FAIL") if cut else verdict.startswith("PASS")
     return 0 if good else 1
 
-
-EMU = find_emu()
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

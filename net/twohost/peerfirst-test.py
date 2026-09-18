@@ -1,6 +1,6 @@
 """peerfirst-test.py -- ONE guest, a host TCP peer, and the exchange talk(1) does.
 
-    python3 peerfirst-test.py [--dist NAME] [--no-psh] [--keep] [--trace]
+    python3 peerfirst-test.py [--image PATH] [--no-psh] [--keep] [--trace]
 
 WHY THIS EXISTS.  talk(1)'s data phase is a three-byte write followed by a
 three-byte read at BOTH ends at once (the edit characters), and it did not
@@ -36,9 +36,10 @@ so with PSH cleared a small segment must NOT be delivered, and a run that still
 reports the nonce is not measuring delivery.  `make peerfirst-negative'.
 
 The guest is not modified and no image is built: it boots a COPY of
-hostbuild/build/<dist>.bin, brings its stack up the way twohost.py does, and
+the test image, brings its stack up the way twohost.py does, and
 runs /bin/echoclient.  One boot, so this is minutes rather than tens of them.
 """
+import atexit
 import os
 import select
 import shutil
@@ -249,13 +250,13 @@ LISTEN_PORT = 4711
 CONNECT_DELAY = 25
 
 
-def run(dist, peer_first, psh, keep, trace, listen=False):
+def run(image, peer_first, psh, keep, trace, listen=False):
     work = os.path.join(os.environ.get("TMPDIR", "/tmp"),
                         "c900-peerfirst.%d" % os.getpid())
     os.makedirs(work)
     say("workdir %s" % work)
 
-    src = twohost.dist_image(dist)
+    src = twohost.test_image(image)
     if not src:
         return 2
     if not twohost.EMU or not os.path.exists(twohost.EMU):
@@ -269,7 +270,9 @@ def run(dist, peer_first, psh, keep, trace, listen=False):
     # length talk sends and the length nothing else here reads.
     nonce = ("%03d" % (os.getpid() % 1000)).encode()
 
-    sock = os.path.join(work, "wire.sock")
+    # Not in the workdir: an AF_UNIX path is capped at about 108 bytes.
+    sock = "/tmp/c900peer.%d.sock" % os.getpid()
+    atexit.register(lambda: os.path.lexists(sock) and os.unlink(sock))
     peer = Peer(sock, nonce, peer_first=peer_first, psh=psh, trace=trace,
                 connect_after=CONNECT_DELAY if listen else 0,
                 locport=LISTEN_PORT)
@@ -354,13 +357,13 @@ def run(dist, peer_first, psh, keep, trace, listen=False):
 
 def main(argv):
     opts = [a for a in argv[1:] if a.startswith("--")]
-    dist = "coherent3-full-test"
+    image = None
     for o in opts:
-        if o.startswith("--dist="):
-            dist = o.split("=", 1)[1]
+        if o.startswith("--image="):
+            image = o.split("=", 1)[1]
     peer_first = "--guest-first" not in opts
     psh = "--no-psh" not in opts
-    rc = run(dist, peer_first, psh, "--keep" in opts, "--trace" in opts,
+    rc = run(image, peer_first, psh, "--keep" in opts, "--trace" in opts,
              listen="--listen" in opts)
     if not psh:
         # The mutation passes when the test FAILS: a segment with no PSH must

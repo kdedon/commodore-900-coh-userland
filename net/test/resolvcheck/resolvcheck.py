@@ -1,6 +1,6 @@
 """resolvcheck.py -- does the C900's DNS resolver actually resolve?
 
-    python3 resolvcheck.py [--deaf] [--dist NAME] [--keep] [--only CASE,...]
+    python3 resolvcheck.py [--deaf] [--image PATH] [--keep] [--only CASE,...]
 
 WHAT IS UNDER TEST.  net/resolv/ -- res_init, res_mkquery, res_comp,
 res_send, res_query and gethnmadr -- and netdb.c's gethostbyname() falling
@@ -53,6 +53,7 @@ fails the run, the rule test and net/test/hostcheck already use.
 Nothing is rebuilt and no image is modified: the guest boots a COPY, because
 the emulator writes through to the disk it is given.
 """
+import atexit
 import os
 import random
 import re
@@ -66,7 +67,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 NET = os.path.normpath(os.path.join(HERE, "..", ".."))
 OS = os.path.normpath(os.path.join(NET, ".."))
 sys.path.insert(0, os.path.join(NET, "twohost"))
-from twohost import Guest, boot, dist_image, ensure_stack, say  # noqa: E402
+from twohost import Guest, boot, ensure_stack, say, test_image  # noqa: E402
 
 ADDR = "10.0.0.2"                 # what rc.net gives the guest
 PEER = "10.0.0.1"                 # this harness, and the nameserver
@@ -461,11 +462,11 @@ def report(cases, deaf, log, work, keep):
 
 def main(argv):
     opts = [a for a in argv[1:] if a.startswith("--")]
-    dist = "coherent3-full-test"
+    image = None
     only = None
     for o in opts:
-        if o.startswith("--dist="):
-            dist = o.split("=", 1)[1]
+        if o.startswith("--image="):
+            image = o.split("=", 1)[1]
         if o.startswith("--only="):
             only = set(o.split("=", 1)[1].split(","))
     deaf = "--deaf" in opts
@@ -475,7 +476,7 @@ def main(argv):
                         "c900-resolv.%d" % os.getpid())
     os.makedirs(work)
     say("workdir %s" % work)
-    src = dist_image(dist)
+    src = test_image(image)
     if not src:
         return 2
     img = os.path.join(work, "guest.bin")
@@ -486,7 +487,9 @@ def main(argv):
         % (n.fq(n.dns), n.dnsaddr, n.fq(n.trunc), n.truncaddr,
            n.fq(n.silent), n.fq(n.nx)))
 
-    sock = os.path.join(work, "dns.sock")
+    # Not in the workdir: an AF_UNIX path is capped at about 108 bytes.
+    sock = "/tmp/c900dns.%d.sock" % os.getpid()
+    atexit.register(lambda: os.path.lexists(sock) and os.unlink(sock))
     logpath = os.path.join(work, "wire.log")
     wcmd = [sys.executable, os.path.join(HERE, "dnswire.py"), sock,
             "--log=%s" % logpath] + n.zone_args()

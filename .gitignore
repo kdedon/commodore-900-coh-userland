@@ -82,6 +82,8 @@
 !/test/*/*cmd*
 !/test/cmd/*
 !/test/ichan/*
+# The test image's /dev table is data, not a built program.
+!/test/image/devices
 
 # ---- kboot ----------------------------------------------------------------
 /boot/build/

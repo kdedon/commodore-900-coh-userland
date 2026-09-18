@@ -1,7 +1,7 @@
 # smtpdata.cmd -- what smtpd does with a DATA transfer that ends without its
 # terminating `.'.
 #
-#	C900_DIST=<dist checkout> hostbuild/emu-run.sh test/cmd/smtpdata.cmd
+#	hostbuild/emu-run.sh test/cmd/smtpdata.cmd
 #
 # RFC 821 accepts a message on the end-of-mail-data line and on nothing else.
 # A transfer the sender abandoned in the middle of the body was never accepted,

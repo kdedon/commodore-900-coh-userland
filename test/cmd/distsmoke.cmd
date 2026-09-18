@@ -1,6 +1,6 @@
-# distsmoke.cmd -- does a packed dist image come up and work at all?
+# distsmoke.cmd -- does a packed image come up and work at all?
 #
-#	make -C os/hostbuild smoke-test DIST=<dist>
+#	hostbuild/emu-run.sh test/cmd/distsmoke.cmd
 #
 # The smallest question worth asking of an image, and the one a green BUILD
 # cannot answer: the kernel reached the single-user shell, the root filesystem

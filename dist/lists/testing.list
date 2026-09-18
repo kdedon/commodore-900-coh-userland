@@ -6,11 +6,12 @@
 # second.  Each is the guest half of a check whose other half is a host harness
 # (hostbuild/*.py, hostbuild/*.sh) or a hand run at the console.
 #
-# A RELEASE IMAGE MUST NOT INCLUDE THIS LIST.  Only a dist used for development
-# and testing does -- that is coherent3-full-test, the dist every harness
-# defaults to (emu-run.sh and the rest all take `DIST' with it as the default).  The
-# shipped dists -- coherent3, coherent3-full, coherent3-full-gfx, coherent3-dev,
-# dual -- do not include it and carry a /bin of real commands only.
+# A RELEASE IMAGE MUST NOT INCLUDE THIS LIST.  Only an image used for
+# development and testing does -- this repository's test image
+# (test/image/build.sh), which emu-run.sh and the rest boot by default, and
+# commodore-900-dist's coherent3-full-test.  The shipped dists -- coherent3,
+# coherent3-full, coherent3-full-gfx, coherent3-dev, dual -- do not include it
+# and carry a /bin of real commands only.
 #
 # THE PATHS ARE PART OF THE INTERFACE.  The harnesses type these as absolute
 # paths into a guest shell (`/bin/psipping 2 echo', `/bin/tickrate 30',

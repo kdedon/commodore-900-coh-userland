@@ -3,6 +3,7 @@
 
     python3 hostbuild/component.py components
     python3 hostbuild/component.py component <name> <bin|src|man|dev>
+    python3 hostbuild/component.py resolve <list>
     python3 hostbuild/component.py packages
 
 A package directive in dist/lists names a component.  Derive its source,
@@ -630,13 +631,19 @@ def srcmap():
 class Component:
     """One component: its list, resolved, and the kinds it publishes."""
 
-    def __init__(self, name):
-        for rel in listnames():
-            m = list_meta(rel)
-            if m['package'] == name:
-                break
+    def __init__(self, name, rel=None):
+        if rel is None:
+            for rel in listnames():
+                m = list_meta(rel)
+                if m['package'] == name:
+                    break
+            else:
+                die("no component `%s' (component.py components lists them)"
+                    % name)
         else:
-            die("no component `%s' (component.py components lists them)" % name)
+            # Any list: `resolve' stages testing.list into the test image
+            # by the package rules.
+            m = list_meta(rel)
         self.name = name
         self.meta = m
         self.kinds = meta_kinds(m)
@@ -951,6 +958,39 @@ class Component:
         return pages
 
 
+def emit_bin(c, emit):
+    """A component's resolved runtime entries, one emit() each: what its -bin
+    package carries and the test image stages."""
+    miss = c.unresolved()
+    if miss:
+        die("%s: %d entr(y|ies) resolve to nothing, first %s.\n"
+            "  A bin package cut from a half-built tree is a package of "
+            "holes; build first (`make -C hostbuild')."
+            % (c.name, len(miss), miss[0]))
+    for e in c.entries:
+        src = c._src(e)
+        uid, gid = c.owner_of(e)
+        if e.type == 'd':
+            emit('d', e.dest, e.mode if e.mode is not None else 0o755, '-',
+                 uid, gid)
+        elif e.type == 'e':
+            emit('e', e.dest, e.mode if e.mode is not None else 0o644, '-',
+                 uid, gid)
+        elif e.type == 'l':
+            emit('l', e.dest, 0, e.keys['to'], uid, gid)
+        elif e.type == 'f':
+            emit('f', e.dest, c.mode_of(e, src), src, uid, gid)
+        elif e.type == 't':
+            # Expanded so the package names every file it carries.
+            emit('d', e.dest, 0o755, '-', uid, gid)
+            for n in sorted(os.listdir(src)):
+                s = os.path.join(src, n)
+                if os.path.isfile(s):
+                    emit('f', e.dest.rstrip('/') + '/' + n,
+                         0o755 if os.access(s, os.X_OK) else 0o644, s,
+                         uid, gid)
+
+
 def component_kind(name, kind, out):
     """One component-kind's file set, one entry per line:
 
@@ -975,36 +1015,7 @@ def component_kind(name, kind, out):
             "%s; add `%s' to the `kinds' line of %s to change that."
             % (name, kind, ",".join(c.kinds), kind, c.meta['list']))
     if kind == 'bin':
-        miss = c.unresolved()
-        if miss:
-            die("%s: %d entr(y|ies) resolve to nothing, first %s.\n"
-                "  A bin package cut from a half-built tree is a package of "
-                "holes; build first (`make -C hostbuild')."
-                % (name, len(miss), miss[0]))
-        for e in c.entries:
-            src = c._src(e)
-            uid, gid = c.owner_of(e)
-            if e.type == 'd':
-                emit('d', e.dest, e.mode if e.mode is not None else 0o755, '-',
-                     uid, gid)
-            elif e.type == 'e':
-                emit('e', e.dest, e.mode if e.mode is not None else 0o644, '-',
-                     uid, gid)
-            elif e.type == 'l':
-                emit('l', e.dest, 0, e.keys['to'], uid, gid)
-            elif e.type == 'f':
-                emit('f', e.dest, c.mode_of(e, src), src, uid, gid)
-            elif e.type == 't':
-                # A tree is DIRECTORY CONTENTS, and a package is a list of
-                # files: expanded here so what the package carries is nameable
-                # rather than "whatever that directory held".
-                emit('d', e.dest, 0o755, '-', uid, gid)
-                for n in sorted(os.listdir(src)):
-                    s = os.path.join(src, n)
-                    if os.path.isfile(s):
-                        emit('f', e.dest.rstrip('/') + '/' + n,
-                             0o755 if os.access(s, os.X_OK) else 0o644, s,
-                             uid, gid)
+        emit_bin(c, emit)
         return
     if kind == 'man':
         idx = man_index()
@@ -1182,6 +1193,15 @@ def main():
         if len(sys.argv) != 4:
             die("usage: component.py component <name> <%s>" % "|".join(PKGKINDS))
         component_kind(sys.argv[2], sys.argv[3], sys.stdout)
+    elif cmd == 'resolve':
+        if len(sys.argv) != 3:
+            die("usage: component.py resolve <list>")
+        rel = sys.argv[2]
+        c = Component(os.path.basename(rel), rel)
+        def emit(typ, path, mode, src, uid=DEFUID, gid=DEFGID):
+            sys.stdout.write("%s\t%s\t%o\t%d\t%d\t%s\n"
+                             % (typ, path, mode, uid, gid, src))
+        emit_bin(c, emit)
     elif cmd == 'version':
         print(version())
     else:

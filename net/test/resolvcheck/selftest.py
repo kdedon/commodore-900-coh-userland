@@ -31,7 +31,7 @@ from slipwire import (slip_encode, SlipDecoder, udp_dgram, tcp_seg,
                       Tcp, Udp, echo_request)
 from dnswire import encode_name, decode_name, Question
 
-WORK = tempfile.mkdtemp(prefix="dnswire-selftest.")
+WORK = tempfile.mkdtemp(prefix="dnswire-selftest.", dir="/tmp")  # short: AF_UNIX
 SOCK = os.path.join(WORK, "t.sock")
 LOG = os.path.join(WORK, "t.log")
 

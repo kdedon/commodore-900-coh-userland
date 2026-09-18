@@ -21,10 +21,11 @@
 #   emu         C900_EMU          the emulator CHECKOUT (bin/c900 inside it)
 #   toolchain   C900_TOOLCHAIN    the toolchain checkout
 #   kernel      C900_KERNEL       the kernel checkout, or its headers release
+#   tools       C900_TOOLS        the unpacked c900-tools release (bin/cohfs)
+#   kboot       C900_KBOOT        the unpacked kboot release (the loader)
 #
-# This repository does not link a kernel or stage a loader into an image --
-# the kernel and dist repositories do that -- so kboot is not listed here,
-# unlike those repositories which name it.  Trimmed to the edges DEPS
+# No kernel is linked here, but the test image boots one, packed with cohfs
+# on the published loader.  Trimmed to the edges DEPS
 # actually names.
 #
 # This file is what DEPS and `make deps' talk to: the name column there is a
@@ -133,26 +134,29 @@ toolchain)
   kind DEPS names -- a \`git' line clones, a \`release' line unpacks the
   release archive into deps/."
 	;;
-dist)
-	VAR="C900_DIST"
-	WANT="the distribution repository (image format tooling)"
-	LIST="$root/deps/commodore-900-dist $(siblings commodore-900-dist)"
-	[ -n "$given" ] || given=${C900_DIST:-}
+tools)
+	VAR="C900_TOOLS"
+	WANT="the host-run tools (cohfs, to write and read an image)"
+	# Release-only; it lands in deps/.
+	LIST="$root/deps/commodore-900-tools"
+	[ -n "$given" ] || given=${C900_TOOLS:-}
 	fixup() { echo "$1"; }
-	# workimg.sh is the marker because it is what the test harnesses here
-	# reach for: every gate that boots an image runs it against a scratch
-	# copy so build/<dist>.bin stays pristine.  It reads and writes the
-	# COHERENT filesystem layout, which is that repository's subject, so the
-	# knowledge lives in one place rather than being copied into each
-	# consumer -- a duplicated format parser drifts, and a drifted one
-	# returns a plausible wrong answer instead of an error.
-	ok() { [ -f "$1/os/hostbuild/workimg.sh" ]; }
-	shape() { echo checkout; }
-	HOW="  The media descriptors, the image packer and the tools that read a
-  packed filesystem are a repository of their own:
-      git clone <...>/commodore-900-dist
-  or point C900_DIST= at a checkout.  Only targets that BOOT an image need
-  it -- compiling and linking the userland does not."
+	ok() { [ -x "$1/bin/cohfs" ]; }
+	shape() { echo "release $(sed -n 1p "$1/VERSION" 2>/dev/null)"; }
+	HOW="  make deps, or unpack c900-tools-v<V>-<host> and set C900_TOOLS= to it.
+  Only the targets that pack or read a test image need it."
+	;;
+kboot)
+	VAR="C900_KBOOT"
+	WANT="the kboot loader"
+	# A bare file, placed in deps/ by \`make deps'.
+	LIST="$root/deps/commodore-900-kboot"
+	[ -n "$given" ] || given=${C900_KBOOT:-}
+	fixup() { echo "$1"; }
+	ok() { [ -f "$1/kboot" ]; }
+	shape() { echo "release $(sed -n 1p "$1/VERSION" 2>/dev/null)"; }
+	HOW="  make deps, or put the kboot release's \`kboot' in a directory and
+  set C900_KBOOT= to it.  Only the targets that pack a test image need it."
 	;;
 kernel)
 	VAR="C900_KERNEL"
@@ -206,7 +210,7 @@ kernel)
   places whichever kind DEPS names."
 	;;
 *)
-	echo "deps.sh: unknown dependency \`$dep' (emu, toolchain, dist, kernel)" >&2
+	echo "deps.sh: unknown dependency \`$dep' (emu, toolchain, tools, kboot, kernel)" >&2
 	exit 2
 	;;
 esac

@@ -1,6 +1,6 @@
 """twohost.py -- two C900s on one serial link, and a login across it.
 
-    python3 twohost.py [--cut] [--trace] [--dist NAME] [--keep] [--quick]
+    python3 twohost.py [--cut] [--trace] [--image PATH] [--keep] [--quick]
 
 WHAT THIS TESTS.  Everything the multi-user side of this system does with more
 than one machine needs a second machine, and until now there was none: the SLIP
@@ -49,144 +49,19 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OS = os.path.normpath(os.path.join(HERE, "..", ".."))
-C900_ROOT = os.path.normpath(os.path.join(OS, ".."))
-# The emulator is a CONSUMED CHECKOUT.  Same two candidates, in the same order,
-# as mk/emulator.sh -- a checkout beside this repository, then one inside a
-# `repos/' directory beside it -- because this repository is consumed both ways
-# and a single relative path is silently wrong in whichever it was not written
-# for.  $EMU still names one explicitly, as a checkout or as the binary itself.
-# What is gone is the default of /home/<one developer>/git/commodore-900-emulator,
-# which made this harness work on exactly one machine.
-def emu_search():
-    """The candidate CHECKOUTS, in mk/emulator.sh's order.  A `c900' on $PATH
-    is this file's last resort rather than its second, which is where find_emu()
-    has always looked for it.
-
-    The list has to be that file's, not a shorter one: this repository is
-    consumed both side by side and staged under a `repos/' directory, and a
-    harness that searched one parent found the emulator in whichever layout it
-    was written for and refused to run in the other -- which is how `make talk'
-    came to be unrunnable on a machine where every other emulator harness works.
-
-    THREE parents, not `until /', for mk/emulator.sh's reason: three reaches the
-    enclosing workspace from <workspace>/repos/<repo>, and anything further out
-    is not a sibling but a coincidence.
-    """
-    out = [os.path.join(C900_ROOT, "deps", "commodore-900-emulator")]
-    d = C900_ROOT
-    for _ in range(3):
-        d = os.path.normpath(os.path.join(d, ".."))
-        out.append(os.path.join(d, "commodore-900-emulator"))
-    out.append(os.path.join(C900_ROOT, "repos", "commodore-900-emulator"))
-    return out
+# The emulator is found by this repository's resolver (mk/deps.sh emu), the one
+# every shell harness asks, so the search order is stated once; $C900_EMU or
+# $EMU still names one explicitly, as a checkout or as the binary itself.
 
 
-EMU_SEARCH = emu_search()
-
-
-def dist_search():
-    """The candidate CHECKOUTS of commodore-900-dist, in mk/deps.sh's
-    order: deps/ (where `make deps DEP=dist' would place one -- there is no
-    such release today, but the slot is not this file's to skip), then three
-    parents out from this repository, then one under a `repos/' directory
-    beside it.
-
-    Mirrored here rather than invoked, for the reason emu_search() gives: a
-    Python harness cannot portably source mk/dist.sh, so the two lists are
-    kept in the same order by comment rather than by one calling the other.
-    The image format itself is not this repository's subject -- see
-    mk/dist.sh -- and the images are packed over there, in a directory
-    dist_imgdir() asks that repository for.
-    """
-    out = [os.path.join(C900_ROOT, "deps", "commodore-900-dist")]
-    d = C900_ROOT
-    for _ in range(3):
-        d = os.path.normpath(os.path.join(d, ".."))
-        out.append(os.path.join(d, "commodore-900-dist"))
-    out.append(os.path.join(C900_ROOT, "repos", "commodore-900-dist"))
-    return out
-
-
-DIST_SEARCH = dist_search()
-
-
-def find_dist():
-    """The commodore-900-dist checkout, or "" -- refusal is at the point
-    of use, in dist_image()."""
-    given = os.environ.get("C900_DIST", "")
-    if given:
-        return given
-    for cand in DIST_SEARCH:
-        if os.path.isfile(os.path.join(cand, "os", "hostbuild", "workimg.sh")):
-            return cand
-    return ""
-
-
-C900_DIST = find_dist()
-
-
-def dist_imgdir():
-    """Where a build of these parts writes its images, asked of the dist
-    repository rather than spelled here.
-
-    `os/hostbuild/build/<dist>.bin' over there is a symlink to whichever build
-    that checkout packed last; the real directory is derived from the parts a
-    build resolved, and `make -s imgdir' is what prints it.  This repository is
-    passed as the userland -- $OS above, which is this repository's root -- so
-    what comes back is the directory of a build made from the programs these
-    runs are about to boot.  "" when the question cannot be answered -- the
-    refusal is in dist_image(), with the rest.
-    """
-    if not C900_DIST:
-        return ""
-    env = dict(os.environ, C900_USERLAND=OS)
-    try:
-        p = subprocess.Popen(
-            ["make", "-s", "--no-print-directory", "-C",
-             os.path.join(C900_DIST, "os", "hostbuild"), "imgdir"],
-            stdout=subprocess.PIPE, stderr=open(os.devnull, "w"), env=env)
-        out = p.communicate()[0]
-    except OSError:
-        return ""
-    if p.returncode != 0:
-        return ""
-    # make[N] lines dropped as well as suppressed: a make invoked from inside
-    # another one inherits -w, so the last line of the output is `Leaving
-    # directory' rather than the path, and taken as the image directory it
-    # names a file nothing packed.
-    lines = [l for l in out.decode("utf-8", "replace").split("\n")
-             if l.strip() and not l.startswith("make[")]
-    return lines[-1].strip() if lines else ""
-
-
-C900_IMGDIR = dist_imgdir()
-
-
-def dist_image(dist):
-    """The packed image for `dist', or None (having already said() why): a
-    missing CHECKOUT and a missing IMAGE are different failures, and only the
-    caller knows whether "build it, or pass --dist" (an image gap) or a clone
-    instruction (a checkout gap) is the fix -- so both are named, the same way
-    mk/dist.sh's dist_img/dist_need name them for the shell harnesses.
-    """
-    if not C900_DIST:
-        say("cannot boot %s without the distribution repository." % dist)
-        say("  Clone commodore-900-dist to one of:")
-        for cand in DIST_SEARCH:
-            say("    %s" % cand)
-        say("  or set C900_DIST to a checkout.")
-        return None
-    if not C900_IMGDIR:
-        say("cannot boot %s: %s could not say where a build of these parts"
-            % (dist, C900_DIST))
-        say("  writes its images.  Ask it directly:")
-        say("      make -C %s/os/hostbuild imgdir" % C900_DIST)
-        return None
-    img = os.path.join(C900_IMGDIR, "%s.bin" % dist)
+def test_image(path=None):
+    """The image the guests boot, or None (having already said() why): the
+    test image this build packed (test/image/build.sh), or the one named."""
+    img = path or os.path.join(OS, "hostbuild", "build", "test.bin")
     if not os.path.exists(img):
-        say("no packed image for %s: %s" % (dist, img))
-        say("  Images are packed in the distribution repository:")
-        say("      make -C %s/os/hostbuild dist DIST=%s" % (C900_DIST, dist))
+        say("no image %s" % img)
+        say("  Pack the test image from this build:")
+        say("      sh %s" % os.path.join(OS, "test", "image", "build.sh"))
         return None
     return img
 
@@ -198,12 +73,13 @@ def find_emu():
         emu = os.path.join(emu, "bin", "c900")
     if emu:
         return emu
-    for d in EMU_SEARCH:
-        c = os.path.join(d, "bin", "c900")
-        if os.access(c, os.X_OK):
-            return c
-    # Last, a `c900' on $PATH -- as mk/emulator.sh ends its own search.
-    return shutil.which("c900") or ""
+    try:
+        d = subprocess.check_output(
+            ["sh", os.path.join(OS, "mk", "deps.sh"), "emu"],
+            stderr=open(os.devnull, "w")).decode().strip()
+    except (OSError, subprocess.CalledProcessError):
+        d = ""
+    return os.path.join(d, "bin", "c900") if d else ""
 
 
 EMU = find_emu()
@@ -368,11 +244,11 @@ def boot(g):
     return True
 
 
-def run(cut, trace, dist, keep, quick):
+def run(cut, trace, image, keep, quick):
     work = os.path.join(os.environ.get("TMPDIR", "/tmp"), "c900-twohost.%d" % os.getpid())
     os.makedirs(work)
     say("workdir %s" % work)
-    src = dist_image(dist)
+    src = test_image(image)
     if not src:
         return 2
     if not EMU or not os.path.exists(EMU):
@@ -380,12 +256,7 @@ def run(cut, trace, dist, keep, quick):
             say("no emulator at EMU=%s" % EMU)
         else:
             say("no emulator, and two of them are needed to run this harness.")
-        say("  Clone https://github.com/MichalPleban/commodore-900-emulator")
-        say("  and `make' it, to one of:")
-        for d in EMU_SEARCH:
-            say("    %s" % d)
-        say("  -- or put its c900 on $PATH, or set EMU to the checkout")
-        say("     or to its bin/c900.")
+            subprocess.call(["sh", os.path.join(OS, "mk", "deps.sh"), "-n", "emu"])
         return 2
 
     imgs = {}
@@ -509,12 +380,12 @@ def report(ok, why, work, wire, guests, keep):
 
 def main(argv):
     opts = [a for a in argv[1:] if a.startswith("--")]
-    dist = "coherent3-full-test"
+    image = None
     for o in opts:
-        if o.startswith("--dist="):
-            dist = o.split("=", 1)[1]
+        if o.startswith("--image="):
+            image = o.split("=", 1)[1]
     cut = "--cut" in opts
-    rc = run(cut, "--trace" in opts, dist, "--keep" in opts, "--quick" in opts)
+    rc = run(cut, "--trace" in opts, image, "--keep" in opts, "--quick" in opts)
     if cut:
         # The control passes when the test fails: with the wire cut there is no
         # network, so anything that still reported success was not measuring it.

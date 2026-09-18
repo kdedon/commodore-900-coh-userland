@@ -118,7 +118,7 @@ emu_need() {
 		echo "  \`make deps DEP=emu' unpacks the release DEPS pins into"
 		echo "  the deps/ path above."
 		echo "  Nothing that only PACKS an image needs it:"
-		echo "  \`make -C hostbuild dist DIST=stock' runs on python3 alone."
+		echo "  \`sh test/image/build.sh' packs the test image without one."
 	} >&2
 	exit 2
 }

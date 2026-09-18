@@ -26,8 +26,8 @@
 #                    and must not run beside another image build.
 #
 # Variables:
-#   DIST=coherent3-full-test  which hostbuild/build/<DIST>.bin the guests boot (a COPY is
-#                    made per guest -- the emulator writes through to its image).
+#   IMAGE=...        the image to boot (a copy per guest), the test image by
+#                    default
 #   EMU=...          a commodore-900-emulator checkout, or its bin/c900.  Unset,
 #                    a checkout beside this repository is used; see
 #                    mk/emulator.sh for the search and for what to clone.
@@ -39,8 +39,9 @@
 # machine.
 
 PY   ?= python3
-DIST ?= coherent3-full-test
-HARNESS = $(PY) twohost.py --dist=$(DIST)
+IMAGE ?=
+IMG = $(if $(IMAGE),--image=$(IMAGE))
+HARNESS = $(PY) twohost.py $(IMG)
 
 .PHONY: test negative check trace smoke talk talk-negative udp staleaddr help \
 	peerfirst peerfirst-listen peerfirst-negative peerfirst-check
@@ -66,10 +67,10 @@ smoke:
 # rendezvous through a daemon at BOTH ends, and the announcement needs a logged-in
 # user with a terminal.  See talk-test.py.
 talk:
-	$(PY) talk-test.py --dist=$(DIST)
+	$(PY) talk-test.py $(IMG)
 
 talk-negative:
-	$(PY) talk-test.py --dist=$(DIST) --cut
+	$(PY) talk-test.py $(IMG) --cut
 
 # udp -- does a datagram cross the wire between two guests?  Every other UDP
 # test in the tree is loopback on one machine or has the host's Python at the
@@ -77,14 +78,14 @@ talk-negative:
 # ask.
 # Run this BEFORE suspecting a UDP daemon.
 udp:
-	$(PY) udp-two-test.py --dist=$(DIST)
+	$(PY) udp-two-test.py $(IMG)
 
 # staleaddr -- `udp' seen to fail.  Its reconfigure-then-send assertion watches
 # for a stack that keeps a copy of the interface address, which is a property of
 # the source and cannot be produced from the harness side, so the gate puts the
 # defect back and requires the refusal.  See the script.
 staleaddr:
-	DIST=$(DIST) sh staleaddr-gate.sh
+	sh staleaddr-gate.sh
 
 # peerfirst -- ONE guest and a host TCP peer, for the delivery question talk(1)
 # asks: a three-byte write followed by a three-byte read, with the PEER speaking
@@ -92,19 +93,19 @@ staleaddr:
 # that arrives before the program asks for it was exercised nowhere.  One boot,
 # so minutes rather than the twenty `talk' costs -- run this first.
 peerfirst:
-	$(PY) peerfirst-test.py --dist=$(DIST)
+	$(PY) peerfirst-test.py $(IMG)
 
 # The same with the guest LISTENING and its first listen ended by its own alarm,
 # which is talk's ring (proto.c TalkInit) and the only interrupted network
 # operation anywhere in this tree.
 peerfirst-listen:
-	$(PY) peerfirst-test.py --dist=$(DIST) --listen
+	$(PY) peerfirst-test.py $(IMG) --listen
 
 # The mutation case, and it needs no rebuild: the same payload with PSH cleared
 # must NOT be delivered to a short read, so this passes when the test fails.  A
 # delivery assertion that cannot fail proves nothing (#101).
 peerfirst-negative:
-	$(PY) peerfirst-test.py --dist=$(DIST) --no-psh
+	$(PY) peerfirst-test.py $(IMG) --no-psh
 
 peerfirst-check:
 	$(MAKE) peerfirst

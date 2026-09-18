@@ -10,9 +10,10 @@
 #   make clean-work            drop the harnesses' working copies
 #   make clean                 remove everything the build writes
 #
-# This repository builds programs; it does not link a kernel and does not
-# pack an image.  The kernel and image-packing tools live in separate
-# repositories (commodore-900-coh-kernel3 and commodore-900-dist).
+# This repository builds programs; it does not link a kernel, and the only
+# image it packs is the test image its booted checks run on (test/image).  The
+# kernel and the distribution images live in separate repositories
+# (commodore-900-coh-kernel3 and commodore-900-dist).
 # This tree contains every program, its data files and its man pages.
 #
 # The recipes are the sweep scripts, which carry stateful host-port patching

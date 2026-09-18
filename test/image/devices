@@ -1,0 +1,96 @@
+# devices -- the test image's /dev, a copy of the distribution's hard-disk
+# table.  No release publishes one yet; recopy it when the original changes.
+#
+# Format: <path> <b|c> <mode> <major> <minor>.
+#
+# path type mode major minor  (majors: 0 nl, 1 ct, 2 wd, 3 lp, 5 al, 7 ms,
+#                              8 kvcon, 9 pty, 10 inet).  Pty minor = channel, +128 =
+#                              master; a master is 600 because only a server
+#                              should open one, the slaves are 666 like tty52..55.
+#
+# The disks, swap and memory are 600 root: each bypasses file permissions.
+# Their users are run by root, or (ps, top, mgrload) are setuid and drop it
+# once the descriptor is open.  So df(1) fails for ordinary users.
+dev/console c 700 8 0
+dev/tty50   c 700 5 0
+dev/tty51   c 700 5 1
+dev/tty52   c 666 5 2
+dev/tty53   c 666 5 3
+dev/tty54   c 666 5 4
+dev/tty55   c 666 5 5
+dev/hd0     b 600 2 0
+dev/hd1     b 600 2 1
+dev/hd2     b 600 2 2
+dev/hd3     b 600 2 3
+dev/hd4     b 600 2 4
+dev/rhd0    c 600 2 0
+dev/rhd1    c 600 2 1
+dev/rhd2    c 600 2 2
+dev/rhd3    c 600 2 3
+dev/rhd4    c 600 2 4
+# CP/M-8000 drive A:, slot 8 (slots 8-14 are A: to G:, as the CP/M BIOS
+# numbers them).  Unset unless the media declares cpm=A.  666: it holds no
+# COHERENT files, and cpm(1) is a user command.
+dev/cpma    b 666 2 8
+dev/rcpma   c 666 2 8
+# /usr on the 42 MB COHERENT-only media, slot 6; unset where that span is CP/M's.
+dev/hd6     b 600 2 6
+dev/rhd6    c 600 2 6
+# /dev/swap is another name for /dev/hd3: the swap extent lives inside it.
+dev/swap    b 600 2 3
+#
+# No /dev/dump: with no tape it could only alias the floppy, and `dump 0u'
+# would then overwrite a disc unasked.  Use `f /dev/fd1'.
+#
+# The floppy is 666: removable media holding nothing of the running system.
+# No /dev/fd0: no machine shipped with a second drive.
+dev/fd1     b 666 2 48
+dev/rfd1    c 666 2 48
+dev/null    c 666 0 0
+dev/mem     c 600 0 1
+dev/kmem    c 600 0 2
+dev/tty     c 666 1 0
+dev/ip      c 600 10 0
+dev/lp      c 666 3 0
+dev/rlp     c 666 3 1
+dev/ptyp0   c 600 9 128
+dev/ptyp1   c 600 9 129
+dev/ptyp2   c 600 9 130
+dev/ptyp3   c 600 9 131
+dev/ptyp4   c 600 9 132
+dev/ptyp5   c 600 9 133
+dev/ptyp6   c 600 9 134
+dev/ptyp7   c 600 9 135
+dev/ttyp0   c 666 9 0
+dev/ttyp1   c 666 9 1
+dev/ttyp2   c 666 9 2
+dev/ttyp3   c 666 9 3
+dev/ttyp4   c 666 9 4
+dev/ttyp5   c 666 9 5
+dev/ttyp6   c 666 9 6
+dev/ttyp7   c 666 9 7
+# The HR card's mouse (kernel built KMOUSE=1).  Minor 0 gives `struct msevent',
+# minor 1 Mouse Systems 3-byte packets.  600: it is exclusive-open.  ENXIO
+# without an HR card.
+# Appended: this file's order fixes /dev inode numbers.
+dev/mouse   c 600 7 0
+dev/mousems c 600 7 1
+# Pty channels 8..15, named in hex: servers scan ptyp0..ptypf for a free
+# master.  Minor = channel, +128 = master.
+# Appended: this file's order fixes /dev inode numbers.
+dev/ptyp8   c 600 9 136
+dev/ptyp9   c 600 9 137
+dev/ptypa   c 600 9 138
+dev/ptypb   c 600 9 139
+dev/ptypc   c 600 9 140
+dev/ptypd   c 600 9 141
+dev/ptype   c 600 9 142
+dev/ptypf   c 600 9 143
+dev/ttyp8   c 666 9 8
+dev/ttyp9   c 666 9 9
+dev/ttypa   c 666 9 10
+dev/ttypb   c 666 9 11
+dev/ttypc   c 666 9 12
+dev/ttypd   c 666 9 13
+dev/ttype   c 666 9 14
+dev/ttypf   c 666 9 15

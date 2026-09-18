@@ -1,9 +1,10 @@
 #!/bin/sh
-# emu-run.sh <cmdfile> [dist] -- run commands on the target under the minimal
+# emu-run.sh <cmdfile> [image] -- run commands on the target under the minimal
 # instruction-level emulator (a commodore-900-emulator checkout; see
 # mk/emulator.sh for how it is found and what to set) and print the
-# console transcript.  Results the commands write to files can then be read with
-# fsread.py -- the emulator writes THROUGH to the image, so no sync is needed.
+# console transcript.  The image is the test image (test/image/build.sh) unless
+# another is named.  Results the commands write to files can then be read with
+# cohfs -- the emulator writes THROUGH to the image, so no sync is needed.
 #
 # The emulator takes the whole keystroke script on the command line and writes
 # the console to stdout.  Use this for anything that does not need video, a
@@ -27,19 +28,23 @@
 # Nothing here needs it, since the login reaches multi-user without one.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-CMDS=${1:?usage: emu-run.sh <cmdfile> [dist]}
-DIST=${2:-coherent3-full-test}
+CMDS=${1:?usage: emu-run.sh <cmdfile> [image]}
 # The emulator is a consumed checkout, resolved by mk/emulator.sh -- the same
 # search list mk/compiler.mk uses, in the same order.  $EMU names one
 # explicitly (the buildenv harness, test/buildenv, passes a wrapper
 # script through it).
 C900_ROOT=$(cd "$HERE/.." && pwd)
 . "$C900_ROOT/mk/emulator.sh"
-. "$C900_ROOT/mk/dist.sh"
 EMU=$C900_EMU
-# The image is the distribution repository's product, not this tree's: see
-# mk/dist.sh.  dist_img refuses by name, and names the repository to pack it in.
-IMG=$(dist_img "$DIST") || exit 2
+# The image is this repository's TEST IMAGE, packed from this build by
+# test/image/build.sh; a distribution image is commodore-900-dist's product and
+# is booted by that repository's own harnesses.  Another image may be named.
+IMG=${2:-$C900_ROOT/hostbuild/build/test.bin}
+if [ ! -f "$IMG" ]; then
+	echo "emu-run.sh: no image $IMG" >&2
+	echo "  Pack the test image from this build:  sh $C900_ROOT/test/image/build.sh" >&2
+	exit 2
+fi
 # Every per-run path is per-invocation by default: concurrent runs are the
 # normal case, and a fixed name lets one run read back another's transcript.
 # $$ is the run's identity; set OUT/ERR/WORK explicitly to name them yourself.
@@ -51,16 +56,22 @@ emu_need "boot the target and type commands at its console"
 # image under the transcript was built from.  Written by build-image.sh; a
 # missing one is itself the answer.
 . "$HERE/provenance.sh"
-prov_header "image $DIST" "$IMG.stamp" || true
+prov_header "image $(basename "$IMG")" "$IMG.stamp" || true
 
 # Run on a copy.  The emulator writes through to the image and the guest
 # mounts its root read-write, so a run mutates the disk it booted from and a
 # reused image makes runs depend on their predecessors.  A fresh copy per run
-# keeps every test starting from the same known image and leaves
-# build/<dist>.bin pristine.  See workimg.sh; WORK names the copy explicitly,
-# PERSIST=1 keeps the writes.
+# keeps every test starting from the same known image and leaves the image
+# pristine.  WORK names the copy explicitly; PERSIST=1 writes through to the
+# image itself.
+case "${PERSIST:-}" in
+'' | 0 | no | NO | false | FALSE) ;;
+*)	echo "emu-run.sh: PERSIST set -- writing through to $IMG" >&2
+	WORK=$IMG ;;
+esac
 if [ -n "${WORK:-}" ]; then
-	cp --reflink=auto -f "$IMG" "$WORK" 2>/dev/null || cp -f "$IMG" "$WORK"
+	[ "$WORK" = "$IMG" ] ||
+		cp --reflink=auto -f "$IMG" "$WORK" 2>/dev/null || cp -f "$IMG" "$WORK"
 	IMG="$WORK"
 else
 	# Tagged with the pid: the tag is what keeps two runs off one copy,
@@ -68,13 +79,17 @@ else
 	# corruption.  Per-run copies accumulate, so sweep the ones whose run
 	# is over first -- only this harness's own tag pattern, and only when
 	# the pid in the name is dead.
-	for stale in "$HERE"/build/work/*.emu.[0-9]*.bin; do
+	WD=$(dirname "$IMG")/work
+	mkdir -p "$WD"
+	for stale in "$WD"/*.emu.[0-9]*.bin; do
 		[ -e "$stale" ] || continue
 		spid=${stale##*.emu.}; spid=${spid%.bin}
 		kill -0 "$spid" 2>/dev/null || rm -f "$stale"
 	done
-	dist_need "boot the target on a scratch copy"
-	IMG=$("$C900_WORKIMG" "$IMG" "emu.$$") || exit 1
+	W=$WD/$(basename "$IMG" .bin).emu.$$.bin
+	cp --reflink=auto -f "$IMG" "$W" 2>/dev/null || cp -f "$IMG" "$W" ||
+		{ echo "emu-run.sh: cannot copy $IMG to $W" >&2; exit 1; }
+	IMG=$W
 fi
 
 # Build the keystroke script: every non-comment line, CR-terminated, then a
@@ -184,11 +199,10 @@ PIDF=$PIDD/$$.pid
 # A BOOTABLE FLOPPY TAKES THE MACHINE.  The stock ROM's autoboot spec tries
 # `(fd,1)coherent' before `(hd)coherent', so a medium carrying a loader at
 # /coherent -- the install disk does -- is what boots, and the system under the
-# transcript is the FLOPPY's, not the dist named on the command line.  The
-# kernel line says which: the install floppy loads `coherent.sys' and roots on
-# /dev/fd1, a hard-disk boot loads `coherent'.  $DIST then names only the disk
-# the run leaves attached, and a claim about that dist's software cannot be
-# made from such a run.
+# transcript is the FLOPPY's, not the disk image's.  The kernel line says
+# which: the install floppy loads `coherent.sys' and roots on /dev/fd1, a
+# hard-disk boot loads `coherent'.  The disk image is then only attached, and a
+# claim about its software cannot be made from such a run.
 FLOPPYARG=''
 [ -n "${FLOPPY:-}" ] && FLOPPYARG="--floppy=$FLOPPY"
 # Every medium the machine is given, on the record before it runs.  A harness
@@ -256,7 +270,7 @@ grep -q "$MARK" "$OUT" || { unfinished=1; echo "(the guest never reached $MARK a
 echo "=== console transcript ($t s) ==="
 cat "$OUT"
 echo "=== read files the commands wrote with:"
-echo "    python3 $HERE/fsread.py $IMG cat /<file>"
+echo "    $(sh "$C900_ROOT/mk/deps.sh" tools)/bin/cohfs cat $IMG /<file>"
 # The per-run names carry the pid, so they have to be printed rather than
 # remembered.
 echo "=== this run: transcript $OUT, stderr $ERR, image $IMG"

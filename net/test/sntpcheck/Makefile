@@ -15,17 +15,16 @@
 #                    before a run is spent asking about the guest.
 #
 # Variables:
-#   DIST=coherent3-full-test  which hostbuild/build/<DIST>.bin the guest boots (a COPY
-#                      is made -- the emulator writes through to its image).
+#   IMAGE=...          the image to boot (a copy), the test image by default
 #   EMU=...            the emulator binary.
 #   ONLY=name,name     run only these cases.
 #
 # Nothing here rebuilds an image; the harness needs one that already exists.
 
 PY   ?= python3
-DIST ?= coherent3-full-test
+IMAGE ?=
 ONLY ?=
-RUN   = $(PY) sntpcheck.py --dist=$(DIST) $(if $(ONLY),--only=$(ONLY))
+RUN   = $(PY) sntpcheck.py $(if $(IMAGE),--image=$(IMAGE)) $(if $(ONLY),--only=$(ONLY))
 
 .PHONY: test negative check selftest help
 

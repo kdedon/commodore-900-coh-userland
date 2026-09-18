@@ -1,6 +1,6 @@
 """sntpcheck.py -- does the C900 actually set its clock from the network?
 
-    python3 sntpcheck.py [--deaf] [--dist NAME] [--keep] [--only CASE,...]
+    python3 sntpcheck.py [--deaf] [--image PATH] [--keep] [--only CASE,...]
 
 WHAT IS UNDER TEST.  net/sntp.c -- the machine's ONLY automatic clock source.
 read_cmos() returns 0 (sys/z8001/src/mdstub.c) and the M58321 has no driver, so
@@ -70,6 +70,7 @@ Nothing is rebuilt and no image is modified: the guest boots a COPY, because the
 emulator writes through to the disk it is given.
 """
 import calendar
+import atexit
 import os
 import random
 import re
@@ -82,7 +83,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 NET = os.path.normpath(os.path.join(HERE, "..", ".."))
 OS = os.path.normpath(os.path.join(NET, ".."))
 sys.path.insert(0, os.path.join(NET, "twohost"))
-from twohost import Guest, boot, dist_image, ensure_stack, say  # noqa: E402
+from twohost import Guest, boot, ensure_stack, say, test_image  # noqa: E402
 
 ADDR = "10.0.0.2"                 # what rc.net gives the guest
 PEER = "10.0.0.1"                 # this harness, and the SNTP server
@@ -535,10 +536,10 @@ def report(cases, deaf, log, work, keep):
 
 def main(argv):
     opts = [a for a in argv[1:] if a.startswith("--")]
-    dist, only = "coherent3-full-test", None
+    image, only = None, None
     for o in opts:
-        if o.startswith("--dist="):
-            dist = o.split("=", 1)[1]
+        if o.startswith("--image="):
+            image = o.split("=", 1)[1]
         if o.startswith("--only="):
             only = set(o.split("=", 1)[1].split(","))
     deaf = "--deaf" in opts
@@ -548,7 +549,7 @@ def main(argv):
                         "c900-sntp.%d" % os.getpid())
     os.makedirs(work)
     say("workdir %s" % work)
-    src = dist_image(dist)
+    src = test_image(image)
     if not src:
         return 2
     img = os.path.join(work, "guest.bin")
@@ -559,7 +560,9 @@ def main(argv):
         % (ntp_s, ntp_s, want_t, cstr(want_t)))
     say("nothing on the image has ever named that second")
 
-    sock = os.path.join(work, "sntp.sock")
+    # Not in the workdir: an AF_UNIX path is capped at about 108 bytes.
+    sock = "/tmp/c900sntp.%d.sock" % os.getpid()
+    atexit.register(lambda: os.path.lexists(sock) and os.unlink(sock))
     logpath = os.path.join(work, "wire.log")
     ctlpath = os.path.join(work, "answer.ctl")
     ctl = Ctl(ctlpath)

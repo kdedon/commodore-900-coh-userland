@@ -5,6 +5,7 @@ before anything else is asked of it.  Split out because
 two harnesses that answer different questions about the same machines must
 bring them up identically, or comparing their results proves nothing.
 """
+import atexit
 import os
 import subprocess
 import sys
@@ -47,7 +48,7 @@ def readdress(g, addr, mask):
     return True
 
 
-def setup(tag, dist, cut, keep):
+def setup(tag, image, cut, keep):
     """Two booted, logged-in, networked guests, or an exit status.
 
     Returns a dict on success: A, B, guests, work, wire, why (an empty list the
@@ -57,7 +58,7 @@ def setup(tag, dist, cut, keep):
                         "c900-%s.%d" % (tag, os.getpid()))
     os.makedirs(work)
     T.say("workdir %s" % work)
-    src = T.dist_image(dist)
+    src = T.test_image(image)
     if not src:
         return 2
     if not T.EMU or not os.path.exists(T.EMU):
@@ -70,7 +71,9 @@ def setup(tag, dist, cut, keep):
         imgs[n] = os.path.join(work, "%s.bin" % n)
         subprocess.call(["cp", "--reflink=auto", src, imgs[n]])
 
-    sock = os.path.join(work, "wire.sock")
+    # Not in the workdir: an AF_UNIX path is capped at about 108 bytes.
+    sock = "/tmp/c900talk.%d.sock" % os.getpid()
+    atexit.register(lambda: os.path.lexists(sock) and os.unlink(sock))
     wcmd = [sys.executable, os.path.join(HERE, "wire.py"), sock,
             "--log=%s" % os.path.join(work, "wire.log")]
     if cut:

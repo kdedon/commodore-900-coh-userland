@@ -13,16 +13,15 @@
 #                    right?" before a run is spent asking about the guest.
 #
 # Variables:
-#   DIST=coherent3-full-test  which hostbuild/build/<DIST>.bin the guest boots (a COPY
-#                      is made -- the emulator writes through to its image).
+#   IMAGE=...          the image to boot (a copy), the test image by default
 #   EMU=...            the emulator binary.
 #
 # Nothing here rebuilds an image; the harness needs one that already exists.
 # A run takes well under a minute.
 
 PY   ?= python3
-DIST ?= coherent3-full-test
-RUN   = $(PY) resolvcheck.py --dist=$(DIST)
+IMAGE ?=
+RUN   = $(PY) resolvcheck.py $(if $(IMAGE),--image=$(IMAGE))
 
 .PHONY: test negative check selftest help
 

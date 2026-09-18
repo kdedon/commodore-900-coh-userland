@@ -1,7 +1,7 @@
 # resolver-isolation -- the regression test for the dependency SEARCH.
 #
-# Every other job sets C900_TOOLCHAIN, C900_DIST and C900_EMU explicitly, as it
-# must: a job that depended on directory adjacency breaks the first time a
+# Every other job resolves its edges explicitly, from what `make deps' placed, as
+# it must: a job that depended on directory adjacency breaks the first time a
 # runner image moves its checkouts.  That leaves the search lists untested, and
 # an unbounded search is a false success waiting to happen: a walk outward to
 # `/' finds another job's checkout on a runner and whatever is in $HOME on a
@@ -9,15 +9,11 @@
 # the enclosing workspace from a repository staged at repos/<repo>, and this
 # job proves the bound holds.
 #
-# The edges tested are the ones this repository consumes: the emulator, the
-# toolchain, and commodore-900-dist, which the boot and net-test harnesses
-# under net and hostbuild resolve through mk/dist.sh.  The loader lives in
-# commodore-900-coh-kboot and is consumed by no checkout here, so mk/deps.sh
-# has no `kboot' case and there is no such edge to test.
+# The edges tested are every one DEPS names.
 #
 # So: the repository ALONE, six levels deep, with an empty $HOME, nothing beside
-# it and no c900 on $PATH.  Each of the three edges must refuse BY NAME, and a
-# value the user gave must be refused as ITSELF rather than quietly replaced.
+# it and no c900 on $PATH.  Each edge must refuse BY NAME, and a value the user
+# gave must be refused as ITSELF rather than quietly replaced.
 name: resolver-isolation
 
 on:
@@ -44,7 +40,8 @@ jobs:
       - name: Each edge refuses, and names its variable
         working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
         run: |
-          set -- emu C900_EMU toolchain C900_TOOLCHAIN dist C900_DIST
+          set -- emu C900_EMU toolchain C900_TOOLCHAIN kernel C900_KERNEL \
+                 tools C900_TOOLS kboot C900_KBOOT
           while [ $# -gt 0 ]; do
             dep=$1 var=$2; shift 2
             set +e
@@ -59,13 +56,8 @@ jobs:
             :
           done
 
-      # The per-consumer resolvers are what the BUILD uses; mk/deps.sh only has
-      # to agree with them.  These refuse at the point of use, so they are
-      # exercised as the build exercises them: sourced, with the variable the
-      # sourcing convention needs set first.  Both want the repository root:
-      # toolchain.sh spells it $OS (it lives under hostbuild); dist.sh spells
-      # it $C900_ROOT (it lives under mk/, and is sourced by harnesses outside
-      # hostbuild too).
+      # The build's own resolver, sourced as the build sources it, with $OS
+      # set to the repository root.
       - name: The build's own toolchain resolver refuses too
         working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
         run: |
@@ -78,22 +70,10 @@ jobs:
           test $rc -ne 0 || { echo "FAIL: toolchain.sh resolved something that is not there"; exit 1; }
           echo "$out" | grep -q "C900_TOOLCHAIN" || { echo "FAIL: toolchain.sh refusal does not name C900_TOOLCHAIN"; exit 1; }
 
-      - name: mk/dist.sh's dist_need refuses too
-        working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
-        run: |
-          set +e
-          out=$(env -i HOME="$GITHUB_WORKSPACE/iso/home" PATH=/usr/bin:/bin \
-                sh -c 'C900_ROOT=$PWD; . "$C900_ROOT/mk/dist.sh"; dist_need "boot anything"' 2>&1)
-          rc=$?
-          set -e
-          echo "$out"
-          test $rc -ne 0 || { echo "FAIL: dist_need proceeded without a dist checkout"; exit 1; }
-          echo "$out" | grep -q "C900_DIST" || { echo "FAIL: dist_need's refusal does not name C900_DIST"; exit 1; }
-
       - name: A wrong value is refused as itself
         working-directory: iso/a/b/c/d/e/f/commodore-900-coherent
         run: |
-          for d in emu toolchain dist; do
+          for d in emu toolchain kernel tools kboot; do
             set +e
             out=$(env -i HOME="$GITHUB_WORKSPACE/iso/home" PATH=/usr/bin:/bin \
                   sh mk/deps.sh -n $d /nonexistent/$d 2>&1)

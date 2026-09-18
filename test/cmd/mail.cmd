@@ -1,6 +1,6 @@
 # mail.cmd -- does local mail reach a mailbox and come back out of it?
 #
-#	make -C os/hostbuild mail-test DIST=<dist>
+#	hostbuild/emu-run.sh test/cmd/mail.cmd
 #
 # The whole round trip a machine with no network has to be able to do: root
 # logs in at the console of a MULTI-USER system, sends a letter to root, and

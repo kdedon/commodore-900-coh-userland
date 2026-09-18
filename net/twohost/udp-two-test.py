@@ -1,6 +1,6 @@
 """udp-two-test.py -- does a UDP datagram cross the wire between two C900s?
 
-    python3 udp-two-test.py [--cut] [--dist NAME] [--keep]
+    python3 udp-two-test.py [--cut] [--image PATH] [--keep]
 
 WHY THIS EXISTS SEPARATELY FROM talk-test.py.  `twohost.py' proves ICMP and TCP
 between two machines and nothing else; every UDP test in the tree is either
@@ -64,8 +64,8 @@ def reconfigure(g, addr):
             readdress(g, addr, T.MASK))
 
 
-def run(cut, dist, keep):
-    st = setup("udp", dist, cut, keep)
+def run(cut, image, keep):
+    st = setup("udp", image, cut, keep)
     if not isinstance(st, dict):
         return st
     A, B, work, wire, guests, why = (st["A"], st["B"], st["work"], st["wire"],
@@ -118,11 +118,11 @@ def run(cut, dist, keep):
 
 def main(argv):
     opts = [a for a in argv[1:] if a.startswith("--")]
-    dist = "coherent3-full-test"
+    image = None
     for o in opts:
-        if o.startswith("--dist="):
-            dist = o.split("=", 1)[1]
-    return run("--cut" in opts, dist, "--keep" in opts)
+        if o.startswith("--image="):
+            image = o.split("=", 1)[1]
+    return run("--cut" in opts, image, "--keep" in opts)
 
 
 if __name__ == "__main__":

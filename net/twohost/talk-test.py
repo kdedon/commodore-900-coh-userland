@@ -1,6 +1,6 @@
 """talk-test.py -- two people on two C900s, talking to each other.
 
-    python3 talk-test.py [--cut] [--dist NAME] [--keep] [--trace]
+    python3 talk-test.py [--cut] [--image PATH] [--keep] [--trace]
 
 WHAT THIS TESTS, and why it needs two machines.  talk(1) is the one program on
 this system that cannot be exercised on one machine and cannot be exercised
@@ -171,8 +171,8 @@ def wait_drawn(g, mark, needle, timeout, why):
     return False
 
 
-def run(cut, trace, dist, keep):
-    st = setup("talk", dist, cut, keep)
+def run(cut, trace, image, keep):
+    st = setup("talk", image, cut, keep)
     if not isinstance(st, dict):
         return st
     A, B, work, wire, guests, why = (st["A"], st["B"], st["work"], st["wire"],
@@ -267,12 +267,12 @@ def run(cut, trace, dist, keep):
 
 def main(argv):
     opts = [a for a in argv[1:] if a.startswith("--")]
-    dist = "coherent3-full-test"
+    image = None
     for o in opts:
-        if o.startswith("--dist="):
-            dist = o.split("=", 1)[1]
+        if o.startswith("--image="):
+            image = o.split("=", 1)[1]
     cut = "--cut" in opts
-    rc = run(cut, "--trace" in opts, dist, "--keep" in opts)
+    rc = run(cut, "--trace" in opts, image, "--keep" in opts)
     if cut:
         T.say("=== negative control: %s"
               % ("PASS (the cut wire fails the test)" if rc

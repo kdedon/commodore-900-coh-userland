@@ -3,7 +3,7 @@
 #
 #	dd if=/dev/zero of=${TMPDIR:-/tmp}/mkfs-fd.img bs=512 count=2392 &&
 #	FLOPPY=${TMPDIR:-/tmp}/mkfs-fd.img EMUWAIT=900 \
-#	    hostbuild/emu-run.sh test/cmd/mkfs.cmd coherent3-full-test
+#	    hostbuild/emu-run.sh test/cmd/mkfs.cmd
 #
 # WHY THIS EXISTS.  mkfs is the only program that writes a filesystem from
 # nothing, and a filesystem that is subtly wrong -- one block missing from the
@@ -19,18 +19,15 @@
 #
 #	/etc/mount /dev/hd4 / -u
 #	/etc/mount /dev/hd3 /tmp
-#	/etc/mount /dev/hd6 /usr
-#	/etc/mount /dev/hd2 /usr/man -r
 #
 # -- while rc.net and rc.local go on writing their logs into /tmp.  There is no
-# spare partition to make a filesystem in.  media/hd42-coh.media, which
-# coherent3-full-test rides, declares five slots and four filesystems: hd0
-# (boot), hd4 (/), hd2 (/usr/man), hd3 (/tmp, plus the swap extent at
-# 9001..13097 in the same slot) and hd6 (/usr).  hd1 is NOT declared on this
-# media -- its blocks 13736..23807 are the unallocated hole -- and an undeclared
-# slot is all-zero in the partition table kboot hands the kernel, so the driver
-# refuses every block through /dev/hd1.  Every partition that exists is either
-# mounted or is swap.
+# spare partition to make a filesystem in.  The test image (test/image/build.sh)
+# declares three slots and two filesystems: hd0 (boot), hd4 (/, with /usr on
+# it) and hd3 (/tmp, plus the swap extent at 6512..10608 in the same slot).
+# No other slot is declared -- the blocks past /tmp are an unallocated hole --
+# and an undeclared slot is all-zero in the partition table kboot hands the
+# kernel, so the driver refuses every block through it (/dev/hd1 included).
+# Every partition that exists is either mounted or is swap.
 #
 # So the medium is one the RUN ATTACHES: a 2392-block floppy image handed to
 # the emulator with FLOPPY=, reachable in the guest as /dev/fd1 (the route
@@ -105,7 +102,7 @@
 # exit status is 0 either way.
 #
 # Case 1 makes a filesystem in a REGULAR FILE.  Beyond its status it asserts
-# nothing here: it exists so the host can read /diff.fs back out with fsread.py
+# nothing here: it exists so the host can read /diff.fs back out with cohfs cat
 # and compare it against one made by another mkfs under the same arguments.
 echo == 0 the mount table, and the medium this run writes
 /etc/mount

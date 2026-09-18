@@ -514,6 +514,8 @@ multiseg:build-and-run probes for text past 64K -- what they measure is the
 multiseg:  target linker and loader, and a host build cannot be given that
 multiseg:  defect.  Its own Makefile builds it.
 cmd:emulator command scripts, not programs.  Nothing to mutate.
+image:the packer for the test image the booted checks run on, not a
+image:  probe.  Nothing to mutate.
 mkfsgetlink:the subject is the name-matching loop inside mkfs(1M)'s getlink(),
 mkfsgetlink:  which is pure string comparison -- it makes no system call, so
 mkfsgetlink:  kshim.c sits between it and nothing.  It carries its own
@@ -567,13 +569,9 @@ loadavg:the probe and its harness are in commodore-900-coh-kernel3.  What is
 loadavg:  left in this tree is an untracked build artifact -- a stray binary,
 loadavg:  no source -- not something this repository builds.
 rawalign:the probe and its harness are in commodore-900-coh-kernel3, on the
-rawalign:  same terms as loadavg.  What is left here is TRACKED and is not a
-rawalign:  leftover: inject.py, which places a program into a packed image
-rawalign:  without a directory edit.  Its one consumer is the privilege pass,
-rawalign:  which is commodore-900-dist's os/tests/privsep: it boots a PACKED
-rawalign:  image, so it lives where that image is built, and it reaches this
-rawalign:  file over the \`userland' edge rather than keeping a copy.  It is a
-rawalign:  tool, not a probe -- there is no run of its own to mutate.
+rawalign:  same terms as loadavg.  Nothing of it is left in this tree: the
+rawalign:  privilege pass, which placed programs into a packed image with its
+rawalign:  inject.py, does that with cohfs put now.
 vprintf:the subject is the target's own va_list walk, against a 32-bit long
 vprintf:  and a far pointer, on the Z8001 -- the same terms as ptraudit, and
 vprintf:  no host stand-in can hold that defect either.  It was run once by
