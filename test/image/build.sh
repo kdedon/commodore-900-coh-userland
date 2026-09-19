@@ -42,7 +42,7 @@ PYTHON=${PYTHON:-python3}
 # Every component a distribution image of the whole system carries, less the
 # graphical login and MGR (each a variant of what is here) and CP/M (which
 # wants a partition of its own).  dist's coherent3-full-test is the same set.
-COMPONENTS=${COMPONENTS:-"base runtime login-text editors archive games net-games net mail-light hr hr-clients vellum"}
+COMPONENTS=${COMPONENTS:-"base runtime login-text editors archive games net-games net mail-light hr hr-clients"}
 
 BS=512
 TOTAL=41616			# 612 cylinders x 4 heads x 17 sectors

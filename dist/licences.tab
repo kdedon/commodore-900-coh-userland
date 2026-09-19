@@ -226,8 +226,8 @@ use net-games      ucb-adv          libcurses, which hunt links
 use games          gpl1-screen      -src only: object-search over-reach onto cmd/screen; no games binary is screen
 use games          bellcore-mgr     -src only: object-search over-reach onto mgr/src
 
-use hr             mit-oc           the ZView server, the desktop catalogs and the icons
-use hr             pleban-bsd3      /usr/hr/bin/hrclip, the clgfx modules the server and its clients link, and /drv/hr
+use hr             mit-oc           the ZView server, the desktop catalogs and the icons; Vellum's velcmd, veldlg, velgraph and the stencil and example drawings
+use hr             pleban-bsd3      /usr/hr/bin/hrclip, the clgfx modules the server and its clients link, and /drv/hr; every Vellum binary but velgraph, and libvellum.a, which all of them link
 use hr             mwc-bsd3         the rendering engine the server links, the 16 raw FM fonts the .hf faces are generated from (they carry no notice of their own and their origin is unestablished; they are byte-identical to the COHERENT 0.7.3 Z8001 holding, which is the material this row covers), csu and libc
 
 use hr-clients     mit-oc
@@ -261,7 +261,3 @@ use net            ucb-adv          libcurses
 use net            ucb-bsd3         /bin/finger, /bin/host
 use net            mwc-bsd3
 use net            bellcore-mgr     -src only: object-search over-reach onto mgr/src
-
-use vellum         mit-oc           velcmd, veldlg, velgraph and the stencil and example drawings
-use vellum         pleban-bsd3      every binary but velgraph, and libvellum.a, which all of them link
-use vellum         mwc-bsd3         csu and libc

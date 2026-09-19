@@ -1,5 +1,5 @@
 # hr.list -- ZView, the hi-res window system: the server, its driver and the
-# files it cannot come up without.
+# files it cannot come up without; and Vellum, the drawing suite.
 #
 # HI-RES HARDWARE ONLY.  /drv/hr is major 7 and a superset of hrtty(4): it owns
 # the frame buffer at 0x3E0000, the keyboard interrupt, the polled mouse and the
@@ -35,6 +35,10 @@
 # without that one comes up with a menu and a dock of programs that are not on
 # the disk.  `require' states that without staging anything: it fails the build
 # instead.
+#
+# Vellum is a suite of small tools over one library, installed under
+# /usr/vellum because its data files name that path.  All but the editor,
+# symedit and velprev are headless and run without a bitmap card.
 # PACKAGE (os/dist/PACKAGE-FORMAT).  A list with a `package' line is an
 # addressable unit of a release channel; one without is not, and that is how
 # testing.list stays out of one.
@@ -83,3 +87,39 @@ f	/usr/hr/etc/dock	644 0 1
 # Run with `execl("/bin/sh", "sh", "/usr/hr/etc/rc")', so it is read and not
 # executed and carries no x bit.
 f	/usr/hr/etc/rc		644 0 1
+#
+# Vellum.
+d	/usr/vellum
+d	/usr/vellum/bin
+#
+# The editors.
+f	/usr/vellum/bin/vellum		755 0 1
+f	/usr/vellum/bin/symedit		755 0 1
+#
+# The headless tools.
+f	/usr/vellum/bin/velplot		755 0 1
+f	/usr/vellum/bin/velpic		755 0 1
+f	/usr/vellum/bin/veldxf		755 0 1
+f	/usr/vellum/bin/velnet		755 0 1
+f	/usr/vellum/bin/velcheck	755 0 1
+f	/usr/vellum/bin/veldiff		755 0 1
+f	/usr/vellum/bin/velinfo		755 0 1
+f	/usr/vellum/bin/velsym		755 0 1
+f	/usr/vellum/bin/velgraph	755 0 1
+#
+d	/usr/vellum/lib
+# velprev is exec'd by the editor, never run by a user.
+f	/usr/vellum/lib/velprev		755 0 1
+# Member order is dependency order: ld makes one pass over an archive.
+f	/usr/vellum/lib/libvellum.a	644 0 1
+#
+# Stencil libraries and example drawings.  A `t' entry does not descend, so
+# eg/sk, the sources of pid.sym, needs its own line.
+t	/usr/vellum/sym
+t	/usr/vellum/eg
+t	/usr/vellum/eg/sk
+# Standard details, pasted with `hrclip < frag/x.d' and a middle click.
+t	/usr/vellum/frag
+# Start-up library list, scratch library, title block, and the Makefile
+# skeletons project.mk (sheet set) and library.mk (stencil library).
+t	/usr/vellum/etc
