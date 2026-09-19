@@ -17,9 +17,11 @@
 #			the prose asks a reader for.
 #	#% reject <ERE>	must match NO PART of any line (grep -E): a
 #			`Segmentation violation', a panic, a `FAIL <tag>'.
-#	#% wait <secs>	the EMUWAIT this script needs; 300 without one.
 #	#% floppy <n>	attach a blank n-block medium as FLOPPY, for a script
 #			whose subject is a filesystem it makes from nothing.
+#	#% stop <list>	the emulator stop channels for this script, read by
+#			emu-run.sh itself: `mark' alone for one that sleeps
+#			longer than park can tell from a hang.
 #	#% host <why>	the script needs a partner on the host side -- a
 #			second machine, a serial peer, a net/ harness -- and
 #			cannot run standalone.  It is skipped and listed, with
@@ -43,17 +45,22 @@
 # characters normalised (what the patterns are matched against), <name>.log
 # emu-run.sh's own output, <name>.verdict the judgement.
 #
-# The boots run in parallel, JOBS at a time (default: the CPUs, at most 4),
-# longest wait first so the slowest script is not the last one started.  Each
-# boot runs on emu-run.sh's own copy of the image, so they cannot meet.
+# The boots run in parallel, JOBS at a time (default: the CPUs, at most 4), in
+# listing order.  Each boot runs on emu-run.sh's own copy of the image, so they
+# cannot meet.  Nothing here is a wall clock: each boot ends when emu-run.sh's
+# own emulator does, on the mark it printed, on a park or idle stall, or
+# emu-run.sh would not have exited either.
 #
 # --selftest boots ONE script, distsmoke, and judges that one transcript
 # several ways with the same judge() the real run uses: as it stands (PASS),
 # with an expect that cannot appear (FAIL), with a reject that does appear
 # (FAIL), with an expect that only the ECHO of a command could satisfy (FAIL),
 # as a run that never finished (FAIL), and as a script with no pass condition
-# or a misspelt directive (FAIL).  A judge that has never been seen to fail
-# proves nothing, and this is what shows it can.
+# or a misspelt directive (FAIL).  It also boots a SECOND, genuinely hung
+# script -- a `cat' with nothing to read -- and shows that a stall is caught
+# and named by the channel that caught it (park), not by a clock.  A judge
+# that has never been seen to fail proves nothing, and this is what shows it
+# can.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
@@ -76,6 +83,12 @@ directive() {
 # Prints one line per reason the script failed and returns 1, or prints
 # nothing and returns 0.
 #
+# A run that did not finish is named by the channel that ended it, read from
+# emu-run.sh's own "=== stop channel: X" line in <transcript-without-.out>.log
+# next to it -- "stalled: park" or "stalled: idle" rather than the bare "did
+# not finish" that is all that is left to say when no such log is at hand (the
+# selftest's own truncated-transcript cases have none).
+#
 # The console ends its lines CR-LF, and a program may return the carriage
 # alone to overwrite a line; a bare CR is taken as the start of a new line,
 # which is where the text after it begins on the screen.  The other control
@@ -86,16 +99,26 @@ judge() {
 	_cmd=$1 _tr=$2 _fin=$3
 	_lines=$_tr.lines
 	_why=$_tr.why
+	_log=${_tr%.out}.log
 	: > "$_why"
 	sed 's/\r$//' "$_tr" | tr '\r' '\n' | tr -d '\000-\010\013-\037' > "$_lines"
 
-	[ "$_fin" = 1 ] || echo "did not finish (no $MARK in the transcript)" >> "$_why"
+	if [ "$_fin" != 1 ]; then
+		_chan=''
+		[ -f "$_log" ] &&
+			_chan=$(sed -n 's/^=== stop channel: \([a-z]*\).*/\1/p' "$_log" | tail -1)
+		if [ -n "$_chan" ] && [ "$_chan" != mark ]; then
+			echo "stalled: $_chan" >> "$_why"
+		else
+			echo "did not finish (no $MARK in the transcript)" >> "$_why"
+		fi
+	fi
 
 	# Any other keyword is a typo, and a typo in an `expect' is a pass
 	# condition that is not there.
 	sed -n 's/^#%[ 	]*\([^ 	]*\).*/\1/p' "$_cmd" | while read -r _k; do
 		case $_k in
-		expect|reject|wait|floppy|host) ;;
+		expect|reject|floppy|host|stop) ;;
 		*) echo "unknown directive \`#% $_k'" ;;
 		esac
 	done >> "$_why"
@@ -139,7 +162,6 @@ judge() {
 # ---------------------------------------------------------------------------
 boot() {
 	_n=$(basename "$1" .cmd)
-	_w=$(directive wait "$1" | tail -1)
 	_fl=$(directive floppy "$1" | tail -1)
 	if [ -n "$_fl" ]; then
 		# Blank, and made fresh for each run: emu-run.sh does not copy a
@@ -149,7 +171,7 @@ boot() {
 		export FLOPPY
 	fi
 	_t0=$(date +%s)
-	OUT=$2/$_n.out ERR=$2/$_n.err EMUWAIT=${_w:-300} \
+	OUT=$2/$_n.out ERR=$2/$_n.err \
 		sh "$ROOT/hostbuild/emu-run.sh" "$1" "$IMG" > "$2/$_n.log" 2>&1
 	_st=$?
 	echo $(( $(date +%s) - _t0 )) > "$2/$_n.time"
@@ -258,6 +280,18 @@ selftest() {
 	case_ "an expect that is not an ERE" FAIL "not a valid ERE" \
 		"$(variant badre '#% expect ^SMOKE=(c900$')" "$fin" "$tr"
 
+	# A script that genuinely hangs: `cat' with nothing to read blocks
+	# forever, so no scripted byte after it -- the marker itself included
+	# -- is ever typed.  This is what --stop-on=park is for: catching the
+	# stall in the few seconds park's own budget takes, named by channel,
+	# rather than an EMUWAIT hour spent finding out the guest died.
+	hang=$D/hang.cmd
+	{ echo '#% expect ^HANG_NEVER_PRINTED$'; echo 'cat'; } > "$hang"
+	echo "selftest: booting a script that hangs ($D/hang.out)"
+	boot "$hang" "$D"
+	hfin=$(finished $? "$D/hang.out")
+	case_ "a guest that hangs" FAIL "stalled: park" "$hang" "$hfin" "$D/hang.out"
+
 	rm -f "$D/why"
 	echo "selftest: transcript kept in $D"
 	if [ $bad -ne 0 ]; then
@@ -310,19 +344,19 @@ for n in $names; do
 		  echo "        no pass condition (no \`#% expect' and no \`#% host' line)"
 		} > "$RES/$n.verdict"
 	else
-		w=$(directive wait "$c" | tail -1)
-		echo "${w:-300} $n" >> "$list"
+		echo "$n" >> "$list"
 	fi
 done
 
 echo "run.sh: $(wc -l < "$list") script(s) to boot, $JOBS at a time, image $IMG"
-# Longest wait first.  Each line of output is one script's verdict as it
-# lands; the summary below repeats them in name order.
+# Listing order -- there is no wait ceiling left to sort by, and none of these
+# boots has a clock of its own to race: each ends on its own guest's mark, or
+# on the channel that caught its stall.  Each line of output is one script's
+# verdict as it lands; the summary below repeats them in name order.
 # xargs runs its command once even on no input, so an empty list is not
 # handed to it.
 if [ -s "$list" ]; then
-	sort -k1,1nr "$list" | awk '{ print $2 }' |
-		xargs -n 1 -P "$JOBS" sh "$HERE/run.sh" --one "$RES"
+	xargs -n 1 -P "$JOBS" sh "$HERE/run.sh" --one "$RES" < "$list"
 fi
 rm -f "$list"
 

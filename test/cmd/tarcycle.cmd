@@ -1,7 +1,7 @@
 # tarcycle.cmd -- does tar(1) CREATE an archive a reader can get the bytes back
 # out of, and can it read one a host wrote?
 #
-#	EMUWAIT=1800 hostbuild/emu-run.sh tests/cmd/tarcycle.cmd
+#	hostbuild/emu-run.sh tests/cmd/tarcycle.cmd
 #
 # tar is the interchange program on this machine: everything that arrives from
 # or leaves for another system arrives as a .tar, so BOTH directions are under
@@ -84,7 +84,6 @@
 #% reject bad checksum
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1800
 echo == build the tree to archive
 mkdir /t1
 mkdir /t1/sub

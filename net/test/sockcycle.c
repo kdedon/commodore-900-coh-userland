@@ -110,7 +110,8 @@ char **argv;
 	}
 
 	end = (unsigned long)sbrk(0);
-	printf("sockcycle: break %lu -> %lu after %d cycles\n",
+	/* No `>': the harness takes it as a prompt. */
+	printf("sockcycle: break %lu then %lu after %d cycles\n",
 		base, end, cycles);
 	if (base != 0L && end != base)
 	{

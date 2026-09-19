@@ -14,5 +14,4 @@
 #% expect ^PASS pollpipe$
 #% reject ^FAIL
 #% reject ^Panic:
-#% wait 300
 /bin/pollpipe

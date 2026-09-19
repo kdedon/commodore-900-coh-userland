@@ -46,7 +46,6 @@
 #% reject ^FAIL T_
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1200
 echo '/bin/cat $2' > /bin/A
 echo '/bin/Q "$1" "$2" "$3"' >> /bin/A
 echo 'if /bin/grep "$3" "$2" >/dev/null' > /bin/Q

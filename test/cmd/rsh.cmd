@@ -1,6 +1,6 @@
 # rsh.cmd -- does /usr/bin/rsh, the RESTRICTED shell, actually restrict?
 #
-#	EMUWAIT=2400 hostbuild/emu-run.sh tests/cmd/rsh.cmd
+#	hostbuild/emu-run.sh tests/cmd/rsh.cmd
 #
 # rsh is the same binary as /bin/sh, restricting itself when argv[0] says
 # `rsh' (cmd/sh/main.c); this file is the gate that the restrictions hold.
@@ -59,14 +59,14 @@
 # (man rsh, "sh itself must not be on that PATH") -- it is NOT a regression.
 # If ESCAPED ever stops appearing, the man page is the thing that is now wrong.
 #
-# EMUWAIT IS NOT OPTIONAL.  emu-run.sh kills the emulator after EMUWAIT seconds,
-# 300 by default, and this file is three logins long -- around twenty minutes of
-# guest time.  At the default the run ENDS PARTWAY THROUGH and still exits 0,
-# leaving a transcript that simply stops: the restricted account's section is
-# then MISSING rather than failing, which reads like a test that never covered
-# it.  The only sign is emu-run's own "marker never appeared" line at the
-# bottom.  Confirm __EMU_DONE__ is in the transcript before believing anything
-# this test appears to say -- including a pass.
+# THIS FILE IS THREE LOGINS LONG -- around twenty minutes of guest time -- and
+# emu-run.sh no longer runs it against a clock: it ends when the guest prints
+# the done marker, or is caught stalled on park or idle.  A run that stops
+# partway still exits nonzero and names the channel that caught it, so the
+# restricted account's section going missing reads as the stall it is rather
+# than as a test that quietly never covered it.  Confirm __EMU_DONE__ is in
+# the transcript before believing anything this test appears to say --
+# including a pass.
 #
 # FOR test/cmd/run.sh, the table above line by line: each account's markers,
 # oman's six results, rman's refusals and the `Can't find' each one causes,
@@ -107,7 +107,6 @@
 #% reject ^Restricted: PATH=/rsafe$
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 2400
 #
 # The confined command directory a restricted account is supposed to have: one
 # command, and not a shell.

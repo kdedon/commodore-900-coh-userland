@@ -96,7 +96,8 @@ char **argv;
 			fflush(stdout);
 			break;
 		}
-		printf("chanmax: channel %d -> fd %d\n", n, fd[n]);
+		/* No `>': the harness takes `#' or `>' as a prompt. */
+		printf("chanmax: channel %d is fd %d\n", n, fd[n]);
 		fflush(stdout);
 	}
 

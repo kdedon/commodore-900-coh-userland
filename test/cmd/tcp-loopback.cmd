@@ -34,7 +34,6 @@
 #% reject connect failed
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 300
 /etc/ifconfig
 /bin/echoserver 7007 600 &
 sleep 5

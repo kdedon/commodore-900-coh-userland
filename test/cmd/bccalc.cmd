@@ -1,11 +1,13 @@
 # bccalc.cmd -- does bc(1) compute the right digits, and does dc(1) still work?
 #
-#	EMUWAIT=3600 hostbuild/emu-run.sh tests/cmd/bccalc.cmd
+#	hostbuild/emu-run.sh tests/cmd/bccalc.cmd
 #
 # It is a long run: sixteen bc and dc invocations and ninety-odd shell lines,
 # each of which the emulator feeds a byte at a time and then waits for a fresh
 # prompt.  Twenty minutes on an idle machine, and two or three times that with
-# other lanes' emulators on the same cores, which is what EMUWAIT is for.
+# other lanes' emulators on the same cores -- but emu-run.sh waits it out
+# rather than clocking it: the run ends when the guest prints its own marker,
+# however long that takes.
 #
 # bc is a multiple-precision calculator, so it is gated on arithmetic whose
 # answers are known off the machine -- 2^200, 30!, 1/7 to thirty places -- and
@@ -68,7 +70,6 @@
 #% reject ^FAIL-
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 3600
 echo == 1 CONTROL: it computes at all
 echo '2+2' > /b1
 bc < /b1 > /o1

@@ -1,6 +1,6 @@
 # shfns.cmd -- the V4.0.6 shell: functions, and the features that came with them.
 #
-#	EMUWAIT=1800 hostbuild/emu-run.sh tests/cmd/shfns.cmd
+#	hostbuild/emu-run.sh tests/cmd/shfns.cmd
 #
 # /bin/sh is COHERENT's V4.0.6 Bourne shell.  Its headline feature over the
 # 1985 shell is SHELL FUNCTIONS -- NFUNC/NRET in the grammar,
@@ -91,7 +91,6 @@
 #% reject ^-.* /core$
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1800
 echo == 1 plain script -- CONTROL, no function
 echo 'echo CONTROL-RAN' > /f1
 echo 'echo AFTER-1' >> /f1

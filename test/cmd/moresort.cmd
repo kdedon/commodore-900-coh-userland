@@ -1,7 +1,7 @@
 # moresort.cmd -- does anything on this machine dump core because a file or a
 # terminal capability is missing?
 #
-#	EMUWAIT=1200 hostbuild/emu-run.sh test/cmd/moresort.cmd
+#	hostbuild/emu-run.sh test/cmd/moresort.cmd
 #
 # more(1) and sort(1) both died on an ordinary mistake: more on any terminal
 # whose termcap entry addresses the cursor with `cm' and has no `ho' -- which
@@ -73,7 +73,6 @@
 #% expect ^== ALLDONE$
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1200
 PATH=/bin:/usr/bin:/etc
 export PATH
 rm -f /core

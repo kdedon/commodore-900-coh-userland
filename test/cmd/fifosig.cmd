@@ -21,5 +21,4 @@
 #% reject ^Panic:
 #% reject ^fifosig: FAIL
 #% reject ^fifosig: INCONCLUSIVE
-#% wait 300
 /bin/fifosig

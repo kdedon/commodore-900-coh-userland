@@ -1,6 +1,6 @@
 # shredir.cmd -- does a COMPOUND command survive a redirection?
 #
-#	EMUWAIT=1800 hostbuild/emu-run.sh tests/cmd/shredir.cmd
+#	hostbuild/emu-run.sh tests/cmd/shredir.cmd
 #
 # Nothing in /etc/rc, /etc/rc.net or any shipped profile redirects a compound
 # command, so only this gate exercises it.  The suspect path: `( ... ) > f'
@@ -76,7 +76,6 @@
 #% reject ^-.* /core$
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1800
 echo == 1 plain subshell, no redirect -- CONTROL
 echo '( echo inside )' > /v1
 echo 'echo AFTER-1' >> /v1

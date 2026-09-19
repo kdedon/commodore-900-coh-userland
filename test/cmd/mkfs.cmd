@@ -2,7 +2,7 @@
 # and round-trip files byte for byte?
 #
 #	dd if=/dev/zero of=${TMPDIR:-/tmp}/mkfs-fd.img bs=512 count=2392 &&
-#	FLOPPY=${TMPDIR:-/tmp}/mkfs-fd.img EMUWAIT=1500 \
+#	FLOPPY=${TMPDIR:-/tmp}/mkfs-fd.img \
 #	    hostbuild/emu-run.sh test/cmd/mkfs.cmd
 #
 # WHY THIS EXISTS.  mkfs is the only program that writes a filesystem from
@@ -153,7 +153,6 @@
 #% reject ^/dev/fd1 on /
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1500
 echo == 0 the mount table, and the medium this run writes
 /etc/mount
 df

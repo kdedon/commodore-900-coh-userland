@@ -40,7 +40,6 @@
 #% expect ^To: +root$
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 1200
 #
 # root has no password (dist/files/etc/passwd), so the name is the whole login.
 GATE

@@ -277,12 +277,12 @@ jobs:
   # first: it boots once and shows the judge FAILING what it must, and a run
   # judged by a judge that cannot fail would be green for nothing.
   #
-  # The timeout is the scripts' own `#% wait' ceilings: 395 minutes in all,
-  # which longest-first on the runner's four CPUs is at most 100, plus the
-  # selftest's one boot (5) and the downloads.  A healthy run is a fraction of
-  # it; the ceiling is what a guest that hangs every script costs, and a job
-  # killed by the timeout instead would report no verdicts at all.  Raise it
-  # with the waits.
+  # No boot here runs against a clock of its own any more -- each ends on its
+  # guest's own mark, or is caught stalled by park or idle in seconds, not an
+  # EMUWAIT hour.  timeout-minutes stays only as the job's own outer safety
+  # net, for whatever this workflow's boot-checks job cannot itself catch (a
+  # runner stall, a channel gone unrecognised); a healthy run is a fraction of
+  # it.
   boot-checks:
     needs: build
     runs-on: ubuntu-latest

@@ -18,7 +18,6 @@
 #% expect ^LSBIN=0$
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 300
 /bin/echo c900smokeok > /smoke.txt
 /bin/echo SMOKE=`/bin/cat /smoke.txt`
 /bin/rm /smoke.txt

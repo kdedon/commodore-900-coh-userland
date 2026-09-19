@@ -1,6 +1,6 @@
 # lprspool.cmd -- what does the printer spooler actually put on the paper?
 #
-#	EMUWAIT=900 hostbuild/emu-run.sh tests/cmd/lprspool.cmd
+#	hostbuild/emu-run.sh tests/cmd/lprspool.cmd
 #
 # This machine has no printer, so the bytes lpd(1) would send to one are
 # captured instead: /dev/lp is replaced by an ORDINARY FILE, mode 666 because
@@ -79,7 +79,6 @@
 #% reject ^Usage:
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 900
 echo == 1 show the four programs -- CONTROL
 ls -l /usr/lib/lpd /bin/lpr /bin/lpskip /bin/opr
 echo LPR-1-DONE

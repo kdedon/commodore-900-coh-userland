@@ -1,6 +1,6 @@
 # saacct.cmd -- sa(1) against an accounting file the KERNEL wrote.
 #
-#	EMUWAIT=900 hostbuild/emu-run.sh tests/cmd/saacct.cmd
+#	hostbuild/emu-run.sh tests/cmd/saacct.cmd
 #
 # acct(2) appends one record per process exit (sys2.c uacct turns it on,
 # proc.c/fs2.c setacct writes the record), so the file sa reads is the
@@ -86,7 +86,6 @@
 #% reject ^[a-z]+ +[0-9]+ .*( |^)(100\.[1-9]|10[1-9]\.[0-9]|1[1-9][0-9]\.[0-9]|[2-9][0-9][0-9]\.[0-9]|[0-9]{4,}\.[0-9])( |$)
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 900
 echo == 1 create the raw file, turn accounting on -- CONTROL
 ls -ld /usr/adm
 rm -f /usr/adm/acct /usr/adm/savacct /usr/adm/usracct

@@ -22,7 +22,6 @@
 #% reject failed errno
 #% reject Segmentation violation
 #% reject ^Panic:
-#% wait 300
 /etc/ifconfig
 /bin/udpecho
 sleep 5

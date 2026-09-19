@@ -2,9 +2,8 @@
 # emu-run.sh <cmdfile> [image] -- run commands on the target under the minimal
 # instruction-level emulator (a commodore-900-emulator checkout; see
 # mk/emulator.sh for how it is found and what to set) and print the
-# console transcript.  The image is the test image (test/image/build.sh) unless
-# another is named.  Results the commands write to files can then be read with
-# cohfs -- the emulator writes THROUGH to the image, so no sync is needed.
+# console transcript.  The image defaults to the test image.  The emulator
+# writes through, so cohfs reads results straight back.
 #
 # The emulator takes the whole keystroke script on the command line and writes
 # the console to stdout.  Use this for anything that does not need video, a
@@ -36,9 +35,7 @@ CMDS=${1:?usage: emu-run.sh <cmdfile> [image]}
 C900_ROOT=$(cd "$HERE/.." && pwd)
 . "$C900_ROOT/mk/emulator.sh"
 EMU=$C900_EMU
-# The image is this repository's TEST IMAGE, packed from this build by
-# test/image/build.sh; a distribution image is commodore-900-dist's product and
-# is booted by that repository's own harnesses.  Another image may be named.
+# Defaults to the test image (test/image/build.sh).
 IMG=${2:-$C900_ROOT/hostbuild/build/test.bin}
 if [ ! -f "$IMG" ]; then
 	echo "emu-run.sh: no image $IMG" >&2
@@ -61,9 +58,8 @@ prov_header "image $(basename "$IMG")" "$IMG.stamp" || true
 # Run on a copy.  The emulator writes through to the image and the guest
 # mounts its root read-write, so a run mutates the disk it booted from and a
 # reused image makes runs depend on their predecessors.  A fresh copy per run
-# keeps every test starting from the same known image and leaves the image
-# pristine.  WORK names the copy explicitly; PERSIST=1 writes through to the
-# image itself.
+# keeps every run starting from the same image.  WORK names the copy;
+# PERSIST=1 writes to the image itself.
 case "${PERSIST:-}" in
 '' | 0 | no | NO | false | FALSE) ;;
 *)	echo "emu-run.sh: PERSIST set -- writing through to $IMG" >&2
@@ -115,8 +111,11 @@ while [ -n "$_rest" ]; do
 done
 script="$script\\i\\r"
 raw_seen=''
+stopdir=''
 while IFS= read -r line; do
 	case "$line" in
+	# `#% stop <list>': the script's own stop channels (see STOPON).
+	'#% stop '*)	stopdir=${line#'#% stop '}; continue;;
 	''|\#*)	continue;;
 	# RAW <chars> -- append characters with NO carriage return, for a
 	# program that reads single keystrokes rather than lines.
@@ -145,6 +144,16 @@ while IFS= read -r line; do
 	esac
 done < "$CMDS"
 script="${script}sync\\rsync\\recho $MARK\\r"
+
+# The emulator silently drops scripted input past INQMAX (8192) bytes.  Count
+# what it will queue (an escape is one byte, \g and \i none) and refuse a
+# script that won't fit.
+qbytes=$(printf '%s' "$script" | sed 's/\\[gi]//g; s/\\./x/g' | wc -c)
+if [ "$qbytes" -gt "${INQMAX:-8192}" ]; then
+	echo "emu-run.sh: $CMDS types $qbytes bytes; the emulator queues only ${INQMAX:-8192}" >&2
+	echo "  and would silently drop the rest.  Shorten the typed lines (a \`#' comment is not typed)." >&2
+	exit 2
+fi
 
 # The emulator runs until Ctrl-] which we cannot send either, so run it in the
 # background and stop it once the marker appears.  Kill by PID, not by name:
@@ -199,10 +208,8 @@ PIDF=$PIDD/$$.pid
 # A BOOTABLE FLOPPY TAKES THE MACHINE.  The stock ROM's autoboot spec tries
 # `(fd,1)coherent' before `(hd)coherent', so a medium carrying a loader at
 # /coherent -- the install disk does -- is what boots, and the system under the
-# transcript is the FLOPPY's, not the disk image's.  The kernel line says
-# which: the install floppy loads `coherent.sys' and roots on /dev/fd1, a
-# hard-disk boot loads `coherent'.  The disk image is then only attached, and a
-# claim about its software cannot be made from such a run.
+# transcript is the floppy's.  The kernel line says which: `coherent.sys' on
+# /dev/fd1 is the floppy, `coherent' the hard disk.
 FLOPPYARG=''
 [ -n "${FLOPPY:-}" ] && FLOPPYARG="--floppy=$FLOPPY"
 # Every medium the machine is given, on the record before it runs.  A harness
@@ -214,59 +221,59 @@ echo "=== medium disk $IMG"
 [ -n "${FLOPPY:-}" ] && echo "=== medium floppy $FLOPPY"
 
 # --stop-mark ends the run at the moment the guest announces it is finished,
-# which is the same $MARK the script echoes last and the loop below watches for.
-# Without it the emulator has no reachable exit of its own -- the default port
-# channel waits for a doorbell no COHERENT guest rings -- so a finished run was
-# ended by KILLING a live emulator, mid-write to the image it writes through to.
-# The loop stays: it is the ceiling for a guest that never gets to the mark.
-# --stop-on=mark names the ONLY channel this harness wants, which also leaves
-# the park watch off.  A guest that sleeps -- inetd.cmd holds connections for
-# ten minutes on purpose -- is halted with the clock tick as its only wakeup,
-# which is the signature of a guest that has died, so a parked stop ends a run
-# that is working.  The loop below is this harness's ceiling instead.
-( cd "$(dirname "$EMU")" && exec "$EMU" --disk "$IMG" $FLOPPYARG \
-	--stop-on=mark --stop-mark "$MARK" \
+# which is the same $MARK the script echoes last.  park (halted, woken only
+# by the tick) and idle (quiet at a prompt, input spent) catch a hang, so no
+# wall clock is needed.  --require-stop makes the exit status say whether a
+# channel fired.
+#
+# Past a GATE or RAW the guest waits out console quiet while halted, which
+# park can't tell from a hang, so such a script stops on mark alone.
+#
+# A script's `#% stop <list>' overrides that (park counts host loops, so a
+# long guest sleep wants mark), STOPON overrides both, and EMUARGS appends
+# raw emulator options such as --break, --dump, --max.
+stopon=mark
+[ -n "$raw_seen" ] || stopon=mark,park,idle
+stopon=${STOPON:-${stopdir:-$stopon}}
+( cd "$(dirname "$EMU")" && exec "$EMU" --disk "$IMG" $FLOPPYARG ${EMUARGS:-} \
+	--stop-on="$stopon" --stop-mark "$MARK" --require-stop \
 	--input-mark "$LOGINMARK" --input "$script" >>"$OUT" 2>>"$ERR" ) &
 pid=$!
 echo "$$ $pid" > "$PIDF"
-# An ordinary exit is not the failure mode that matters -- the loop below
-# already kills the emulator on its own way out.  These cover the run that
-# never reaches the loop's end: a Ctrl-C, a TERM, or a `set -u' failure in
-# anything added later.
+# Stops the emulator on a signal to us.
 trap 'kill -9 $pid 2>/dev/null; rm -f "$PIDF"' EXIT
 trap 'kill -9 $pid 2>/dev/null; rm -f "$PIDF"; exit 130' INT
 trap 'kill -9 $pid 2>/dev/null; rm -f "$PIDF"; exit 143' TERM
 
-t=0
-while [ $t -lt ${EMUWAIT:-300} ]; do
-	sleep 2; t=$((t+2))
-	grep -q "$MARK" "$OUT" 2>/dev/null && break
-	kill -0 $pid 2>/dev/null || break
-done
-# Only a run that did NOT stop on its own is killed.  A guest that reached the
-# mark has already brought the emulator down at a point of its own choosing,
-# with its disk writes complete; killing it there is what used to risk a torn
-# image, and there is nothing left to signal.
-if kill -0 $pid 2>/dev/null; then
-	kill $pid 2>/dev/null
-	sleep 1
-	kill -9 $pid 2>/dev/null	# it ignores TERM while spinning
-fi
-wait $pid 2>/dev/null
+t0=$(date +%s)
+wait $pid
+estatus=$?
+t=$(( $(date +%s) - t0 ))
 rm -f "$PIDF"
 
-# Say so if anything of ours is still running: a leak that is announced gets
-# fixed, a silent one accumulates.
-if kill -0 $pid 2>/dev/null; then
-	echo "(WARNING: emulator $pid survived TERM and KILL -- kill it by hand)"
-fi
+# Which channel ended the run, from the emulator's closing line
+# "[c900: stopped after N instructions -- REASON]".  run.sh's judge reads it.
+reason=$(sed -n 's/^\[c900: stopped after [0-9]* instructions -- \(.*\)\]$/\1/p' "$ERR" | tail -1)
+case "$reason" in
+*"printed the stop mark"*)		chan=mark ;;
+*"guest is parked"*)			chan=park ;;
+*"scripted input consumed"*)		chan=idle ;;
+*"rang the stop doorbell"*)		chan=port ;;
+*"breakpoint"*)				chan=break ;;
+*"halted with no interrupt pending"*)	chan=halt ;;
+*"instruction budget"*)		chan=budget ;;
+*"Ctrl-]"*)				chan=manual ;;
+'')	if [ "$estatus" = 3 ]; then chan=none; else chan=unknown; fi ;;
+*)	chan=other ;;
+esac
+echo "=== stop channel: $chan${reason:+ ($reason)}"
 
 # A run that never reached the mark did not finish, and saying so in a warning
 # while exiting 0 makes a truncated run read as a pass -- which is how a guest
 # stopped at its own sleep was reported as a clean switchboard sweep.  The
 # transcript is still printed: a short one is the evidence for the failure.
 unfinished=0
-grep -q "$MARK" "$OUT" || { unfinished=1; echo "(the guest never reached $MARK after ${t}s -- the run did not finish)"; }
+grep -q "$MARK" "$OUT" || { unfinished=1; echo "(the guest never reached $MARK -- stopped by channel: $chan)"; }
 echo "=== console transcript ($t s) ==="
 cat "$OUT"
 echo "=== read files the commands wrote with:"
