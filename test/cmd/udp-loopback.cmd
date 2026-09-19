@@ -1,6 +1,6 @@
 # udp-loopback.cmd -- a UDP datagram round trip with both ends on this machine.
 #
-#	hostbuild/emu-run.sh tests/cmd/udp-loopback.cmd
+#	hostbuild/emu-run.sh test/cmd/udp-loopback.cmd
 #
 # ip_write loops a packet addressed to its own interface back internally, so
 # this needs no wire, no slip and no peer.  What it checks is ADDRESSING:

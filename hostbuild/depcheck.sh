@@ -22,7 +22,6 @@ set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 OS="$HERE/.."
 . "$OS/hostbuild/toolchain.sh"	# sets $TC: the Z8001 toolchain checkout
-DIST=${DIST:-coherent3-full-test}
 
 # `fail' cannot be a plain variable: the main loop runs inside a pipeline,
 # so its subshell's assignment is lost and a FAIL would still exit 0.  A
@@ -134,7 +133,7 @@ breadth_control() {
 	[ -e "$tgt" ] || { echo "  SKIP  the breadth control -- stamp not built yet"; return; }
 	iso=$(isolate "$tgt")
 	# shellcheck disable=SC2086
-	uptodate -C "$HERE" $iso NODEPS=1 DIST="$DIST" "$tgt" || {
+	uptodate -C "$HERE" $iso NODEPS=1 "$tgt" || {
 		echo "  SKIP  the breadth control -- the stamp is already out of date"; return; }
 	for d in $NEG2; do
 		[ -e "$d" ] || continue
@@ -145,7 +144,7 @@ breadth_control() {
 		[ -n "$f" ] || { [ -f "$d" ] && f="$d" || continue; }
 		ref=$(mktemp); touch -r "$f" "$ref"; touch "$f"
 		# shellcheck disable=SC2086
-		if uptodate -C "$HERE" $iso NODEPS=1 DIST="$DIST" "$tgt"; then
+		if uptodate -C "$HERE" $iso NODEPS=1 "$tgt"; then
 			echo "  ok    breadth control: $(echo "$f" | sed "s|$OS/||") is not a userland source"
 		else
 			echo "  FAIL  breadth control: touching $(echo "$f" | sed "s|$OS/||")"
@@ -169,7 +168,7 @@ echo "$CASES" | while IFS='|' read -r src target what; do
 	fi
 	iso=$(isolate "$target")
 	# shellcheck disable=SC2086 -- $iso is a make flag pair, deliberately split
-	st=$(mstat -C "$HERE" $iso NODEPS=1 DIST="$DIST" "$target")
+	st=$(mstat -C "$HERE" $iso NODEPS=1 "$target")
 	case "$st" in
 	0)	;;
 	1)	echo "  SKIP  $what -- $(basename "$target") is already out of date"
@@ -184,7 +183,7 @@ echo "$CASES" | while IFS='|' read -r src target what; do
 	ref=$(mktemp); touch -r "$src" "$ref"
 	touch "$src"
 	# shellcheck disable=SC2086
-	if [ "$(mstat -C "$HERE" $iso NODEPS=1 DIST="$DIST" "$target")" = 0 ]; then
+	if [ "$(mstat -C "$HERE" $iso NODEPS=1 "$target")" = 0 ]; then
 		echo "  FAIL  $what: touching $(basename "$src") leaves $(basename "$target") up to date"
 		mark_fail
 	else
@@ -293,10 +292,10 @@ fi
 NEGISO=$(isolate "$NEGTGT")
 # shellcheck disable=SC2086
 if [ -e "$NEGSRC" ] && [ -e "$NEGTGT" ] && \
-   uptodate -C "$HERE" $NEGISO NODEPS=1 DIST="$DIST" "$NEGTGT"; then
+   uptodate -C "$HERE" $NEGISO NODEPS=1 "$NEGTGT"; then
 	ref=$(mktemp); touch -r "$NEGSRC" "$ref"; touch "$NEGSRC"
 	# shellcheck disable=SC2086
-	if make -q -C "$HERE" $NEGISO NODEPS=1 DIST="$DIST" "$NEGTGT" >/dev/null 2>&1; then
+	if make -q -C "$HERE" $NEGISO NODEPS=1 "$NEGTGT" >/dev/null 2>&1; then
 		echo "  ok    negative control (a non-source does not trigger a rebuild)"
 	else
 		echo "  BROKEN: the check reports \"would rebuild\" for a file nothing"

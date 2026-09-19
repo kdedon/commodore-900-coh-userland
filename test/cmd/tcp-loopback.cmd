@@ -1,6 +1,6 @@
 # tcp-loopback.cmd -- TCP with both ends on this machine.
 #
-#	hostbuild/emu-run.sh tests/cmd/tcp-loopback.cmd
+#	hostbuild/emu-run.sh test/cmd/tcp-loopback.cmd
 #
 # No serial line, no slip, no host peer: the stack routes a connection to its
 # own address internally.  A pass says the TCP state machine, libsocket and the

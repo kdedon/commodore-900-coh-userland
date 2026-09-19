@@ -1,6 +1,6 @@
 # bccalc.cmd -- does bc(1) compute the right digits, and does dc(1) still work?
 #
-#	hostbuild/emu-run.sh tests/cmd/bccalc.cmd
+#	hostbuild/emu-run.sh test/cmd/bccalc.cmd
 #
 # It is a long run: sixteen bc and dc invocations and ninety-odd shell lines,
 # each of which the emulator feeds a byte at a time and then waits for a fresh

@@ -1,6 +1,6 @@
 # saacct.cmd -- sa(1) against an accounting file the KERNEL wrote.
 #
-#	hostbuild/emu-run.sh tests/cmd/saacct.cmd
+#	hostbuild/emu-run.sh test/cmd/saacct.cmd
 #
 # acct(2) appends one record per process exit (sys2.c uacct turns it on,
 # proc.c/fs2.c setacct writes the record), so the file sa reads is the

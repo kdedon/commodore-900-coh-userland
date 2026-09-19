@@ -1,6 +1,6 @@
 # pollpipe.cmd -- does select() wake for a write to an anonymous pipe?
 #
-#	hostbuild/emu-run.sh tests/cmd/pollpipe.cmd
+#	hostbuild/emu-run.sh test/cmd/pollpipe.cmd
 #
 # Case A (data already there) is expected to pass and is the control; case B
 # (written while select() is blocked) is the one under suspicion.  A run that

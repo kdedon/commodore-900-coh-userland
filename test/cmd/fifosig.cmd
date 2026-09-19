@@ -1,7 +1,7 @@
 # fifosig.cmd -- does a caught signal during a blocking FIFO read or open
 # corrupt the kernel's reader/writer counts?
 #
-#	hostbuild/emu-run.sh tests/cmd/fifosig.cmd
+#	hostbuild/emu-run.sh test/cmd/fifosig.cmd
 #
 # The verdict is not a line of output but the machine's survival: on a kernel
 # with the bug the close in phase 1 panics ("Out of sync IPR in pclose") and

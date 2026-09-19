@@ -164,7 +164,7 @@
 #
 #   telnetd    NOT over the network here, and the reason is worth stating: a
 #              telnet login is a getty, a login(1) and a shell, which is twenty
-#              minutes of guest time (see tests/cmd/rsh.cmd) and needs an
+#              minutes of guest time (see test/cmd/rsh.cmd) and needs an
 #              interactive client to drive.  What IS tested is the part that is
 #              new -- telnetd started with the switchboard's variables in its
 #              environment and its connection on a pipe.  Running it by hand

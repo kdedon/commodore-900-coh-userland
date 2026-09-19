@@ -354,7 +354,7 @@ package-list:
 	@$(COMPONENT) components
 
 # --- verification -------------------------------------------------------------
-# Image boot tests live in the distribution repository.
+# Image boot tests live here, run via test/cmd/run.sh and test/image/build.sh.
 # What follows are host-only checks that need no image, no emulator, no simulator.
 
 # Compile network probes with host stubs and injected faults to check both

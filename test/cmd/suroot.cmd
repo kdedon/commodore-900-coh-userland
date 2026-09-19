@@ -1,6 +1,6 @@
 # suroot.cmd -- su(1) to an account with no password is a CONSOLE privilege.
 #
-#	hostbuild/emu-run.sh tests/cmd/suroot.cmd
+#	hostbuild/emu-run.sh test/cmd/suroot.cmd
 #
 # /etc/passwd gives root an EMPTY password field, deliberately: a machine whose
 # only input is the keyboard in front of it must never be locked out of itself.

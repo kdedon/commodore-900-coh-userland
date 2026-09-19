@@ -1,6 +1,6 @@
 # lprspool.cmd -- what does the printer spooler actually put on the paper?
 #
-#	hostbuild/emu-run.sh tests/cmd/lprspool.cmd
+#	hostbuild/emu-run.sh test/cmd/lprspool.cmd
 #
 # This machine has no printer, so the bytes lpd(1) would send to one are
 # captured instead: /dev/lp is replaced by an ORDINARY FILE, mode 666 because

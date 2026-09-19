@@ -1,6 +1,6 @@
 # shfns.cmd -- the V4.0.6 shell: functions, and the features that came with them.
 #
-#	hostbuild/emu-run.sh tests/cmd/shfns.cmd
+#	hostbuild/emu-run.sh test/cmd/shfns.cmd
 #
 # /bin/sh is COHERENT's V4.0.6 Bourne shell.  Its headline feature over the
 # 1985 shell is SHELL FUNCTIONS -- NFUNC/NRET in the grammar,

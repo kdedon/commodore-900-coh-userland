@@ -56,7 +56,7 @@
 # reads a zero rather than faulting, and what the gate sees is the wrong status.
 # On the machine the same binary answers `Segmentation violation -- core
 # dumped' and leaves a /core and a /tmp/sortNNa behind, which is what
-# tests/cmd/moresort.cmd checks.
+# test/cmd/moresort.cmd checks.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 OS=$(cd "$HERE/../.." && pwd)

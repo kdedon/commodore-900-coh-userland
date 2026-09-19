@@ -1,6 +1,6 @@
 # rsh.cmd -- does /usr/bin/rsh, the RESTRICTED shell, actually restrict?
 #
-#	hostbuild/emu-run.sh tests/cmd/rsh.cmd
+#	hostbuild/emu-run.sh test/cmd/rsh.cmd
 #
 # rsh is the same binary as /bin/sh, restricting itself when argv[0] says
 # `rsh' (cmd/sh/main.c); this file is the gate that the restrictions hold.

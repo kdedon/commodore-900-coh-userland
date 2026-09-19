@@ -1,6 +1,6 @@
 # shredir.cmd -- does a COMPOUND command survive a redirection?
 #
-#	hostbuild/emu-run.sh tests/cmd/shredir.cmd
+#	hostbuild/emu-run.sh test/cmd/shredir.cmd
 #
 # Nothing in /etc/rc, /etc/rc.net or any shipped profile redirects a compound
 # command, so only this gate exercises it.  The suspect path: `( ... ) > f'
