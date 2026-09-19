@@ -6,12 +6,7 @@
 # second.  Each is the guest half of a check whose other half is a host harness
 # (hostbuild/*.py, hostbuild/*.sh) or a hand run at the console.
 #
-# A RELEASE IMAGE MUST NOT INCLUDE THIS LIST.  Only an image used for
-# development and testing does -- this repository's test image
-# (test/image/build.sh), which emu-run.sh and the rest boot by default, and
-# commodore-900-dist's coherent3-full-test.  The shipped dists -- coherent3,
-# coherent3-full, coherent3-full-gfx, coherent3-dev, dual -- do not include it
-# and carry a /bin of real commands only.
+# A RELEASE IMAGE MUST NOT INCLUDE THIS LIST; only test images do.
 #
 # THE PATHS ARE PART OF THE INTERFACE.  The harnesses type these as absolute
 # paths into a guest shell (`/bin/psipping 2 echo', `/bin/tickrate 30',
@@ -24,6 +19,13 @@
 # os/net (hostbuild/build-net.sh), the MGR tree (mgr/Makefile.c900, the
 # hostbuild `mgr' target) and the hr tree.  A program with no source under those
 # trees does not belong here.
+#
+# Released as a package like any other, though no shipped dist names it.
+# Optional: nothing depends on it.
+package  testing
+role     optional
+# No man pages exist for these.
+kinds    src
 
 # --- the TCP/IP stack's exercisers ------------------------------------------
 # Their production counterparts -- inet, inetd, slip, ifconfig, telnet, ftp, host,

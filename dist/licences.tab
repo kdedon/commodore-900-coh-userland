@@ -261,3 +261,8 @@ use net            ucb-adv          libcurses
 use net            ucb-bsd3         /bin/finger, /bin/host
 use net            mwc-bsd3
 use net            bellcore-mgr     -src only: object-search over-reach onto mgr/src
+
+use testing        mit-oc           the net/test and os/tests probes: this repository's own work
+use testing        bellcore-mgr     event, many, spot, test_menu, trans, half, test_rop and hrlight, MGR's own acceptance tests and the HR first-light program, all from mgr/src
+use testing        pleban-bsd3      /usr/hr/bin/{gfxtest,ptytest,zdlg}, hi-res desktop code by Michal Pleban
+use testing        mwc-bsd3         csu and libc, which every probe links, and the rendering engine gfxtest links

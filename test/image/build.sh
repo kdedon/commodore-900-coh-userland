@@ -14,11 +14,11 @@
 #
 #   the -bin archives in hostbuild/build/packages (`make -C hostbuild
 #   packages'), unpacked and given the modes their manifest.tab states --
-#   the release artifacts themselves, so the checks test what ships
-#   lists/testing.list and lists/licences.list, resolved by
-#   hostbuild/component.py as a -bin package is: the harnesses type the test
-#   programs by path, /usr/licences is what the components are under, and no
-#   package carries either
+#   the release artifacts themselves, including testing's own, so the checks
+#   test what ships
+#   lists/licences.list, resolved by hostbuild/component.py as a -bin package
+#   is: /usr/licences is what the components are under, and no package
+#   carries it
 #   the kernel and the console drivers, from the kernel edge
 #   the loader and <bootinfo.h>, from the kboot edge
 #   /dev, from test/image/devices, a copy of dist's table (it says why)
@@ -42,7 +42,7 @@ PYTHON=${PYTHON:-python3}
 # Every component a distribution image of the whole system carries, less the
 # graphical login and MGR (each a variant of what is here) and CP/M (which
 # wants a partition of its own).  dist's coherent3-full-test is the same set.
-COMPONENTS=${COMPONENTS:-"base runtime login-text editors archive games net-games net mail-light hr hr-clients"}
+COMPONENTS=${COMPONENTS:-"base runtime login-text editors archive games net-games net mail-light hr hr-clients testing"}
 
 BS=512
 TOTAL=41616			# 612 cylinders x 4 heads x 17 sectors
@@ -93,7 +93,7 @@ for c in $COMPONENTS; do
 done
 
 # ---- the lists no package carries, resolved as a package would be ----
-for l in testing licences; do
+for l in licences; do
 	"$PYTHON" "$ROOT/hostbuild/component.py" resolve lists/$l.list
 done > "$W/testing"
 while IFS='	' read -r t p m u g s; do
