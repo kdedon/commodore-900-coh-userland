@@ -62,7 +62,29 @@
 # `host wrote this!' with no newline; /expect is that same string written by the
 # guest, so CMP-HOST compares extracted bytes against locally produced ones.
 #
-# /usr and /tmp are not mounted in single user, so everything is under /.
+# Everything is under /, which the multi-user boot has mounted read/write.
+#
+# For test/cmd/run.sh: the eleven markers, the 2048-byte /h330.tar, and none of
+# a listed /core, a `bad checksum' or a `Segmentation violation'.
+#% expect ^TARC=0$
+#% expect ^TART=0$
+#% expect ^TARX=0$
+#% expect ^CMP-SMALL=0$
+#% expect ^CMP-MULTI=0$
+#% expect ^CMP-BIG=0$
+#% expect ^CMP-EMPTY=0$
+#% expect ^CMP-SUB=0$
+#% expect ^HOSTLIST=0$
+#% expect ^HOSTX=0$
+#% expect ^CMP-HOST=0$
+#% expect ^-.* 2048 .*/h330\.tar$
+#% expect ^== ALLDONE$
+#% expect ^/core: no such file or directory$
+#% reject ^-.* /core$
+#% reject bad checksum
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 1800
 echo == build the tree to archive
 mkdir /t1
 mkdir /t1/sub

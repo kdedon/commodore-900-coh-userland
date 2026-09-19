@@ -11,7 +11,7 @@
 # reaches inline().
 #
 # Each construct runs in a CHILD sh reading a script, never at this prompt: a
-# crash at the prompt would end the single-user session, while in a child the
+# crash at the prompt would end the login session, while in a child the
 # crash is confined and the driving shell reports it and carries on.
 #
 # Every script ends with `echo AFTER-<n>'.  A MISSING `AFTER-<n>' is the
@@ -40,6 +40,43 @@
 # and the redirect is the thing under test.  Case 10's condition is test(1)
 # because this system has no true(1) -- only the `:' built-in, and `Can't
 # find true' would leave /o10 empty behind a passing AFTER line.
+#
+# For test/cmd/run.sh: the sixteen AFTER lines; what the read-back must show --
+# `inside' from the subshells and the group, `a' and `b' from the for loop,
+# `loop', `yes', `simple' -- with no `cat:' complaint about a file a redirect
+# never made and no `pre' left in the file case 3 had to overwrite; and no
+# `Segmentation violation' or /core.  Case 11's `Syntax error' is allowed.
+#% expect ^AFTER-1$
+#% expect ^AFTER-2$
+#% expect ^AFTER-3$
+#% expect ^AFTER-4$
+#% expect ^AFTER-5$
+#% expect ^AFTER-6$
+#% expect ^AFTER-7$
+#% expect ^AFTER-8$
+#% expect ^AFTER-9$
+#% expect ^AFTER-10$
+#% expect ^AFTER-11$
+#% expect ^AFTER-12$
+#% expect ^AFTER-13$
+#% expect ^AFTER-14$
+#% expect ^AFTER-15$
+#% expect ^AFTER-16$
+#% expect ^inside$
+#% expect ^data$
+#% expect ^a$
+#% expect ^b$
+#% expect ^loop$
+#% expect ^yes$
+#% expect ^simple$
+#% expect ^== ALLDONE$
+#% reject ^cat: /o
+#% reject ^pre$
+#% expect ^/core: no such file or directory$
+#% reject ^-.* /core$
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 1800
 echo == 1 plain subshell, no redirect -- CONTROL
 echo '( echo inside )' > /v1
 echo 'echo AFTER-1' >> /v1

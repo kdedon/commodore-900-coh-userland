@@ -31,6 +31,22 @@
 # THE THREE JUDGES, the same ones test/cmd/inetd.cmd uses.  A names the
 # evidence and judges it, Q judges without reprinting evidence A has already
 # shown, N is the same judgement inverted for what must NOT be there.
+#
+# For test/cmd/run.sh: an `ok' line for every tag, and no `FAIL' line.
+#% expect ^ok T_ACCEPTED$
+#% expect ^ok T_DELIVERED$
+#% expect ^ok T_ENVELOPE$
+#% expect ^ok T_ONELETTER$
+#% expect ^ok T_DATASTARTED$
+#% expect ^ok T_NOTACCEPTED$
+#% expect ^ok T_NOTDELIVERED$
+#% expect ^ok T_STILLONELETTER$
+#% expect ^ok T_UNCHANGED$
+#% expect ^ok T_NOSPOOLLEFT$
+#% reject ^FAIL T_
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 1200
 echo '/bin/cat $2' > /bin/A
 echo '/bin/Q "$1" "$2" "$3"' >> /bin/A
 echo 'if /bin/grep "$3" "$2" >/dev/null' > /bin/Q

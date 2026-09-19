@@ -2,7 +2,7 @@
 # and round-trip files byte for byte?
 #
 #	dd if=/dev/zero of=${TMPDIR:-/tmp}/mkfs-fd.img bs=512 count=2392 &&
-#	FLOPPY=${TMPDIR:-/tmp}/mkfs-fd.img EMUWAIT=900 \
+#	FLOPPY=${TMPDIR:-/tmp}/mkfs-fd.img EMUWAIT=1500 \
 #	    hostbuild/emu-run.sh test/cmd/mkfs.cmd
 #
 # WHY THIS EXISTS.  mkfs is the only program that writes a filesystem from
@@ -104,6 +104,56 @@
 # Case 1 makes a filesystem in a REGULAR FILE.  Beyond its status it asserts
 # nothing here: it exists so the host can read /diff.fs back out with cohfs cat
 # and compare it against one made by another mkfs under the same arguments.
+#
+# For test/cmd/run.sh, which makes the blank medium itself (`#% floppy'): the
+# twenty zero statuses; the medium blank before; icheck's `free =' and `bad=0'
+# and none of the free-list defect lines; the round-tripped file read back;
+# case 13's read-only mount, refused write and missing file; the `gt'/`pk' and
+# `vol'/`pak' dumps; and /dev/fd1 in neither mount table.  NOT covered line by
+# line: that case 6 did NOT print the read-only message -- case 13 must print
+# it, so it cannot be rejected outright.  STATUS-7 and the `written-by-the-gate'
+# read-back are the evidence that the first mount was read/write.
+#% floppy 2392
+#% expect ^== STATUS-1 0$
+#% expect ^== STATUS-2 0$
+#% expect ^== STATUS-3 0$
+#% expect ^== STATUS-4 0$
+#% expect ^== STATUS-5 0$
+#% expect ^== STATUS-6 0$
+#% expect ^== STATUS-7 0$
+#% expect ^== STATUS-8 0$
+#% expect ^== STATUS-9 0$
+#% expect ^== STATUS-10 0$
+#% expect ^== STATUS-11 0$
+#% expect ^== STATUS-12 0$
+#% expect ^== STATUS-13 0$
+#% expect ^== STATUS-14 0$
+#% expect ^== STATUS-15 0$
+#% expect ^== STATUS-16 0$
+#% expect ^== STATUS-17 0$
+#% expect ^== STATUS-18 0$
+#% expect ^== STATUS-19 0$
+#% expect ^== STATUS-20 0$
+#% expect ^00000000 \\0 \\0 \\0 \\0 \\0 \\0 \\0 \\0 \\0 \\0 \\0 \\0$
+#% expect ^free = [1-9][0-9]*$
+#% expect ^bad=0 \(0 in I-list\)$
+#% expect ^written-by-the-gate$
+#% expect ^00000000 g  t  \\0 \\0 \\0 \\0 p  k  \\0 \\0 \\0 \\0$
+#% expect ^mount: /dev/fd1: not cleanly unmounted, mounting read only.*$
+#% expect ^Cannot create /mnt/ro$
+#% expect ^/mnt/ro: no such file or directory$
+#% expect ^00000000 v  o  l  \\0 \\0 \\0 p  a  k  \\0 \\0 \\0$
+#% expect ^== ALLDONE$
+#% reject missing =
+#% reject dups in free
+#% reject Bad ifree list
+#% reject Free list/tfree counts differ
+#% reject Bad freelist
+#% reject ^bad=[1-9]
+#% reject ^/dev/fd1 on /
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 1500
 echo == 0 the mount table, and the medium this run writes
 /etc/mount
 df

@@ -10,14 +10,14 @@
 # done.  There is no lpq/lpstat/lprm in this generation of the spooler; the
 # spool directory listing is the queue report.
 #
-# /usr is a separate filesystem (media hd6) and rc has not run, so it is
-# mounted here: /usr/lib/lpd is the daemon and /usr/spool/lpd is the queue.
+# /usr is on the root filesystem of the test image, which the multi-user boot
+# has mounted: /usr/lib/lpd is the daemon and /usr/spool/lpd is the queue.
 #
 # WHAT EACH CASE MUST SHOW.  Every case ends with `echo LPR-<n>-DONE'; a
 # missing DONE line is a failure whatever else was printed.  Count the DONE
 # lines at the START of a line -- the transcript echoes the commands too.
 #
-#   1  CONTROL.  /usr mounts and carries the daemon; the four programs exist.
+#   1  CONTROL.  /usr carries the daemon; the four programs exist.
 #      Without it a run in which nothing could have printed would look calm.
 #   2  A job with the daemon moved aside leaves its control file in the queue,
 #      and `lpr -B' puts a bare `B' line in it.  The B line is what suppresses
@@ -42,8 +42,45 @@
 #      /bin/vpr and execs it, so an `opr' job must come out looking exactly
 #      like case 3's -- header, banners, file.  P3 must contain `#'.
 #
-echo == 1 mount /usr and show the four programs -- CONTROL
-/etc/mount /dev/hd6 /usr
+# For test/cmd/run.sh.  Every DONE line, and per case the line that carries its
+# evidence.  P2 is judged exactly: its size, and the two lines of its od dump,
+# which say at once that it begins with FIRSTLINE (no header, no `cf' line, no
+# leading formfeed) and ends with a single \f.  The banner's CR-LF is a dump
+# row of P1 holding both `#' and `\r \n' -- only P1's dump has a `#' in it.
+# NOT covered line by line, and read from the transcript instead: that the
+# queue listing in case 7 is EMPTY (an empty listing is the absence of a line
+# between two prompts, and case 2 legitimately lists cf1), that bare `\n' ends
+# no banner row, and that the non-zero `#' count belongs to P1 and to P3 each
+# (the two counts print identically, so one required line cannot tell them
+# apart; P2's zero is a line of its own).
+#% expect ^LPR-1-DONE$
+#% expect ^LPR-2-DONE$
+#% expect ^LPR-3-DONE$
+#% expect ^LPR-4-DONE$
+#% expect ^LPR-5-DONE$
+#% expect ^LPR-6-DONE$
+#% expect ^LPR-7-DONE$
+#% expect ^LPR-8-DONE$
+#% expect ^== ALLDONE$
+#% expect ^-.* /usr/lib/lpd$
+#% expect ^-.* /bin/lpr$
+#% expect ^-.* /bin/lpskip$
+#% expect ^-.* /bin/opr$
+#% expect ^cf[0-9]+$
+#% expect ^B$
+#% expect ^ +[1-9][0-9]* +/P1$
+#% expect ^[1-9][0-9]*$
+#% expect ^[0-9a-f]{8} .*#.*\\r \\n.*$
+#% expect ^ +22 +/P2$
+#% expect ^0$
+#% expect ^00000000 F  I  R  S  T  L  I  N  E  \\r \\n L  A  S  T  L *$
+#% expect ^00000010 I  N  E  \\r \\n \\f *$
+#% expect ^ +[1-9][0-9]* +/P3$
+#% reject ^Usage:
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 900
+echo == 1 show the four programs -- CONTROL
 ls -l /usr/lib/lpd /bin/lpr /bin/lpskip /bin/opr
 echo LPR-1-DONE
 echo == 2 -B reaches the control file

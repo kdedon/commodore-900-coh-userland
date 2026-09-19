@@ -21,6 +21,78 @@
 # in a reader's head is not one, and a transcript that only shows output cannot
 # say whether the output was right.
 #
+# For test/cmd/run.sh, that is the whole pass condition: an `ok' line for every
+# tag this file judges, and no `FAIL' line.  T_SIZE is a number to report and
+# judges nothing.
+#% expect ^ok T_DROPRACE$
+#% expect ^ok T_DROPUP$
+#% expect ^ok T_DROPPED$
+#% expect ^ok T_DROPRSH$
+#% expect ^ok T_DROPINT$
+#% expect ^ok T_DROPDAY$
+#% expect ^ok T_DROPGONE$
+#% expect ^ok T_DROPCOUNT$
+#% expect ^ok T_REPECHO$
+#% expect ^ok T_REPDAY$
+#% expect ^ok T_REPTELNET$
+#% expect ^ok T_REPSMTP$
+#% expect ^ok T_REPFINGER$
+#% expect ^ok T_REPSHELL$
+#% expect ^ok T_REPTALK$
+#% expect ^ok T_REPALL$
+#% expect ^ok T_READY$
+#% expect ^ok T_NOTINSTMSG$
+#% expect ^ok T_INTERNAL$
+#% expect ^ok T_EXEC$
+#% expect ^ok T_DOWN$
+#% expect ^ok T_DOWNCLEAN$
+#% expect ^ok T_ENV$
+#% expect ^ok T_ENVPORT$
+#% expect ^ok T_NEG$
+#% expect ^ok T_FINGERD$
+#% expect ^ok T_REMSHD$
+#% expect ^ok T_REMSHDU$
+#% expect ^ok T_REMSHDUID$
+#% expect ^ok T_TELNETD$
+#% expect ^ok T_SMTPD$
+#% expect ^ok T_SMTPMAIL$
+#% expect ^ok T_SMTPBODY$
+#% expect ^ok T_NOTINST$
+#% expect ^ok T_NTALK$
+#% expect ^ok T_NTALKOK$
+#% expect ^ok T_TALKKID$
+#% expect ^ok T_TALKCHILD$
+#% expect ^ok T_TALKGONE$
+#% expect ^ok T_TALKREAPED$
+#% expect ^ok T_NOTALKD$
+#% expect ^ok T_SYSLOG$
+#% expect ^ok T_REFUSED$
+#% expect ^ok T_NOSPIN$
+#% expect ^ok T_NOSPINBOUND$
+#% expect ^ok T_CEILING$
+#% expect ^ok T_CEILINGOK$
+#% expect ^ok T_LEAK$
+#% expect ^ok T_LEAKOK$
+#% expect ^ok T_LASTREADY$
+#% expect ^ok T_LASTGONE$
+#% expect ^ok T_LASTREBOUND$
+#% expect ^ok T_LASTNOTDEAD$
+#% expect ^ok T_LASTALIVE$
+#% expect ^ok T_LASTANSWERED$
+#% expect ^ok T_LASTAGAIN$
+#% expect ^ok T_BACKHELD$
+#% expect ^ok T_BACKREFUSED$
+#% expect ^ok T_BACKBOUND$
+#% expect ^ok T_HELDTAKEN$
+#% expect ^ok T_HELDTRIES$
+#% expect ^ok T_HELDSPENT$
+#% expect ^ok T_HELDSTOP$
+#% expect ^ok T_HELDGONE$
+#% reject ^FAIL T_
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 3600
+#
 # FOUR PATHS, AND NONE OF THEM COVERS ANOTHER:
 #
 #   port 7     an INTERNAL service.  The forked child answers on the socket

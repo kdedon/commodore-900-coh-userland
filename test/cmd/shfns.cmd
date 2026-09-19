@@ -16,7 +16,7 @@
 # one.
 #
 # Each case runs in a CHILD sh reading a script, never at this prompt: a crash
-# at the prompt would end the single-user session, while in a child it is
+# at the prompt would end the login session, while in a child it is
 # confined and the driving shell reports it and carries on.  Every script ends
 # by echoing AFTER-<n>; a MISSING AFTER-<n> is a failure, and the AFTER lines
 # must be counted at the START of a line, because the transcript also echoes
@@ -33,6 +33,65 @@
 # sh_fnp = NULL in the child, so a function is not inherited across a fork:
 # `f' works, `( f )' and `f | cat' do not.  The case asserts the refusal, so a
 # change in that direction shows up here rather than as a mystery later.
+#
+# For test/cmd/run.sh: the thirteen AFTER lines, every value the guest computes
+# (above), case 9's refusal, the two files cases 11 and 12 wrote, case 14 at
+# the prompt, and /etc/rc read to a zero status.  Rejected: the old shell's
+# `Syntax error', the two lines only a wrong answer prints (the file run
+# instead of the function in case 7, the loop running on past `return' in case
+# 8), a /core and a `Segmentation violation'.
+#
+# Case 15 reads /etc/rc on a system rc has ALREADY brought up multi-user, so
+# its mounts answer `busy' and it starts rc.net's daemons a second time.  What
+# is asserted is only that this shell reads the file to a zero status; the
+# mount table printed after it is evidence, not a condition.
+#% expect ^AFTER-1$
+#% expect ^AFTER-2$
+#% expect ^AFTER-3$
+#% expect ^AFTER-4$
+#% expect ^AFTER-5$
+#% expect ^AFTER-6$
+#% expect ^AFTER-7$
+#% expect ^AFTER-8$
+#% expect ^AFTER-9$
+#% expect ^AFTER-10$
+#% expect ^AFTER-11$
+#% expect ^AFTER-12$
+#% expect ^AFTER-13$
+#% expect ^CONTROL-RAN$
+#% expect ^FN-HELLO world$
+#% expect ^FN-RET=3$
+#% expect ^FN-ARGS 2 alpha bravo$
+#% expect ^FN-OUTER 0$
+#% expect ^FN-DEPTH-3$
+#% expect ^FN-DEPTH-2$
+#% expect ^FN-DEPTH-1$
+#% expect ^FN-FIRST$
+#% expect ^FN-SECOND$
+#% expect ^FN-BEAT-THE-FILE$
+#% expect ^FN-COUNT=4$
+#% expect ^FN-IN-PARENT$
+#% expect ^Cannot find nine$
+#% expect ^TEN-A$
+#% expect ^TEN-B$
+#% expect ^TEN-C$
+#% expect ^TEN-AND$
+#% expect ^TEN-OR$
+#% expect ^DIRS-AT=/bin$
+#% expect ^DIRS-BACK=/$
+#% expect ^FN-AT-PROMPT$
+#% expect ^HEREDOC-BODY$
+#% expect ^GLOB-REDIR$
+#% expect ^RC-STATUS=0$
+#% expect ^/core: no such file or directory$
+#% expect ^== ALLDONE$
+#% reject Syntax error
+#% reject ^FN-NOT-THE-FILE$
+#% reject ^FN-LOOP-RAN-ON$
+#% reject ^-.* /core$
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 1800
 echo == 1 plain script -- CONTROL, no function
 echo 'echo CONTROL-RAN' > /f1
 echo 'echo AFTER-1' >> /f1

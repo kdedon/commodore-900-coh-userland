@@ -40,10 +40,35 @@
 #   case 11  a negative exponent computes.  The older bcexp() has no case for
 #            one and loops on a negative shift count.
 #
-# Case 16 needs /usr, which rc has not mounted in single user, so it mounts it
-# itself; bc -l reads /usr/lib/lib.b.  If the mount fails the case says SKIP-16
-# rather than FAIL-16 -- a library that is not on the disk is not a bug in bc --
-# so a run with fifteen PASS lines and a SKIP-16 is a pass.
+# Case 16 reads /usr/lib/lib.b with bc -l.  /usr is on the root filesystem of
+# the test image, so the library is on the disk this boots from; the case still
+# says SKIP-16 rather than FAIL-16 when it is not -- a library that is not on
+# the disk is not a bug in bc -- but that is then a test image that lost part
+# of bc's package, and test/cmd/run.sh wants PASS-16.
+#
+# For test/cmd/run.sh: all sixteen PASS lines at the start of a line, and no
+# FAIL line.
+#% expect ^PASS-1$
+#% expect ^PASS-2$
+#% expect ^PASS-3$
+#% expect ^PASS-4$
+#% expect ^PASS-5$
+#% expect ^PASS-6$
+#% expect ^PASS-7$
+#% expect ^PASS-8$
+#% expect ^PASS-9$
+#% expect ^PASS-10$
+#% expect ^PASS-11$
+#% expect ^PASS-12$
+#% expect ^PASS-13$
+#% expect ^PASS-14$
+#% expect ^PASS-15$
+#% expect ^PASS-16$
+#% expect ^== ALLDONE$
+#% reject ^FAIL-
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 3600
 echo == 1 CONTROL: it computes at all
 echo '2+2' > /b1
 bc < /b1 > /o1
@@ -169,7 +194,6 @@ echo == 16 bc -l reads the math library off /usr
 # values are the library's own truncations at scale 5, which is why exp(1) ends
 # 24 and not 28.  Reading it also exercises several autos per define, `*=',
 # `+=' and `++', which nothing else here does.
-/etc/mount /dev/hd6 /usr
 echo 'scale=5' > /b16
 echo 'exp(1)' >> /b16
 echo 'ln(100)' >> /b16

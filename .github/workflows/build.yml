@@ -68,6 +68,23 @@ jobs:
       - name: Sweep, publish, package
         run: make -C hostbuild all packages
 
+      # The boot checks' image, packed HERE because this is the only job that
+      # has all of what goes into it: the component archives are in the
+      # artifact, but the test programs lists/testing.list places are built
+      # beside their sources (test/*/, net/), which no artifact carries.  It
+      # needs two edges the build does not, the loader and the filesystem
+      # tools.  It is written OUTSIDE hostbuild/build: an image newer than
+      # .ulstamp in there is exactly what check-publish-fresh refuses.
+      - name: Place the test image's dependency edges
+        run: |
+          for d in kboot tools; do
+            make deps DEP="$d"
+            printf '%s: ' "$d"; sh mk/deps.sh -k "$d"
+          done
+
+      - name: Pack the test image
+        run: sh test/image/build.sh "$PWD/test-image/test.bin"
+
       # Modification times matter to check-publish-fresh, so the tree travels
       # as a tar and not as loose files.
       - name: Pack the built tree
@@ -90,6 +107,13 @@ jobs:
         with:
           name: userland-deps
           path: userland-deps.tar
+          retention-days: 7
+
+      # test.bin and the test.bin.stamp emu-run.sh reports its provenance from.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: userland-test-image
+          path: test-image
           retention-days: 7
 
   # ---------------------------------------------------------------------------
@@ -246,6 +270,50 @@ jobs:
       - name: The publish stamp follows every build output
         run: make -C hostbuild check-publish-fresh
 
+  # The boot checks: every test/cmd script, booted on the test image the build
+  # job packed and judged by the pass condition its own header states.  The
+  # image goes where test/cmd/run.sh looks for it; this job runs no
+  # check-publish-fresh, so it may sit beside .ulstamp here.  The selftest goes
+  # first: it boots once and shows the judge FAILING what it must, and a run
+  # judged by a judge that cannot fail would be green for nothing.
+  #
+  # The timeout is the scripts' own `#% wait' ceilings: 395 minutes in all,
+  # which longest-first on the runner's four CPUs is at most 100, plus the
+  # selftest's one boot (5) and the downloads.  A healthy run is a fraction of
+  # it; the ceiling is what a guest that hangs every script costs, and a job
+  # killed by the timeout instead would report no verdicts at all.  Raise it
+  # with the waits.
+  boot-checks:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: userland-deps }
+      - name: Restore the edges
+        run: tar -xpf userland-deps.tar
+      - uses: actions/download-artifact@v4
+        with: { name: userland-build }
+      - name: Restore the built tree
+        run: tar -xpf userland-build.tar -C hostbuild
+      - uses: actions/download-artifact@v4
+        with: { name: userland-test-image, path: hostbuild/build }
+      - name: The judge can fail
+        run: sh test/cmd/run.sh --selftest
+      - name: Boot and judge every test/cmd script
+        run: sh test/cmd/run.sh
+      # The transcripts are the evidence for every verdict, a FAIL's above
+      # all, and the runner is gone once the job ends.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boot-check-transcripts
+          path: |
+            hostbuild/build/cmd-results
+            hostbuild/build/cmd-selftest
+          retention-days: 7
+
   # ---------------------------------------------------------------------------
   # The verdict.  One status for a branch rule to require, and it must read
   # every job's RESULT rather than merely being reached: a `needs' job that was
@@ -263,6 +331,7 @@ jobs:
       - multiseg
       - net-hostcheck
       - publish-fresh
+      - boot-checks
     if: always()
     runs-on: ubuntu-latest
     steps:

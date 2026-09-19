@@ -4,9 +4,10 @@
 #
 # acct(2) appends one record per process exit (sys2.c uacct turns it on,
 # proc.c/fs2.c setacct writes the record), so the file sa reads is the
-# kernel's own idea of the format and not a hand-forged one.  /usr is a
-# separate filesystem and rc has not run, so it is mounted here: /usr/adm/acct
-# is the raw file, /usr/adm/savacct and /usr/adm/usracct the summaries.
+# kernel's own idea of the format and not a hand-forged one.  /usr is on the
+# root filesystem of the test image, which the multi-user boot has mounted:
+# /usr/adm/acct is the raw file, /usr/adm/savacct and /usr/adm/usracct the
+# summaries.
 #
 # accton(8) does not create the file and the kernel refuses anything that is
 # not a plain regular file, so it is created first.
@@ -14,7 +15,7 @@
 # WHAT EACH CASE MUST SHOW.  Every case ends with `echo SA-<n>-DONE'; a
 # missing DONE line is a failure whatever else was printed.
 #
-#   1  CONTROL.  /usr mounts, /usr/adm exists, accton turns accounting ON and
+#   1  CONTROL.  /usr/adm exists, accton turns accounting ON and
 #      says nothing.  A run in which accounting was never on would otherwise
 #      look like a clean sa with nothing to report.
 #   2  wc is run EXACTLY SEVEN TIMES and cat exactly twice.  After accounting
@@ -46,8 +47,47 @@
 #   9  sa on a file that does not exist must say so and exit non-zero, rather
 #      than reporting an empty system.
 #
-echo == 1 mount /usr, create the raw file, turn accounting on -- CONTROL
-/etc/mount /dev/hd6 /usr
+# For test/cmd/run.sh.  Every DONE line; the evidence each case names, as far as
+# a line of the transcript can carry it; and no percentage over 100.0 in any
+# sa row, which is the case-5 failure (a row reading hundreds) whichever rows
+# happened to have a zero divisor on this run.  NOT covered here: the raw
+# file's size being a whole multiple of a record (case 2 checks only that it is
+# non-empty -- no regular expression divides), the exact count of seven wc
+# lines from -u (one is required), and sa's exit status in case 9 (the file
+# does not echo it).  The wc and cat call counts cannot be told apart between
+# case 3 and case 8, since both print the same rows; each is required once.
+#% expect ^SA-1-DONE$
+#% expect ^SA-2-DONE$
+#% expect ^SA-3-DONE$
+#% expect ^SA-4-DONE$
+#% expect ^SA-5-DONE$
+#% expect ^SA-6-DONE$
+#% expect ^SA-7-DONE$
+#% expect ^SA-8-DONE$
+#% expect ^SA-9-DONE$
+#% expect ^== ALLDONE$
+#% expect ^d.* /usr/adm$
+#% expect ^ *[1-9][0-9]* +/usr/adm/acct$
+#% expect ^wc +7 +[0-9]+ +[0-9]+$
+#% expect ^cat +2 +[0-9]+ +[0-9]+$
+#% expect ^ +#CALL +CPU +REAL$
+#% expect ^ +#CALL +USER +SYS +REAL$
+#% expect ^ +#CALL +CPU +REAL +CPU % *$
+#% expect ^ +#CALL +CPU +REAL +CPU/REAL %$
+#% expect ^wc +7 +[0-9]+ +[0-9]+ +[0-9]+\.[0-9] *$
+#% expect ^ +#CALL +USER +SYS +REAL +CPU % +CPU/REAL %$
+#% expect ^wc +7 +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+\.[0-9] +[0-9]+\.[0-9] *$
+#% expect ^root +wc$
+#% expect ^root +[1-9][0-9]* +[0-9]+ +[0-9]+$
+#% expect ^-.* 0 .* /usr/adm/acct$
+#% expect ^-.* [1-9][0-9]* .* /usr/adm/savacct$
+#% expect ^-.* [1-9][0-9]* .* /usr/adm/usracct$
+#% expect ^Cannot open raw accounting file `/nosuchacct'$
+#% reject ^[a-z]+ +[0-9]+ .*( |^)(100\.[1-9]|10[1-9]\.[0-9]|1[1-9][0-9]\.[0-9]|[2-9][0-9][0-9]\.[0-9]|[0-9]{4,}\.[0-9])( |$)
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 900
+echo == 1 create the raw file, turn accounting on -- CONTROL
 ls -ld /usr/adm
 rm -f /usr/adm/acct /usr/adm/savacct /usr/adm/usracct
 cp /dev/null /usr/adm/acct

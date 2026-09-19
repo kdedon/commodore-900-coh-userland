@@ -43,10 +43,37 @@
 # file: whether it holds a word that could only have come from the standard
 # input, and whether `- file' and `file -' produce the same bytes.
 #
-# Single user, so /usr (where more lives) and /tmp (where sort's scratch files
-# go) are mounted here by hand; emu-run.sh says why they are not already.
-/etc/mount /dev/hd3 /tmp
-/etc/mount /dev/hd6 /usr
+# The multi-user boot has already mounted /tmp (where sort's scratch files
+# go), and /usr (where more lives) is on the root filesystem of the test image.
+#
+# For test/cmd/run.sh: every marker above, at the start of its own line, and
+# no `Segmentation violation' anywhere.
+#% expect ^MORE-VT100=0$
+#% expect ^MORE-VT52=0$
+#% expect ^MORE-MGR=0$
+#% expect ^MORE-VT100N=0$
+#% expect ^MORE-VT100W=0$
+#% expect ^MORE-ANSI=0$
+#% expect ^MORE-HR=0$
+#% expect ^MORE-LR=0$
+#% expect ^MORE-DUMB=0$
+#% expect ^MORE-NOSUCH=0$
+#% expect ^SORT-MISSING=1$
+#% expect ^SORT-MIX=1$
+#% expect ^SORT-MERGE=1$
+#% expect ^SORT-GOOD=0$
+#% expect ^SORT-DASHFIRST=0$
+#% expect ^SORT-DASHLAST=0$
+#% expect ^SORT-DASHSAME=yes$
+#% expect ^SORT-DASHSTDIN=yes$
+#% expect ^SORT-DASHALONE=0$
+#% expect ^SORT-DASHONLY=yes$
+#% expect ^CORE=no$
+#% expect ^TMP=clean$
+#% expect ^== ALLDONE$
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 1200
 PATH=/bin:/usr/bin:/etc
 export PATH
 rm -f /core

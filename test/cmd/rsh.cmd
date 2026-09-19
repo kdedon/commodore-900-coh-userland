@@ -68,8 +68,47 @@
 # bottom.  Confirm __EMU_DONE__ is in the transcript before believing anything
 # this test appears to say -- including a pass.
 #
-/etc/mount /dev/hd6 /usr
-/etc/mount /dev/hd3 /tmp
+# FOR test/cmd/run.sh, the table above line by line: each account's markers,
+# oman's six results, rman's refusals and the `Can't find' each one causes,
+# and eman's ESCAPED.  The lines rman must NOT produce are rejected by name:
+# the three that only a command it was refused could print, the file its
+# refused redirect would have made (read back at the end), and a shell out of
+# newgrp.  `Restricted: PATH=/rsafe' is the ordering test's failure: it is
+# what the profile's own PATH line says when the flag is set before .profile
+# runs.  Which account printed PROFILE-CD-AND-PATH-OK is not something one
+# required line can tell -- oman prints it too -- so that it is rman's is read
+# from the transcript.
+#% expect ^MARK-START-oman$
+#% expect ^MARK-END-oman$
+#% expect ^MARK-START-rman$
+#% expect ^MARK-END-rman$
+#% expect ^MARK-START-eman$
+#% expect ^MARK-END-eman$
+#% expect ^PROFILE-CD-AND-PATH-OK$
+#% expect ^AT-ROOT$
+#% expect ^ls-safe$
+#% expect ^SLASH-RAN-oman$
+#% expect ^ENVASSIGN-RAN-oman$
+#% expect ^non-existent group$
+#% expect ^REDIR-oman$
+#% expect ^Restricted: cd$
+#% expect ^Cannot find \./probe$
+#% expect ^Restricted: PATH=/bin$
+#% expect ^Cannot find ls$
+#% expect ^Restricted: SHELL=/bin/evil$
+#% expect ^Restricted: > /rhome/out-rman$
+#% expect ^Restricted: /rsafe/echo$
+#% expect ^Restricted: newgrp$
+#% expect ^ESCAPED$
+#% reject ^SLASH-RAN-rman$
+#% reject ^ENVASSIGN-RAN-rman$
+#% reject ^REDIR-rman$
+#% reject ^NEWGRP-GAVE-A-SHELL$
+#% reject ^Restricted: PATH=/rsafe$
+#% reject Segmentation violation
+#% reject ^Panic:
+#% wait 2400
+#
 # The confined command directory a restricted account is supposed to have: one
 # command, and not a shell.
 mkdir /rsafe
