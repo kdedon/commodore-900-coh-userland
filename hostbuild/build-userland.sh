@@ -90,7 +90,9 @@ for f in "$@"; do
 	# $KINC is that repository's include directory, resolved in toolchain.sh.
 	load|uload|mount|sa|time|fdformat)
 		if [ -z "$KINC" ]; then
-			echo "$b: needs the kernel's headers; sh mk/deps.sh -n kernel" >>"$LOG"
+			# On stderr too, so the reason shows with the summary.
+			echo "$b: needs the kernel's headers; sh mk/deps.sh -n kernel" |
+				tee -a "$LOG" >&2
 			failed=$((failed+1)); faillist="$faillist $b"
 			continue
 		fi
