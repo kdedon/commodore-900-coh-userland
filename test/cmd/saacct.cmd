@@ -4,10 +4,8 @@
 #
 # acct(2) appends one record per process exit (sys2.c uacct turns it on,
 # proc.c/fs2.c setacct writes the record), so the file sa reads is the
-# kernel's own idea of the format and not a hand-forged one.  /usr is on the
-# root filesystem of the test image, which the multi-user boot has mounted:
-# /usr/adm/acct is the raw file, /usr/adm/savacct and /usr/adm/usracct the
-# summaries.
+# kernel's own format.  /usr/adm/acct is the raw file, /usr/adm/savacct and
+# /usr/adm/usracct the summaries.
 #
 # accton(8) does not create the file and the kernel refuses anything that is
 # not a plain regular file, so it is created first.
@@ -47,15 +45,10 @@
 #   9  sa on a file that does not exist must say so and exit non-zero, rather
 #      than reporting an empty system.
 #
-# For test/cmd/run.sh.  Every DONE line; the evidence each case names, as far as
-# a line of the transcript can carry it; and no percentage over 100.0 in any
-# sa row, which is the case-5 failure (a row reading hundreds) whichever rows
-# happened to have a zero divisor on this run.  NOT covered here: the raw
-# file's size being a whole multiple of a record (case 2 checks only that it is
-# non-empty -- no regular expression divides), the exact count of seven wc
-# lines from -u (one is required), and sa's exit status in case 9 (the file
-# does not echo it).  The wc and cat call counts cannot be told apart between
-# case 3 and case 8, since both print the same rows; each is required once.
+# No sa row may exceed 100.0% (case 5's failure).  Left to the transcript:
+# the raw file being whole records, the count of -u's wc lines, and case 9's
+# exit status.
+#% needs runtime
 #% expect ^SA-1-DONE$
 #% expect ^SA-2-DONE$
 #% expect ^SA-3-DONE$

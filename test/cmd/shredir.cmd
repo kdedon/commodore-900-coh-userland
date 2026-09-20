@@ -41,11 +41,9 @@
 # because this system has no true(1) -- only the `:' built-in, and `Can't
 # find true' would leave /o10 empty behind a passing AFTER line.
 #
-# For test/cmd/run.sh: the sixteen AFTER lines; what the read-back must show --
-# `inside' from the subshells and the group, `a' and `b' from the for loop,
-# `loop', `yes', `simple' -- with no `cat:' complaint about a file a redirect
-# never made and no `pre' left in the file case 3 had to overwrite; and no
-# `Segmentation violation' or /core.  Case 11's `Syntax error' is allowed.
+# A `cat:' complaint means a redirect made no file; `pre' means case 3 didn't
+# overwrite.  Case 11's `Syntax error' is allowed.
+#% needs base
 #% expect ^AFTER-1$
 #% expect ^AFTER-2$
 #% expect ^AFTER-3$

@@ -1,0 +1,12 @@
+# durations.tab -- last wall time, in seconds, of the long booted checks.
+# run.sh boots longest first so the slowest never starts last; nothing here
+# times a check out.  Unlisted checks count as short.  Refresh a row when its
+# .time moves a lot.
+#
+# name		seconds
+inetd		1939
+mail		660
+twohost		1200
+kermit2		420
+sntpcheck	240
+resolvcheck	60

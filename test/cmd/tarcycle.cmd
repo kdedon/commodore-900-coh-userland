@@ -62,10 +62,7 @@
 # `host wrote this!' with no newline; /expect is that same string written by the
 # guest, so CMP-HOST compares extracted bytes against locally produced ones.
 #
-# Everything is under /, which the multi-user boot has mounted read/write.
-#
-# For test/cmd/run.sh: the eleven markers, the 2048-byte /h330.tar, and none of
-# a listed /core, a `bad checksum' or a `Segmentation violation'.
+#% needs runtime archive
 #% expect ^TARC=0$
 #% expect ^TART=0$
 #% expect ^TARX=0$

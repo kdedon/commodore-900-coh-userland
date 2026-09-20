@@ -59,25 +59,14 @@
 # (man rsh, "sh itself must not be on that PATH") -- it is NOT a regression.
 # If ESCAPED ever stops appearing, the man page is the thing that is now wrong.
 #
-# THIS FILE IS THREE LOGINS LONG -- around twenty minutes of guest time -- and
-# emu-run.sh no longer runs it against a clock: it ends when the guest prints
-# the done marker, or is caught stalled on park or idle.  A run that stops
-# partway still exits nonzero and names the channel that caught it, so the
-# restricted account's section going missing reads as the stall it is rather
-# than as a test that quietly never covered it.  Confirm __EMU_DONE__ is in
-# the transcript before believing anything this test appears to say --
-# including a pass.
+# Three logins, about twenty minutes of guest time.  Check __EMU_DONE__ is in
+# the transcript before believing any result, a pass included.
 #
-# FOR test/cmd/run.sh, the table above line by line: each account's markers,
-# oman's six results, rman's refusals and the `Can't find' each one causes,
-# and eman's ESCAPED.  The lines rman must NOT produce are rejected by name:
-# the three that only a command it was refused could print, the file its
-# refused redirect would have made (read back at the end), and a shell out of
-# newgrp.  `Restricted: PATH=/rsafe' is the ordering test's failure: it is
-# what the profile's own PATH line says when the flag is set before .profile
-# runs.  Which account printed PROFILE-CD-AND-PATH-OK is not something one
-# required line can tell -- oman prints it too -- so that it is rman's is read
-# from the transcript.
+# rman must not print the three lines only a refused command could, create
+# its refused redirect's file, or get a shell from newgrp.  `Restricted:
+# PATH=/rsafe' means the flag was set before .profile ran.  That rman (not
+# just oman) printed PROFILE-CD-AND-PATH-OK is read from the transcript.
+#% needs runtime base
 #% expect ^MARK-START-oman$
 #% expect ^MARK-END-oman$
 #% expect ^MARK-START-rman$

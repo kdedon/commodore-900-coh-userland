@@ -5,9 +5,7 @@
 # It is a long run: sixteen bc and dc invocations and ninety-odd shell lines,
 # each of which the emulator feeds a byte at a time and then waits for a fresh
 # prompt.  Twenty minutes on an idle machine, and two or three times that with
-# other lanes' emulators on the same cores -- but emu-run.sh waits it out
-# rather than clocking it: the run ends when the guest prints its own marker,
-# however long that takes.
+# other emulators on the same cores.  It ends on the guest's own marker.
 #
 # bc is a multiple-precision calculator, so it is gated on arithmetic whose
 # answers are known off the machine -- 2^200, 30!, 1/7 to thirty places -- and
@@ -42,14 +40,11 @@
 #   case 11  a negative exponent computes.  The older bcexp() has no case for
 #            one and loops on a negative shift count.
 #
-# Case 16 reads /usr/lib/lib.b with bc -l.  /usr is on the root filesystem of
-# the test image, so the library is on the disk this boots from; the case still
-# says SKIP-16 rather than FAIL-16 when it is not -- a library that is not on
-# the disk is not a bug in bc -- but that is then a test image that lost part
-# of bc's package, and test/cmd/run.sh wants PASS-16.
-#
+# Case 16 reads /usr/lib/lib.b with bc -l, and says SKIP-16 if the library
+# is missing; run.sh still wants PASS-16.
 # For test/cmd/run.sh: all sixteen PASS lines at the start of a line, and no
 # FAIL line.
+#% needs runtime
 #% expect ^PASS-1$
 #% expect ^PASS-2$
 #% expect ^PASS-3$

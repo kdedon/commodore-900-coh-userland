@@ -8,27 +8,16 @@
 # delivery agent (cmd/mail/send.c usend()), so nothing here needs a second
 # user, a transport, or a daemon.
 #
-# IT RUNS IN MULTI-USER, as every emu-run.sh boot now does: the guest comes up
-# to the console getty and emu-run.sh logs in as root.  The first two lines end
-# that session and log in again at the getty's next prompt, so the session
-# the letter is sent from is a second, fresh login on the same console -- a
-# logout and a login in the middle of a running system, which init has to
-# notice (cmd/init.c waits on the shell) and getty has to answer again.
-# Ctrl-D would do the same thing and emu-run.sh cannot send one.
+# The first two lines log out and back in at the console getty, so the letter
+# is sent from a fresh login that init and getty had to handle.
 #
-# GATE comes first because nothing after it prompts with `#' at the moment it is
-# fed: getty is asking for a name, then mail is asking for a Subject.  Past the
-# gate the emulator paces on the console falling quiet instead, which is why the
-# letter can be TYPED here -- Subject prompt, body, `.' terminator -- exactly as
-# a person types it.
+# GATE comes first: getty and mail's Subject prompt don't end in `#'.  Past
+# it the emulator paces on console quiet, so the letter is typed as a person
+# would.
 #
-# For test/cmd/run.sh.  The login on the console out of utmp; the empty spool
-# before, the notification -m asks for, and the letter as the DELIVERY AGENT
-# wrote it -- the envelope and the headers, which no line here types.  The
-# Subject and the body are not required on their own: the console echoes both
-# as they are typed, so the typing alone would satisfy them.  NOT covered line
-# by line: that T_READ's `mail -p' prints the letter as well as T_BOX's cat --
-# the two print the same lines, so one required line cannot tell them apart.
+# The Subject and body aren't required alone, since the console echoes them;
+# the envelope and headers the delivery agent wrote are.
+#% needs runtime base
 #% expect ^T_READ$
 #% expect ^root +console .*$
 #% expect ^d.* /usr/spool/mail$
@@ -45,9 +34,7 @@
 GATE
 exit
 root
-# The evidence that this is a login session on the console: who(1) reads it
-# out of /etc/utmp, which login wrote.  And the spool directory as the running
-# system sees it.
+# who(1) shows the console login from /etc/utmp; then the spool directory.
 echo T_LOGIN
 who am i
 /bin/ls -ld /usr/spool/mail

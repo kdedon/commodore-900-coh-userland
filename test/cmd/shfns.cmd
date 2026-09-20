@@ -34,17 +34,11 @@
 # `f' works, `( f )' and `f | cat' do not.  The case asserts the refusal, so a
 # change in that direction shows up here rather than as a mystery later.
 #
-# For test/cmd/run.sh: the thirteen AFTER lines, every value the guest computes
-# (above), case 9's refusal, the two files cases 11 and 12 wrote, case 14 at
-# the prompt, and /etc/rc read to a zero status.  Rejected: the old shell's
-# `Syntax error', the two lines only a wrong answer prints (the file run
-# instead of the function in case 7, the loop running on past `return' in case
-# 8), a /core and a `Segmentation violation'.
+# Rejected: `Syntax error', case 7 running the file instead of the function,
+# and case 8's loop running past `return'.
 #
-# Case 15 reads /etc/rc on a system rc has ALREADY brought up multi-user, so
-# its mounts answer `busy' and it starts rc.net's daemons a second time.  What
-# is asserted is only that this shell reads the file to a zero status; the
-# mount table printed after it is evidence, not a condition.
+# Case 15 rereads /etc/rc on a running system; only its zero status counts.
+#% needs base
 #% expect ^AFTER-1$
 #% expect ^AFTER-2$
 #% expect ^AFTER-3$

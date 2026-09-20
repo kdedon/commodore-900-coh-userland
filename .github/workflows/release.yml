@@ -58,7 +58,7 @@ jobs:
           done
 
       - name: Sweep, publish, package
-        run: make -C hostbuild all packages
+        run: make -C hostbuild all packages -j"$(nproc)"
 
       - name: What was cut
         run: ls -l hostbuild/build/packages/

@@ -12,10 +12,8 @@
 # The watchdog line is the third outcome: neither PASS nor panic, but a wait
 # that no signal ever ended.  It reports and exits 1 rather than hanging.
 #
-# For test/cmd/run.sh: both phases' PASS lines, the second of which is only
-# printed on the far side of the close, and then the exit path reached the
-# prompt if the run finished.  A panic, the watchdog's FAIL, or an INCONCLUSIVE
-# (the alarm never fired, so nothing was interrupted) is not a pass.
+# INCONCLUSIVE means the alarm never fired, so nothing was interrupted.
+#% needs testing
 #% expect ^fifosig: PASS -- balanced across an interrupted read$
 #% expect ^fifosig: PASS -- released its descriptor too$
 #% reject ^Panic:

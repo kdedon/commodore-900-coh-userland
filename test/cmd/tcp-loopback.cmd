@@ -8,25 +8,15 @@
 # failure says the opposite, and is reproducible in half a minute instead of the
 # twenty the simulator needs.
 #
-# THE GUEST IS MULTI USER, and rc.net has already made /dev/inet, started the
-# inet daemon and given the interface 10.0.0.2, so this file starts none of
-# them.  It used to, from single user, and on a multi-user boot that is a
-# SECOND inet daemon reading the same /dev/inet: the `ifconfig' after it then
-# never returned, and the run stopped there.  rc.net's inetd also holds port 7
-# for its internal echo, so echoserver listens on 7007 -- the answer has to
-# come from the server this file starts, not from the switchboard.
+# rc.net already started the inet daemon and set 10.0.0.2; a second daemon
+# would hang.  Its inetd holds port 7, so echoserver listens on 7007.
 #
-# echoclient needs the sleep, because nothing makes it wait for echoserver's
-# listen().  echoserver is given a 600-second deadline rather than its default
-# 60: the console is typed one character at a time, paced against the SCC
-# receive FIFO, and the two lines between the server's start and the client's
-# connect are more than 60 seconds of GUEST time -- at the default the server's
-# own watchdog ends it first, and the client's `connect failed' is then about
-# the typing and not about TCP.
+# echoclient needs the sleep: nothing makes it wait for echoserver's listen().
+# echoserver gets 600 seconds, not 60, because typing the lines before the
+# connect takes longer than that in guest time.
 #
-# For test/cmd/run.sh: both ends' own verdicts.  echoserver runs in the
-# background, so its lines can land after a prompt or among the echo of what is
-# being typed; its expects allow anything in front of them.
+# echoserver runs in the background, so its expects allow text in front.
+#% needs testing net
 #% expect ^echoclient: PASS -- [0-9]+ bytes echoed intact$
 #% expect .*echoserver: listening on port 7007
 #% expect .*echoserver: done, [1-9][0-9]* bytes echoed -- PASS

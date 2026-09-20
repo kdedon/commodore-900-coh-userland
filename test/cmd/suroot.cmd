@@ -10,10 +10,8 @@
 # any session that reached a shell -- a network one included -- was one command
 # away from root.
 #
-# THE TEST NEEDS A NON-ROOT SESSION, and emu-run.sh logs in as root.  `su
-# guest' is how one is made: the outer su drops to uid 8 and runs the INNER su,
-# which is the one under test.  Every case is therefore a nested su, and the
-# answer is what the inner one did.
+# emu-run.sh logs in as root, so each case is a nested su: the outer drops to
+# guest and the inner one is under test.
 #
 # THREE CASES, AND THE FIRST TWO ARE OPPOSITE ANSWERS TO THE SAME COMMAND:
 #
@@ -40,10 +38,8 @@
 # Nothing here needs the network, a pty or a second machine: the question is
 # which device a descriptor is on, and the emulator has both kinds.
 #
-# For test/cmd/run.sh, one line per case, and each is a line only that case's
-# right answer prints: ROOTOK on the console for T_CON; the refusal, read back
-# out of the file, for T_OFF (a T_OFF that let the su through leaves ROOTOK in
-# the file instead, and the refusal line is then missing); WHOOK for T_OTHER.
+# A T_OFF that let su through leaves ROOTOK in its file instead of the refusal.
+#% needs runtime base
 #% expect ^ROOTOK$
 #% expect ^root has no password: su to it from the console only$
 #% expect ^WHOOK$

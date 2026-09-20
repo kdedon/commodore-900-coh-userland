@@ -114,6 +114,7 @@
 # it, so it cannot be rejected outright.  STATUS-7 and the `written-by-the-gate'
 # read-back are the evidence that the first mount was read/write.
 #% floppy 2392
+#% needs base
 #% expect ^== STATUS-1 0$
 #% expect ^== STATUS-2 0$
 #% expect ^== STATUS-3 0$

@@ -10,8 +10,7 @@
 # done.  There is no lpq/lpstat/lprm in this generation of the spooler; the
 # spool directory listing is the queue report.
 #
-# /usr is on the root filesystem of the test image, which the multi-user boot
-# has mounted: /usr/lib/lpd is the daemon and /usr/spool/lpd is the queue.
+# /usr/lib/lpd is the daemon and /usr/spool/lpd the queue.
 #
 # WHAT EACH CASE MUST SHOW.  Every case ends with `echo LPR-<n>-DONE'; a
 # missing DONE line is a failure whatever else was printed.  Count the DONE
@@ -42,17 +41,11 @@
 #      /bin/vpr and execs it, so an `opr' job must come out looking exactly
 #      like case 3's -- header, banners, file.  P3 must contain `#'.
 #
-# For test/cmd/run.sh.  Every DONE line, and per case the line that carries its
-# evidence.  P2 is judged exactly: its size, and the two lines of its od dump,
-# which say at once that it begins with FIRSTLINE (no header, no `cf' line, no
-# leading formfeed) and ends with a single \f.  The banner's CR-LF is a dump
-# row of P1 holding both `#' and `\r \n' -- only P1's dump has a `#' in it.
-# NOT covered line by line, and read from the transcript instead: that the
-# queue listing in case 7 is EMPTY (an empty listing is the absence of a line
-# between two prompts, and case 2 legitimately lists cf1), that bare `\n' ends
-# no banner row, and that the non-zero `#' count belongs to P1 and to P3 each
-# (the two counts print identically, so one required line cannot tell them
-# apart; P2's zero is a line of its own).
+# P2 is judged exactly: its size, and the two od rows showing it starts with
+# FIRSTLINE and ends with one \f.  Only P1's dump has a `#', in the banner's
+# CR-LF row.  Left to the transcript: case 7's empty queue listing, no banner
+# row ending in bare \n, and whose `#' count is whose.
+#% needs runtime
 #% expect ^LPR-1-DONE$
 #% expect ^LPR-2-DONE$
 #% expect ^LPR-3-DONE$

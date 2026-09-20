@@ -31,8 +31,7 @@
 # THE THREE JUDGES, the same ones test/cmd/inetd.cmd uses.  A names the
 # evidence and judges it, Q judges without reprinting evidence A has already
 # shown, N is the same judgement inverted for what must NOT be there.
-#
-# For test/cmd/run.sh: an `ok' line for every tag, and no `FAIL' line.
+#% needs mail-light net
 #% expect ^ok T_ACCEPTED$
 #% expect ^ok T_DELIVERED$
 #% expect ^ok T_ENVELOPE$

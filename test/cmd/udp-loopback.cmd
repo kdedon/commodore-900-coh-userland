@@ -7,15 +7,9 @@
 # recvfrom() must report the port the datagram actually came from, which is why
 # each datagram carries a udp_io_hdr rather than relying on fixed peer options.
 #
-# THE GUEST IS MULTI USER, and rc.net has already made /dev/inet, started the
-# inet daemon and given the interface 10.0.0.2, so this file starts none of
-# them.  It used to, from single user, and on a multi-user boot that is a
-# SECOND inet daemon reading the same /dev/inet: the `ifconfig' after it then
-# never returned, and the run stopped there.  Ports 7001 and 7002 are udpecho's
-# own and nothing rc.net starts holds them.
-#
-# For test/cmd/run.sh: udpecho's own verdict, and the port B saw the datagram
-# come from -- the addressing this file is about.
+# rc.net already started the inet daemon and set 10.0.0.2; a second daemon
+# would hang.
+#% needs testing net
 #% expect ^udpecho: B got \[.*\] from port 7001$
 #% expect ^udpecho: PASS$
 #% reject ^udpecho: (FAIL|WRONG SENDER)

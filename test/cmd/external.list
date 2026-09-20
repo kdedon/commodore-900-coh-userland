@@ -1,0 +1,18 @@
+# external.list -- booted checks with their own driver, run by run.sh
+# alongside the .cmd scripts and sharded by shard.sh.
+#
+# One row per check, fields separated by a single tab (the command may
+# contain blanks):
+#
+#	name	expect	tag	command	needs
+#
+# name		unique across this file and the *.cmd scripts.
+# expect	the expected exit status.
+# tag		checks sharing a tag never run at once; `-' for none.
+# command	run from the repository root, with TMPDIR and C900_ROOT set.
+# needs		the components this check tests, keying its skip cache;
+#		`-' means all.
+twohost	0	-	make -C net/twohost check	net
+sntpcheck	0	-	make -C net/test/sntpcheck check	net
+resolvcheck	0	-	make -C net/test/resolvcheck check	net
+kermit2	0	-	python3 hostbuild/kermit2-test.py	archive base runtime

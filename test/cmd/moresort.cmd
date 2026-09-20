@@ -43,11 +43,8 @@
 # file: whether it holds a word that could only have come from the standard
 # input, and whether `- file' and `file -' produce the same bytes.
 #
-# The multi-user boot has already mounted /tmp (where sort's scratch files
-# go), and /usr (where more lives) is on the root filesystem of the test image.
-#
-# For test/cmd/run.sh: every marker above, at the start of its own line, and
-# no `Segmentation violation' anywhere.
+# /tmp (sort's scratch) and /usr (more) are already mounted.
+#% needs runtime
 #% expect ^MORE-VT100=0$
 #% expect ^MORE-VT52=0$
 #% expect ^MORE-MGR=0$

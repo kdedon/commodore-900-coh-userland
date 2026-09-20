@@ -29,8 +29,7 @@
 #     commodore-900-dist's product and which this repository's released
 #     inputs do not carry, so no job here could run it.  The harness LIVES
 #     there now, as os/tests/privsep, and that repository's release-check
-#     runs it against the image it packed, placing its programs there
-#     with cohfs put.
+#     runs it against the image it packed.
 #   * tests/check-paths.sh.  Only the toolchain repository is checked out
 #     natively on Windows; this repository builds under Docker/WSL, so that
 #     gate would assert a Windows-native-checkout constraint this repository
@@ -66,15 +65,11 @@ jobs:
           done
 
       - name: Sweep, publish, package
-        run: make -C hostbuild all packages
+        run: make -C hostbuild all packages -j"$(nproc)"
 
-      # The boot checks' image, packed HERE because this is the only job that
-      # has all of what goes into it: the component archives are in the
-      # artifact, but the test programs lists/testing.list places are built
-      # beside their sources (test/*/, net/), which no artifact carries.  It
-      # needs two edges the build does not, the loader and the filesystem
-      # tools.  It is written OUTSIDE hostbuild/build: an image newer than
-      # .ulstamp in there is exactly what check-publish-fresh refuses.
+      # Packed here: only this job has the test programs, which are built
+      # beside their sources and in no artifact.  Written outside
+      # hostbuild/build, where check-publish-fresh would refuse it.
       - name: Place the test image's dependency edges
         run: |
           for d in kboot tools; do
@@ -90,10 +85,8 @@ jobs:
       - name: Pack the built tree
         run: tar -cf userland-build.tar -C hostbuild build
 
-      # The edges travel too, so the checks resolve them once here rather than
-      # each asking the release API again: it is rate-limited per IP, and nine
-      # jobs asking three times over is what exhausts it.  A tar because the
-      # toolchain release carries symlinks and executables.
+      # Resolved once here: the release API is rate-limited.  A tar keeps
+      # the symlinks and modes.
       - name: Pack the edges
         run: tar -cf userland-deps.tar deps
 
@@ -109,7 +102,7 @@ jobs:
           path: userland-deps.tar
           retention-days: 7
 
-      # test.bin and the test.bin.stamp emu-run.sh reports its provenance from.
+      # test.bin and its provenance stamp.
       - uses: actions/upload-artifact@v4
         with:
           name: userland-test-image
@@ -138,7 +131,7 @@ jobs:
         with: { name: userland-build }
       - name: Restore the built tree
         run: tar -xpf userland-build.tar -C hostbuild
-      # The emu edge, not the toolchain: a release carries no host/runner.sh.
+      # The emu edge: a toolchain release has no host/runner.sh.
       - name: The mutation matrix
         run: |
           export C900_ROOT=$PWD
@@ -270,23 +263,19 @@ jobs:
       - name: The publish stamp follows every build output
         run: make -C hostbuild check-publish-fresh
 
-  # The boot checks: every test/cmd script, booted on the test image the build
-  # job packed and judged by the pass condition its own header states.  The
-  # image goes where test/cmd/run.sh looks for it; this job runs no
-  # check-publish-fresh, so it may sit beside .ulstamp here.  The selftest goes
-  # first: it boots once and shows the judge FAILING what it must, and a run
-  # judged by a judge that cannot fail would be green for nothing.
-  #
-  # No boot here runs against a clock of its own any more -- each ends on its
-  # guest's own mark, or is caught stalled by park or idle in seconds, not an
-  # EMUWAIT hour.  timeout-minutes stays only as the job's own outer safety
-  # net, for whatever this workflow's boot-checks job cannot itself catch (a
-  # runner stall, a channel gone unrecognised); a healthy run is a fraction of
-  # it.
+  # Every booted check (test/cmd/*.cmd plus external.list), sharded by
+  # shard.sh from run.sh --list.  NSHARDS must match the matrix; shard.sh
+  # fails loudly if not.  timeout-minutes is only an outer safety net.
   boot-checks:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      NSHARDS: 4
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -299,16 +288,28 @@ jobs:
         run: tar -xpf userland-build.tar -C hostbuild
       - uses: actions/download-artifact@v4
         with: { name: userland-test-image, path: hostbuild/build }
+      # run.sh's skip cache, kept across runs.  Keyed per shard so shards
+      # don't race; the run id makes every save land, and restore-keys takes
+      # this shard's latest.  A stale entry just means the check boots.
+      - uses: actions/cache@v4
+        with:
+          path: hostbuild/build/cmd-cache.tab
+          key: cmd-cache-${{ matrix.shard }}-${{ github.run_id }}
+          restore-keys: |
+            cmd-cache-${{ matrix.shard }}-
+      # The judge is the same in every shard; once is enough.
       - name: The judge can fail
+        if: matrix.shard == 0
         run: sh test/cmd/run.sh --selftest
-      - name: Boot and judge every test/cmd script
-        run: sh test/cmd/run.sh
-      # The transcripts are the evidence for every verdict, a FAIL's above
-      # all, and the runner is gone once the job ends.
+      - name: This shard's checks
+        run: sh test/cmd/shard.sh "${{ matrix.shard }}" "$NSHARDS" > shard.list
+      - name: Boot and judge this shard
+        run: sh test/cmd/run.sh $(cat shard.list)
+      # The transcripts are the evidence for each verdict.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: boot-check-transcripts
+          name: boot-check-transcripts-${{ matrix.shard }}
           path: |
             hostbuild/build/cmd-results
             hostbuild/build/cmd-selftest
