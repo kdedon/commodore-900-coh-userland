@@ -231,7 +231,6 @@ char *memorynames[] = {
 #define K_USER	0			/* Its own argv, out of its memory */
 #define K_EXIT	1			/* Exiting */
 #define K_SWAP	2			/* The swapper */
-#define K_SLIB	3			/* Shared library */
 #define K_KERN	4			/* Kernel process */
 
 /*
@@ -1041,8 +1040,6 @@ register PROC *pp;
 		return(K_EXIT);
 	if (pp->p_event == (char *)astimer)
 		return(K_SWAP);
-	if ((pp->p_flags & PFSLIB) != 0)
-		return(K_SLIB);
 	if ((pp->p_flags & PFKERN) != 0)
 		return(K_KERN);
 	return(K_USER);
@@ -1072,9 +1069,6 @@ register struct pent *ep;
 		return;
 	case K_SWAP:
 		(void) strcpy(ep->e_cmd, "<swap>");
-		return;
-	case K_SLIB:
-		(void) strcpy(ep->e_cmd, "<slib>");
 		return;
 	case K_KERN:
 		(void) strcpy(ep->e_cmd, "<kernel>");

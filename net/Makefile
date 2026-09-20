@@ -50,6 +50,10 @@ CFLAGS	= -O -Iinclude
 UCFLAGS	= -O -I$(SYSINC) -Iinclude
 LFLAGS	= -i			# separated I/D
 
+# -VPIC reaches data through a cell, so libsocket.a links both statically
+# and against a shared libc.
+PIC	= -VPIC
+
 # The channel client + raw-syscall stubs that every net client links.
 CHAN =	inet_chan.o rawsys.o
 
@@ -280,7 +284,7 @@ coh_ifconfig.o: $(H)/inet_chan.h $(H)/inet_ipc.h $(H)/minix/ioctl.h \
 coh_ppp.o coh_slip.o test/psipping.o: $(H)/inet_chan.h $(H)/inet_ipc.h
 gethostby.o netdb.o: $(H)/netdb.h $(H)/netdb_priv.h
 inet_chan.o: inet_chan.c $(H)/errno.h $(H)/inet_chan.h $(H)/inet_ipc.h
-	$(CC) $(CFLAGS) -c -o inet_chan.o inet_chan.c
+	$(CC) $(CFLAGS) $(PIC) -c -o inet_chan.o inet_chan.c
 inetd.o sntp.o test/netdbtest.o: $(H)/errno.h $(H)/netdb.h
 libsocket.o: libsocket.c $(H)/errno.h $(H)/inet_chan.h $(H)/minix/ioctl.h \
 		$(H)/net/gen/in.h $(H)/net/gen/ip_io.h \
@@ -288,7 +292,7 @@ libsocket.o: libsocket.c $(H)/errno.h $(H)/inet_chan.h $(H)/minix/ioctl.h \
 		$(H)/net/gen/tcp.h $(H)/net/gen/tcp_io.h $(H)/net/gen/udp.h \
 		$(H)/net/gen/udp_hdr.h $(H)/net/gen/udp_io.h \
 		$(H)/net/ioctl.h
-	$(CC) $(CFLAGS) -c -o libsocket.o libsocket.c
+	$(CC) $(CFLAGS) $(PIC) -c -o libsocket.o libsocket.c
 rcmd.o: $(H)/ansi.h $(H)/errno.h $(H)/minix/config.h $(H)/minix/ioctl.h \
 		$(H)/net/gen/in.h $(H)/net/gen/netdb.h $(H)/net/gen/tcp.h \
 		$(H)/net/gen/tcp_io.h $(H)/net/hton.h $(H)/net/ioctl.h \
@@ -332,7 +336,7 @@ test/portholder.o: $(H)/errno.h $(H)/minix/config.h $(H)/minix/ioctl.h \
 test/repeatclient.o test/talkping.o: $(H)/errno.h talk.h
 
 .c.o:
-	$(CC) $(UCFLAGS) -c -o $@ $<
+	$(CC) $(UCFLAGS) $(PIC) -c -o $@ $<
 
 .s.o:
 	$(AS) -o $@ $<

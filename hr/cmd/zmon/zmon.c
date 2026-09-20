@@ -400,11 +400,6 @@ int m;
 		strcpy(out, "<swap>");
 		return 0;
 	}
-	if ( (pp->p_flags & PFSLIB) != 0 )
-	{
-		strcpy(out, "<slib>");
-		return 0;
-	}
 	if ( segread(pp->p_segp[SIUSERP], 0, (char *)&u, sizeof(u)) == 0 )
 		return 0;
 	if ( (sp = pp->p_segp[SISTACK]) == NULL )
