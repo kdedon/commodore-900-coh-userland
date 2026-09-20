@@ -142,6 +142,21 @@ LIBOBJ	= $(LIBSRC:%.c=$(OBJ)/mgr-%.o)
 CLLIB	= $(BUILD)/lib/libmgrcl.a
 CLARLIB	= $(TC)/arz
 
+# CLMODE=shared links clients against libmgr.1 and libc.1.  SLLIB holds the
+# rest of libmgrcl.a, compiled -VPIC, and precedes the libraries because ld
+# reads each input once.  Shared clients keep their symbols: exec binds by them.
+SLLIB	= $(BUILD)/lib/libmgrcl-sl.a
+ifeq ($(CLMODE),shared)
+BIN	= $(BUILD)/bin-sl
+CLLIBS	= $(SLLIB) $(SLLIB) -lmgr.1 -lc.1
+CLLIBDEP = $(SLLIB) $(BUILD)/lib/libmgr.1
+CLSTRIP	=
+else
+CLLIBS	= $(CLLIB) $(CLLIB)
+CLLIBDEP = $(CLLIB)
+CLSTRIP	= -s
+endif
+
 # Grouped the way the source tree groups them, because the skip decisions are
 # per group: `tests' proves the window protocol, `examples' is the eye-candy,
 # and the rest are the utilities that make the server usable.
@@ -183,6 +198,9 @@ CLGAME	= xbd
 CLIENTS	= $(CLTEST) $(CLDEMO) $(CLMISC) $(CLSIMPL) $(CLBLIT) $(CLICON) \
 	  $(CLIFY) $(CLLOAD) $(CLNET) $(CLMATH) $(CLGAME)
 CLBIN	= $(CLIENTS:%=$(BIN)/cl/%)
+
+# ld writes its output even when the link fails.
+.DELETE_ON_ERROR:
 
 .PHONY: all tools gen objs mgr clients xbddata echo-clients sizes sweep clean dirs
 
@@ -271,6 +289,54 @@ $(OBJ)/hr-%.o: src/libbitblit/hr/%.c $(HDR)
 $(OBJ)/mgr-%.o: src/libmgr/%.c $(HDR) $(HDRLIB)
 	$(CCZ) $(CFLAGS) -Isrc/libmgr -o $@ $<
 
+# The same sources compiled -VPIC for libmgr.1, so extern data is reached
+# through slots and can be imported.
+PICOBJ	= $(LIBSRC:%.c=$(OBJ)/pic-%.o) $(OBJ)/pic-gethostname.o \
+	  $(OBJ)/pic-uname.o $(OBJ)/pic-uname_str.o $(OBJ)/pic-mgrsl.o
+
+$(OBJ)/pic-%.o: src/libmgr/%.c $(HDR) $(HDRLIB)
+	$(CCZ) $(CFLAGS) -VPIC -Isrc/libmgr -o $@ $<
+
+# m_gethost needs gethostname, which libc lacks; libc900's copy goes in
+# unexported.
+$(OBJ)/pic-%.o: src/libc900/%.c $(HDR)
+	$(CCZ) $(CFLAGS) -VPIC -o $@ $<
+
+# SS and errno_ are absolutes, the same in every process; a program gets
+# them from its start-off, a library from here.
+$(OBJ)/pic-mgrsl.o: src/libmgr/mgrsl.s
+	$(CCZ) -c -o $@ $<
+
+# The static part of a shared client, -VPIC so it reaches libc's data by slot.
+PICCLOBJ = $(BMSRC:%.c=$(OBJ)/picbm-%.o) $(C900SRC:%.c=$(OBJ)/picc900-%.o) \
+	   $(HRSRC:%.c=$(OBJ)/pichr-%.o)
+
+$(OBJ)/picbm-%.o: src/libbitblit/bitmap/%.c $(HDR) $(HDRBM)
+	$(CCZ) $(CFLAGS) -VPIC -o $@ $<
+
+$(OBJ)/picbm-%.o: src/libbitblit/seqbitmap/%.c $(HDR) $(HDRBM)
+	$(CCZ) $(CFLAGS) -VPIC -o $@ $<
+
+$(OBJ)/picc900-%.o: src/libc900/%.c $(HDR)
+	$(CCZ) $(CFLAGS) -VPIC -o $@ $<
+
+$(OBJ)/pichr-%.o: src/libbitblit/hr/%.c $(HDR)
+	$(CCZ) $(CFLAGS) -VPIC -o $@ $<
+
+picobjs: dirs gen $(PICOBJ)
+
+$(SLLIB): dirs gen $(PICCLOBJ)
+	mkdir -p $(BUILD)/lib
+	rm -f $@
+	$(CLARLIB) r $@ $(PICCLOBJ)
+
+$(BUILD)/lib/libmgr.1: picobjs $(LIBMGREXP)
+	sh $(OS)/hostbuild/build-libmgr1.sh
+
+libmgr1: $(BUILD)/lib/libmgr.1
+
+LIBMGREXP = src/libmgr/libmgr.1.exp
+
 $(OBJ)/mgrlogin.o: src/mgr/mgrlogin.c $(HDR) $(HDRSRV)
 	$(CCZ) $(CFLAGS) -Isrc/mgr -o $@ $<
 
@@ -296,13 +362,13 @@ $(CLLIB): objs
 
 # One rule per source directory.  make(1) takes the first whose prerequisite
 # exists, so a name is looked for in each group in turn.
-CLCC	= mkdir -p $(BIN)/cl; $(CCZ) -s -i -L $(INCS) $(DEFS) -o $@ $< $(CLLIB) $(CLLIB)
+CLCC	= mkdir -p $(BIN)/cl; $(CCZ) $(CLSTRIP) -i -L $(INCS) $(DEFS) -o $@ $< $(CLLIBS)
 
 $(BIN)/cl/stringart: src/clients/examples/stringart.c \
-		src/clients/examples/art_data.c $(HDR) $(CLLIB)
+		src/clients/examples/art_data.c $(HDR) $(CLLIBDEP)
 	mkdir -p $(BIN)/cl
-	$(CCZ) -s -i -L $(INCS) $(DEFS) -o $@ src/clients/examples/stringart.c \
-		src/clients/examples/art_data.c $(CLLIB) $(CLLIB)
+	$(CCZ) $(CLSTRIP) -i -L $(INCS) $(DEFS) -o $@ src/clients/examples/stringart.c \
+		src/clients/examples/art_data.c $(CLLIBS)
 
 # maze: an explicit rule, which make prefers to the pattern rule that would
 # otherwise match it.  libsocket.a comes FIRST in the link so that netdb.o
@@ -314,10 +380,10 @@ $(BIN)/cl/stringart: src/clients/examples/stringart.c \
 # error to report rather than to paper over.
 SOCKLIB	= $(OS)/net/libsocket.a
 
-$(BIN)/cl/maze: src/clients/portable/simple/maze.c $(HDR) $(CLLIB) $(SOCKLIB)
+$(BIN)/cl/maze: src/clients/portable/simple/maze.c $(HDR) $(CLLIBDEP) $(SOCKLIB)
 	mkdir -p $(BIN)/cl
-	$(CCZ) -s -i -L $(INCS) $(DEFS) -DMGR_REAL_NETDB -o $@ \
-		src/clients/portable/simple/maze.c $(SOCKLIB) $(CLLIB) $(CLLIB)
+	$(CCZ) $(CLSTRIP) -i -L $(INCS) $(DEFS) -DMGR_REAL_NETDB -o $@ \
+		src/clients/portable/simple/maze.c $(SOCKLIB) $(CLLIBS)
 
 # mgrload: two sources, so an explicit rule rather than the pattern.  getload.c
 # is a switch that #includes the backend for the system it is compiled for, so
@@ -325,11 +391,11 @@ $(BIN)/cl/maze: src/clients/portable/simple/maze.c $(HDR) $(CLLIB) $(SOCKLIB)
 MGRLOADDIR = src/clients/portable/mgrload
 
 $(BIN)/cl/mgrload: $(MGRLOADDIR)/mgrload.c $(MGRLOADDIR)/getload.c \
-		$(MGRLOADDIR)/coherent.c $(MGRLOADDIR)/getload.h $(HDR) $(CLLIB)
+		$(MGRLOADDIR)/coherent.c $(MGRLOADDIR)/getload.h $(HDR) $(CLLIBDEP)
 	mkdir -p $(BIN)/cl
-	$(CCZ) -s -i -L $(INCS) $(DEFS) -I$(MGRLOADDIR) -o $@ \
+	$(CCZ) $(CLSTRIP) -i -L $(INCS) $(DEFS) -I$(MGRLOADDIR) -o $@ \
 		$(MGRLOADDIR)/mgrload.c $(MGRLOADDIR)/getload.c \
-		$(CLLIB) $(CLLIB)
+		$(CLLIBS)
 
 # libm-z8001 is built by the toolchain's host/build-libm-z8001.sh, and it
 # answers cos/sin/sqrt for the two clients below.  It has no rule here: a
@@ -337,16 +403,16 @@ $(BIN)/cl/mgrload: $(MGRLOADDIR)/mgrload.c $(MGRLOADDIR)/getload.c \
 MATHLIB	= $(TCB)/libm-z8001/libm-z8001.a
 
 $(BIN)/cl/ico: src/clients/portable/ico/ico.c \
-		$(wildcard src/clients/portable/ico/*.h) $(HDR) $(CLLIB) $(MATHLIB)
+		$(wildcard src/clients/portable/ico/*.h) $(HDR) $(CLLIBDEP) $(MATHLIB)
 	mkdir -p $(BIN)/cl
-	$(CCZ) -s -i -L $(INCS) -Isrc/clients/portable/ico $(DEFS) -o $@ \
-		src/clients/portable/ico/ico.c $(CLLIB) $(CLLIB) $(MATHLIB)
+	$(CCZ) $(CLSTRIP) -i -L $(INCS) -Isrc/clients/portable/ico $(DEFS) -o $@ \
+		src/clients/portable/ico/ico.c $(CLLIBS) $(MATHLIB)
 
 $(BIN)/cl/mgrsketch: src/clients/portable/mgrsketch/mgrsketch.c $(HDR) \
-		$(CLLIB) $(MATHLIB)
+		$(CLLIBDEP) $(MATHLIB)
 	mkdir -p $(BIN)/cl
-	$(CCZ) -s -i -L $(INCS) $(DEFS) -o $@ \
-		src/clients/portable/mgrsketch/mgrsketch.c $(CLLIB) $(CLLIB) \
+	$(CCZ) $(CLSTRIP) -i -L $(INCS) $(DEFS) -o $@ \
+		src/clients/portable/mgrsketch/mgrsketch.c $(CLLIBS) \
 		$(MATHLIB)
 
 # xbd: -DMGR picks the window-protocol half of sources that carry an X11 half
@@ -357,35 +423,35 @@ XBDLIB	= $(MGRHOME)/lib/xbd
 XBDSRC	= $(XBDDIR)/xbd.c $(XBDDIR)/field.c $(XBDDIR)/shared.c \
 	  $(XBDDIR)/scores.c
 
-$(BIN)/cl/xbd: $(XBDSRC) $(XBDDIR)/xbd.h $(HDR) $(CLLIB)
+$(BIN)/cl/xbd: $(XBDSRC) $(XBDDIR)/xbd.h $(HDR) $(CLLIBDEP)
 	mkdir -p $(BIN)/cl
-	$(CCZ) -s -i -L $(INCS) -I$(XBDDIR) $(DEFS) -DMGR '-DLIB="$(XBDLIB)"' \
-		-o $@ $(XBDSRC) $(CLLIB) $(CLLIB)
+	$(CCZ) $(CLSTRIP) -i -L $(INCS) -I$(XBDDIR) $(DEFS) -DMGR '-DLIB="$(XBDLIB)"' \
+		-o $@ $(XBDSRC) $(CLLIBS)
 
 # The level files, in a directory holding nothing else.
 xbddata:
 	mkdir -p $(BUILD)/lib/xbd
 	cp $(XBDDIR)/default $(XBDDIR)/xbdlev[0-9][0-9][0-9] $(BUILD)/lib/xbd
 
-$(BIN)/cl/%: src/clients/tests/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/tests/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
-$(BIN)/cl/%: src/clients/examples/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/examples/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
-$(BIN)/cl/%: src/clients/misc/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/misc/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
-$(BIN)/cl/%: src/clients/portable/simple/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/portable/simple/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
-$(BIN)/cl/%: src/clients/bitblit/simple/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/bitblit/simple/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
-$(BIN)/cl/%: src/clients/icon/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/icon/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
-$(BIN)/cl/%: src/clients/portable/ify/%.c $(HDR) $(CLLIB)
+$(BIN)/cl/%: src/clients/portable/ify/%.c $(HDR) $(CLLIBDEP)
 	$(CLCC)
 
 hrlight: dirs $(OBJ)/hr-hrlight.o $(OBJ)/hr-hrrow.o

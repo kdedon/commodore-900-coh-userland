@@ -1,0 +1,58 @@
+# libmgr.1.exp -- the ABI of the shared MGR client library.
+#
+# One name per line.  The second word is the kind: none for a function,
+# `data' for a per-client object, `shrd' for a shared readonly table.  slgen
+# refuses a library whose objects disagree.
+ckmgrterm_
+get_all_
+get_client_
+get_colrow_
+get_cursor_
+get_eachclientwi
+get_eachwin_
+get_font_
+get_info_
+get_mouse_
+get_param_
+get_size_
+get_termcap_
+get_windata_
+hfont_open_
+hfont_printto_
+hfont_scale_
+is_active_
+is_mgr_term_
+m_bitc_sendb_
+m_bitc_sendh_
+m_bitc_sent_
+m_bitfile_
+m_dflbordersize_
+m_envcount_	data
+m_escchar_	data
+m_flags_	data
+m_getbordersize_
+m_getdepth_
+m_getevent_
+m_getfontid_
+m_getfontname_
+m_getfontsize_
+m_gethostname_
+m_getpalette_
+m_getscreensize_
+m_getwindowposit
+m_getwindowsize_
+m_lastline_
+m_linebuf_	data
+m_localsrv_
+m_makewindow_
+m_menuchar_	data
+m_parse_
+m_resetflags_
+m_saveenvcount_	data
+m_setflags_
+m_setup_
+m_termin_	data
+m_termout_	data
+m_ttyreset_
+m_ttyset_
+menu_load_
