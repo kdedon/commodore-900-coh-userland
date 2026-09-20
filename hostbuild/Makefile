@@ -93,7 +93,7 @@ publish: $(SWEEP)
 # gate's own invocation rewrites them, so they cannot be evidence about it.
 # Exclude the two directories `packages' owns as well: they are derived FROM
 # the published tree rather than inputs to it, so publish has nothing to say
-# about them and `all' followed by `packages' is the order packages requires.
+# about them; `packages' carries its own prerequisite on `all' below.
 .PHONY: check-publish-fresh
 check-publish-fresh:
 	@test -f "$(B)/.ulstamp" || \
@@ -229,8 +229,10 @@ $(TESTSTAMP): $(TCSTAMP) $(LIBCSTAMP) $(HERE)/build-tests.sh $(wildcard $(OS)/te
 # for ld-z8001's path limit.  maze links net/libsocket.a.
 mgr: net $(MGRBIN) $(MGRCLBIN)
 # Group the outputs to run one sub-make.  Record Makefile.c900 as their
-# build recipe in the source map.
-$(MGRBIN) $(MGRCLBIN) &: FORCE
+# build recipe in the source map.  libsocket.a and libc must exist before
+# the sub-make links against them; FORCE alone let a parallel sweep start
+# this before net or libc did.
+$(MGRBIN) $(MGRCLBIN) &: $(NETSTAMP) $(LIBCSTAMP) FORCE
 	C900_BUILD_RECIPE=$(OS)/mgr/Makefile.c900 \
 	$(MAKE) -C $(OS)/mgr -f Makefile.c900 BUILD=$(B)/mgr mgr hrlight clients
 
@@ -327,7 +329,10 @@ package:
 # Attempt each available component kind and report successes and refusals.
 # A refusal is a component that publishes nothing, so the sweep fails on one:
 # an install set short of a component is not an install set.
-packages:
+# Depends on `all': under -j, `make all packages' has no other reason to run
+# the sweep before this reads its output, and without the edge it raced ahead
+# of publish and refused every component for want of a source map.
+packages: all
 	@rm -rf $(PKGOUT); mkdir -p $(PKGOUT); ok=0; skip=0; \
 	$(COMPONENT) components | awk '$$2 ~ /^bin/ {print $$1, $$2}' | \
 	while read -r n kinds; do \
