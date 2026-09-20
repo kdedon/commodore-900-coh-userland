@@ -23,9 +23,10 @@ addressed the high half of the promoted word -- a NUL for every ASCII character.
   --trace   hexdump the wire
   --keep    keep the working directory (images and console logs)
 
-WHY SINGLE USER.  Multi-user runs /etc/rc.net, which gives /dev/tty51 to slip --
-the same line the wire is on.  Both guests are left at their single-user root
-shell and /usr is mounted by hand, so nothing has to be killed first.
+THE LINE.  /etc/rc.net gives /dev/tty51 to slip -- the same line the wire is
+on -- and a working boot now runs rc.net to completion, so both guests come up
+with slip already attached to it.  free_line() kills it on each guest before
+the transfer; /usr is still mounted by hand.
 
 WHAT IT WAITS ON.  The guest's own shell prompt, never a wall-clock window and
 never an echoed marker.  The one question a prompt cannot answer -- whether B's
@@ -48,9 +49,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OS = os.path.normpath(os.path.join(HERE, ".."))               # the repository root
 WIREPY = os.path.join(OS, "net", "twohost", "wire.py")
 
-# net/twohost owns the two questions every two-machine harness asks -- which
-# image the guests boot (the test image this build packed) and where the
-# emulator is (mk/deps.sh emu) -- so one implementation answers them for all.
+# net/twohost says which image the guests boot and where the emulator is.
 sys.path.insert(0, os.path.join(OS, "net", "twohost"))
 from twohost import test_image, EMU
 LINE = "/dev/tty51"                     # SCC channel A -- the emulator's --wire
@@ -160,13 +159,39 @@ class Guest:
 
 
 def single_user(g):
-    """The single-user root shell.  No Ctrl-D: see the module comment."""
-    if not g.expect("Hit Ctrl+D", 900, "(single-user shell)"):
+    """Log in as root at the multi-user getty a working boot reaches."""
+    if not g.expect("login:", 900, "(multi-user getty)"):
         return False
-    if not g.expect("# ", 300, "(single-user prompt)"):
+    g.line("root")
+    if not g.expect("# ", 300, "(root shell)"):
         return False
-    say("%s: single-user root shell" % g.name)
+    say("%s: at a root shell" % g.name)
     return True
+
+
+def free_line(g):
+    """Stop any slip holding LINE, so kermit is its only reader.
+
+    /etc/rc.net puts SLIP on this line at boot.
+    """
+    # rc runs rc.net in the background, so slip can start after login, and a
+    # survivor eats kermit's packets.  rc starts update after rc.net.
+    for _ in range(60):
+        m = g.mark()
+        g.line("/bin/ps -ax | /bin/grep /etc/ | /bin/grep -v grep")
+        g.expect("# ", 120, "(ps for slip)")
+        ps = g.since(m).split("\n")[1:]
+        pids = [l.split()[1] for l in ps if "/etc/slip" in l]
+        if pids:
+            say("%s: rc.net started slip (pid %s) -- stopping it"
+                % (g.name, " ".join(pids)))
+            g.cmd("/bin/kill %s" % " ".join(pids))
+        elif (any("/etc/update" in l for l in ps)
+              and not any("/etc/rc.net" in l for l in ps)):
+            return
+        else:
+            g.cmd("/bin/sleep 2")
+    say("%s: slip or rc.net still running" % g.name)
 
 
 def transfer(A, B, text):
@@ -273,8 +298,7 @@ def wildcard(A, B):
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     opts = [a for a in argv[1:] if a.startswith("--")]
-    # The test image this build packed (test/image/build.sh), or the one
-    # named; net/twohost names the failure at the point of use.
+    # The test image, or the one named.
     img = test_image(args[0] if args else None)
     if img is None:
         return 2
@@ -320,6 +344,8 @@ def main(argv):
             guests[n] = Guest(n, imgs[n], sock, work, trace)
         A, B = guests["A"], guests["B"]
         if single_user(A) and single_user(B):
+            free_line(A)
+            free_line(B)
             verdict = (wildcard(A, B) if wild
                        else transfer(A, B, text))
         else:

@@ -38,6 +38,7 @@ Neither guest is modified: no image is patched, and the only thing typed on B is
 the nonce file.  Runs are on COPIES of the packed image, because the emulator
 writes through to the image it boots.
 """
+import atexit
 import os
 import random
 import shutil
@@ -49,14 +50,12 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OS = os.path.normpath(os.path.join(HERE, "..", ".."))
-# The emulator is found by this repository's resolver (mk/deps.sh emu), the one
-# every shell harness asks, so the search order is stated once; $C900_EMU or
-# $EMU still names one explicitly, as a checkout or as the binary itself.
+# The emulator comes from `mk/deps.sh emu', unless $C900_EMU or $EMU names a
+# checkout or binary.
 
 
 def test_image(path=None):
-    """The image the guests boot, or None (having already said() why): the
-    test image this build packed (test/image/build.sh), or the one named."""
+    """The named image or the packed test image, or None (having said why)."""
     img = path or os.path.join(OS, "hostbuild", "build", "test.bin")
     if not os.path.exists(img):
         say("no image %s" % img)
@@ -87,6 +86,8 @@ EMUDIR = os.path.dirname(EMU)
 
 ADDR_A, ADDR_B, MASK = "10.0.0.1", "10.0.0.2", "255.255.255.0"
 SLIPLINE = "/dev/tty51"          # SCC channel A -- the emulator's --wire
+TELUSER = "guest"                 # login(1) refuses root off the console
+TELPW = "Kermit1"
 
 
 class Guest:
@@ -100,7 +101,9 @@ class Guest:
     def __init__(self, name, img, sock, workdir, trace=False):
         self.name, self.buf, self.cursor = name, bytearray(), 0
         self.log = open(os.path.join(workdir, "%s.console" % name), "wb")
-        cmd = [EMU, "--disk", img, "--wire", sock]
+        # The default stop-on quits when the guest idles, as a shell at a
+        # prompt does.
+        cmd = [EMU, "--disk", img, "--wire", sock, "--stop-on", "none"]
         if trace:
             cmd.append("--wire-trace")
         self.err = open(os.path.join(workdir, "%s.err" % name), "wb")
@@ -231,10 +234,7 @@ def ensure_stack(g, addr, telnetd=False):
 
 
 def boot(g):
-    """Single-user prompt -> multi-user -> root shell on the console."""
-    if not g.expect("Hit Ctrl+D", 300, "(single-user shell)"):
-        return False
-    g.send("\x04")
+    """Multi-user login -> root shell on the console."""
     if not g.expect("login:", 600, "(multi-user getty)"):
         return False
     g.line("root")
@@ -264,7 +264,9 @@ def run(cut, trace, image, keep, quick):
         imgs[n] = os.path.join(work, "%s.bin" % n)
         subprocess.call(["cp", "--reflink=auto", src, imgs[n]])
 
-    sock = os.path.join(work, "wire.sock")
+    # Not in the workdir: an AF_UNIX path is capped at about 108 bytes.
+    sock = "/tmp/c900two.%d.sock" % os.getpid()
+    atexit.register(lambda: os.path.lexists(sock) and os.unlink(sock))
     wcmd = [sys.executable, os.path.join(HERE, "wire.py"), sock,
             "--log=%s" % os.path.join(work, "wire.log")]
     if cut:
@@ -294,6 +296,21 @@ def run(cut, trace, image, keep, quick):
         B.line("echo %s > /nonce" % nonce)
         B.expect("# ", 60)
         say("B: nonce %s written to /nonce" % nonce)
+
+        # TELUSER ships locked; give it a password for the telnet login.
+        B.line("/bin/passwd %s" % TELUSER)
+        B.expect("New password:", 60, "(passwd %s)" % TELUSER)
+        B.line(TELPW)
+        B.expect("Verification:", 60, "(passwd %s)" % TELUSER)
+        B.line(TELPW)
+        B.expect("# ", 60, "(passwd %s)" % TELUSER)
+
+        # login(1) exits without a home directory, and it lives on /usr,
+        # which boot leaves unmounted.
+        B.line("/etc/mount /dev/hd6 /usr")
+        B.expect("# ", 60, "(mount /usr)")
+        B.line("/bin/mkdir -p /usr/guest")
+        B.expect("# ", 60, "(guest home)")
 
         # Both machines configure as 10.0.0.2 by default, so A takes the address
         # /etc/hosts already calls `peer'.
@@ -331,8 +348,10 @@ def run(cut, trace, image, keep, quick):
         if not got_login:
             why.append("no login prompt over telnet")
         else:
-            A.line("root")
-            A.expect("# ", 180, "(remote shell)")
+            A.line(TELUSER)
+            A.expect("Password:", 60, "(telnet password prompt)")
+            A.line(TELPW)
+            A.expect("$ ", 180, "(remote shell)")
             A.line("cat /nonce")
             A.expect(nonce, 120, "(the nonce, over TCP)")
             A.line("exit")
