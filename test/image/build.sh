@@ -1,37 +1,24 @@
 #!/bin/sh
-# build.sh [OUT] -- pack the userland's test image: this repository's own
-# component archives on the kernel, loader and filesystem tools their
-# repositories publish.  Default OUT: hostbuild/build/test.bin.
+# build.sh [OUT] -- pack the test image the booted checks run on: this
+# build's component archives on the published kernel, loader and filesystem
+# tools.  Default OUT: hostbuild/build/test.bin.  Never shipped.
 #
-# WHAT IT IS FOR.  The checks that need a booted system -- the test/cmd
-# scripts, net/twohost, the mail and serial harnesses -- run here, before a
-# release, against the programs this build made.  A distribution image is
-# commodore-900-dist's product and is built FROM this repository's release,
-# so booting one here would make this repository test itself through its own
-# consumer.  This image is not a distribution and is never shipped.
-#
-# WHAT GOES IN, and where each comes from:
-#
-#   the -bin archives in hostbuild/build/packages (`make -C hostbuild
-#   packages'), unpacked and given the modes their manifest.tab states --
-#   the release artifacts themselves, including testing's own, so the checks
-#   test what ships
-#   lists/licences.list, resolved by hostbuild/component.py as a -bin package
-#   is: /usr/licences is what the components are under, and no package
-#   carries it
-#   the kernel and the console drivers, from the kernel edge
+# Contents:
+#   the -bin archives in hostbuild/build/packages, with their manifest modes
+#   lists/licences.list (/usr/licences, which no package carries)
+#   the kernel and console drivers, from the kernel edge
 #   the loader and <bootinfo.h>, from the kboot edge
-#   /dev, from test/image/devices, a copy of dist's table (it says why)
+#   /dev, from test/image/devices
 #
-# THE LAYOUT is the 21 MB drive's geometry and /tmp with its swap area, as
-# commodore-900-dist's media/hd21.media has them, with /usr on the root
-# filesystem rather than a partition of its own: a test image has no reason
-# to be rationed, and one filesystem less is one mount less to go wrong.
+# The 21 MB drive's layout, with /usr on the root filesystem:
 #
 #	part	slot	start	blocks	isize
 #	boot	0	0	136	4	kboot as /coherent, kboot.cfg
 #	root	4	136	30872	250	/, /usr and everything
-#	tmp	3	31008	6511	127	swap 6512..10608 of the slot
+#	tmp	3	31008	2415	127	swap 2416..10608 of the slot
+#
+# Swap is twice the heaviest check's peak: allocation is first fit and never
+# compacts, so fragmentation needs the slack.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
@@ -39,9 +26,7 @@ OUT=${1:-$ROOT/hostbuild/build/test.bin}
 PKGDIR=${PKGDIR:-$ROOT/hostbuild/build/packages}
 PYTHON=${PYTHON:-python3}
 
-# Every component a distribution image of the whole system carries, less the
-# graphical login and MGR (each a variant of what is here) and CP/M (which
-# wants a partition of its own).  dist's coherent3-full-test is the same set.
+# The whole system, less the graphical login, MGR and CP/M.
 COMPONENTS=${COMPONENTS:-"base runtime login-text editors archive games net-games net mail-light hr hr-clients testing"}
 
 BS=512
@@ -49,8 +34,8 @@ TOTAL=41616			# 612 cylinders x 4 heads x 17 sectors
 GEOM="612 4 17 128"
 BOOT_AT=0;    BOOT_N=136;   BOOT_I=4
 ROOT_AT=136;  ROOT_N=30872; ROOT_I=250
-TMP_AT=31008; TMP_N=6511;   TMP_I=127
-SWAP_BOT=6512; SWAP_TOP=10608
+TMP_AT=31008; TMP_N=2415;   TMP_I=127
+SWAP_BOT=2416; SWAP_TOP=10608
 ROM_SAFE=68			# 4 heads x 17: what the ROM reads under any geometry
 
 need() {	# need <edge> -- the resolved path, or the resolver's refusal
@@ -153,8 +138,7 @@ fi
 sed -i '/^tmp\//d' "$STAGE/MANIFEST"
 
 # ---- the templates: what the mounts are, and which release this is ----
-# Text files only: a program may hold any bytes, @..@ among them.  base-bin
-# carries the two there are, /etc/rc (@MOUNTS@) and /etc/motd (@VERSION@).
+# Text files only: a binary may hold @..@ by chance.
 printf '/etc/mount /dev/hd4 / -u\n/etc/mount /dev/hd3 /tmp\n' > "$W/mounts"
 for f in $(grep -rlI '@[A-Z][A-Z]*@' "$STAGE" 2>/dev/null || true); do
 	awk -v v="$V" -v mf="$W/mounts" '

@@ -21,13 +21,8 @@
 #	/etc/mount /dev/hd3 /tmp
 #
 # -- while rc.net and rc.local go on writing their logs into /tmp.  There is no
-# spare partition to make a filesystem in.  The test image (test/image/build.sh)
-# declares three slots and two filesystems: hd0 (boot), hd4 (/, with /usr on
-# it) and hd3 (/tmp, plus the swap extent at 6512..10608 in the same slot).
-# No other slot is declared -- the blocks past /tmp are an unallocated hole --
-# and an undeclared slot is all-zero in the partition table kboot hands the
-# kernel, so the driver refuses every block through it (/dev/hd1 included).
-# Every partition that exists is either mounted or is swap.
+# spare partition to make a filesystem in: the test image declares only hd0
+# (boot), hd4 (/) and hd3 (/tmp and swap), and the driver refuses the rest.
 #
 # So the medium is one the RUN ATTACHES: a 2392-block floppy image handed to
 # the emulator with FLOPPY=, reachable in the guest as /dev/fd1 (the route
@@ -106,13 +101,9 @@
 # and compare it against one made by another mkfs under the same arguments.
 #
 # For test/cmd/run.sh, which makes the blank medium itself (`#% floppy'): the
-# twenty zero statuses; the medium blank before; icheck's `free =' and `bad=0'
-# and none of the free-list defect lines; the round-tripped file read back;
-# case 13's read-only mount, refused write and missing file; the `gt'/`pk' and
-# `vol'/`pak' dumps; and /dev/fd1 in neither mount table.  NOT covered line by
-# line: that case 6 did NOT print the read-only message -- case 13 must print
-# it, so it cannot be rejected outright.  STATUS-7 and the `written-by-the-gate'
-# read-back are the evidence that the first mount was read/write.
+# directives below.  That case 6 printed no read-only message is left to the
+# transcript, since case 13 must print it.  STATUS-7 and the gate's
+# read-back show the first mount was read/write.
 #% floppy 2392
 #% needs base
 #% expect ^== STATUS-1 0$
