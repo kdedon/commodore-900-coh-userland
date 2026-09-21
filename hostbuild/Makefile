@@ -7,13 +7,12 @@
 #   make packages              export every component as bin/src/man archives
 #   make publish               build the sweep and stamp it, for the dist repo
 #   make check-publish-fresh   assert publish ran after everything else, not eyeball it
+#   make check-ports           link every third-party port with the toolchain under test
 #   make clean-work            drop the harnesses' working copies
 #   make clean                 remove everything the build writes
 #
-# This repository builds programs; it does not link a kernel, and the only
-# image it packs is the test image its booted checks run on (test/image).  The
-# kernel and the distribution images live in separate repositories
-# (commodore-900-coh-kernel3 and commodore-900-dist).
+# This builds programs, not a kernel.  The only image it packs is the test
+# image (test/image).
 # This tree contains every program, its data files and its man pages.
 #
 # The recipes are the sweep scripts, which carry stateful host-port patching
@@ -106,8 +105,14 @@ check-publish-fresh:
 	    exit 1; \
 	fi
 	@echo "check-publish-fresh: ok -- $(B)/.ulstamp is not older than anything else under $(B)"
+# Compile and link every third-party port, C the toolchain's own suite
+# doesn't resemble.  `make userland' runs them.
+.PHONY: check-ports
+check-ports: $(LIBCSTAMP)
+	sh $(HERE)/ports-gate.sh
+
 help:
-	@sed -n '2,19p' $(HERE)/Makefile
+	@sed -n '2,20p' $(HERE)/Makefile
 
 FORCE:
 
@@ -230,8 +235,7 @@ $(TESTSTAMP): $(TCSTAMP) $(LIBCSTAMP) $(HERE)/build-tests.sh $(wildcard $(OS)/te
 mgr: net $(MGRBIN) $(MGRCLBIN)
 # Group the outputs to run one sub-make.  Record Makefile.c900 as their
 # build recipe in the source map.  libsocket.a and libc must exist before
-# the sub-make links against them; FORCE alone let a parallel sweep start
-# this before net or libc did.
+# the sub-make links against them.
 $(MGRBIN) $(MGRCLBIN) &: $(NETSTAMP) $(LIBCSTAMP) FORCE
 	C900_BUILD_RECIPE=$(OS)/mgr/Makefile.c900 \
 	$(MAKE) -C $(OS)/mgr -f Makefile.c900 BUILD=$(B)/mgr mgr hrlight clients
@@ -329,9 +333,7 @@ package:
 # Attempt each available component kind and report successes and refusals.
 # A refusal is a component that publishes nothing, so the sweep fails on one:
 # an install set short of a component is not an install set.
-# Depends on `all': under -j, `make all packages' has no other reason to run
-# the sweep before this reads its output, and without the edge it raced ahead
-# of publish and refused every component for want of a source map.
+# Depends on `all' so that under -j the sweep finishes before this reads it.
 packages: all
 	@rm -rf $(PKGOUT); mkdir -p $(PKGOUT); ok=0; skip=0; \
 	$(COMPONENT) components | awk '$$2 ~ /^bin/ {print $$1, $$2}' | \

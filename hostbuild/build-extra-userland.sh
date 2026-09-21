@@ -31,10 +31,13 @@ LOGD="$HERE/logs"; mkdir -p "$LOGD"
 # libterm (base/lib/libterm) -- termcap users (more) need it
 [ -f "$LIBTERM" ] || sh "$HERE/build-curses.sh" >/dev/null 2>&1
 ok=0; fail=0; fl=""
+# Named commands restrict the sweep to those.
+ONLY="$*"
 
 # build <name> <-I extra...> -- <src...>   (sources after the `--')
 build() {
 	name="$1"; shift
+	[ -z "$ONLY" ] || case " $ONLY " in *" $name "*) ;; *) return 0;; esac
 	incs=""
 	while [ "$1" != "--" ]; do incs="$incs $1"; shift; done
 	shift
